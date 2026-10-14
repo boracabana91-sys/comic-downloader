@@ -46,6 +46,17 @@ If the Mac still says it cannot be opened: right-click the app, choose **Open**,
 
 Options: **Pages per folder** (default 5) and **Convert WebP to JPG**.
 
+## Hiding the website's words
+
+Some pages carry a banner or text with the website's address. **Hide these words on the pages** is ticked by default and set to `luacomic.org`.
+After downloading, the program reads every page and finds the words wherever they are (first page, last page, or anywhere in between):
+- A banner touching the top or bottom of a page is cut off, and a page that is only a banner is removed.
+- Words anywhere else are painted over with the background color, or blurred if the background is busy.
+- Names of the artists and translators are not touched. Only the words in the box are.
+
+You can type other words in the box, separated by commas. Untick the box to skip this step and download faster.
+Reading every page takes time (roughly 6 to 7 seconds for a very tall page), so a whole chapter takes a few minutes. The first run also loads the text reader, which takes a moment.
+
 ## Send to your e-reader or tablet
 
 Pick your gadget in the **Send to** menu before pressing Download. The program also keeps the normal image folders.

@@ -7,7 +7,14 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+import cleaner
 import core
+
+# A windowed app on Windows has no console; some libraries write to it and would crash.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w")
 
 
 class App:
@@ -49,6 +56,18 @@ class App:
         if core.HAS_PIL:
             ttk.Checkbutton(opts, text="Convert WebP to JPG",
                             variable=self.convert).pack(side="left", padx=18)
+
+        hide_row = ttk.Frame(root)
+        hide_row.pack(fill="x", padx=14, pady=(0, 6))
+        self.hide = tk.BooleanVar(value=True)
+        self.hide_box = ttk.Checkbutton(hide_row, text="Hide these words on the pages:",
+                                        variable=self.hide)
+        self.hide_box.pack(side="left")
+        self.words = tk.StringVar(value="luacomic.org")
+        ttk.Entry(hide_row, textvariable=self.words, width=34).pack(side="left", padx=6)
+        if not cleaner.ocr_available():
+            self.hide.set(False)
+            self.hide_box.config(state="disabled")
 
         send = ttk.Frame(root)
         send.pack(fill="x", padx=14, pady=(0, 6))
@@ -196,13 +215,15 @@ class App:
                                     "(400 to 5000) in pixels. You can find it in your gadget's "
                                     "specifications.")
                 return
+        words = cleaner.parse_words(self.words.get()) if self.hide.get() else []
         self.stop.clear()
         self.btn_go.config(state="disabled")
         self.btn_stop.config(state="normal")
         self.bar["value"] = 0
         self.worker = threading.Thread(
             target=self.run,
-            args=(link, self.folder.get(), size, self.convert.get(), self.device_key(), custom),
+            args=(link, self.folder.get(), size, self.convert.get(), self.device_key(), custom,
+                  words),
             daemon=True)
         self.worker.start()
 
@@ -210,7 +231,7 @@ class App:
         self.q.put(("progress", done, total))
         self.q.put(("status", text))
 
-    def run(self, link, out_root, size, convert, device="images", custom=None):
+    def run(self, link, out_root, size, convert, device="images", custom=None, words=None):
         try:
             os.makedirs(out_root, exist_ok=True)
             self.say("Reading the page...")
@@ -254,6 +275,19 @@ class App:
                     self.say(f"  Pages that failed: {failed}. Press Download again to retry them.")
                 else:
                     self.say(f"  Done: {title}")
+                if words:
+                    self.q.put(("status", "Loading the text reader..."))
+                    try:
+                        counts = cleaner.clean_chapter(out_root, title, len(imgs), size, words,
+                                                       self.progress, self.stop)
+                        hidden = counts["cut"] + counts["blurred"] + counts["deleted"]
+                        if counts["scanned"]:
+                            self.say(f"  Looked for the words on {counts['scanned']} page(s) "
+                                     f"and hid them on {hidden}.")
+                    except core.Stopped:
+                        raise
+                    except Exception as e:
+                        self.say(f"  Could not look for the words ({e}). Continuing without it.")
                 if device != "images":
                     made, bad = core.build_device_files(out_root, title, len(imgs), size, device,
                                                         self.progress, self.stop, custom)
@@ -290,6 +324,10 @@ def selftest(path):
     try:
         core.fetch_text("https://github.com")
         core.selftest_device()
+        if cleaner.ocr_available():
+            cleaner.selftest()
+        else:
+            raise RuntimeError("the text reader is missing from this app")
         result = "OK"
     except Exception as e:
         result = f"FAIL {e}"

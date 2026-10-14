@@ -54,6 +54,7 @@ def main():
             "006.webp", "007.webp", "008.webp", "009.webp", "010.webp"]
     test_devices()
     test_all_presets()
+    test_cleaner()
     print("ALL TESTS PASSED")
 
 
@@ -151,6 +152,79 @@ def test_all_presets():
     assert core.DEVICES["kindle_color"]["gray"] is False
     assert core.DEVICES["kindle_68"]["gray"] is True
     print(f"all {count} gadget choices OK")
+
+
+def test_cleaner():
+    """The words are found anywhere on a page and hidden: banner cut, plain text painted out."""
+    import cleaner
+    from PIL import Image, ImageDraw, ImageFont
+
+    assert cleaner.text_matches("READATLUACOMIC.ORGTO", ["luacomic.org"])
+    assert cleaner.text_matches("read at LUACOM1C.ORG to", ["luacomic.org"])  # reader slip
+    assert not cleaner.text_matches("hello there", ["luacomic.org"])
+    assert cleaner.parse_words("luacomic.org, other site") == ["luacomic.org", "other site"]
+    if not cleaner.ocr_available():
+        print("(skipped page-reading test: text reader not installed)")
+        return
+
+    font = ImageFont.load_default(size=36)
+    words = ["luacomic.org"]
+
+    def page(path, kind):
+        im = Image.new("RGB", (600, 1600), "white")
+        dr = ImageDraw.Draw(im)
+        dr.rectangle((100, 100, 500, 900), fill=(190, 200, 230))  # some artwork
+        if kind == "bottom":
+            dr.rectangle((0, 1300, 600, 1600), fill=(18, 18, 18))
+            dr.text((70, 1420), "READ AT LUACOMIC.ORG TO", fill="white", font=font)
+        elif kind == "top":
+            im = Image.new("RGB", (600, 1600), "white")
+            dr = ImageDraw.Draw(im)
+            dr.rectangle((100, 500, 500, 1300), fill=(190, 200, 230))
+            dr.rectangle((0, 0, 600, 300), fill=(18, 18, 18))
+            dr.text((70, 120), "READ AT LUACOMIC.ORG TO", fill="white", font=font)
+        elif kind == "middle":
+            dr.text((120, 1100), "luacomic.org", fill="black", font=font)
+        elif kind == "banner_only":
+            im = Image.new("RGB", (600, 300), (18, 18, 18))
+            ImageDraw.Draw(im).text((70, 120), "READ AT LUACOMIC.ORG TO", fill="white", font=font)
+        elif kind == "clean":
+            dr.text((120, 1100), "hello world", fill="black", font=font)
+        im.save(path)
+
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        eng = cleaner.get_engine()
+        for kind, expect in (("bottom", "cut"), ("top", "cut"), ("middle", "blurred"),
+                             ("banner_only", "deleted"), ("clean", "none")):
+            p = os.path.join(d, kind + ".png")
+            page(p, kind)
+            with open(p, "rb") as fh:
+                before = fh.read()
+            got = cleaner.clean_image(p, words, eng)
+            assert got == expect, (kind, got)
+            if kind in ("bottom", "top"):
+                h = Image.open(p).size[1]
+                assert 1250 <= h <= 1330, (kind, h)  # the 300 px banner is gone
+            if kind == "clean":
+                with open(p, "rb") as fh:
+                    assert fh.read() == before  # pages without the words are never touched
+            if kind == "banner_only":
+                assert not os.path.exists(p)
+            elif os.path.exists(p):
+                assert cleaner.clean_image(p, words, eng) == "none", kind  # nothing left to find
+
+        # whole chapter: group folders, then a second run skips pages already done
+        title = "Book"
+        folder = os.path.join(d, core.group_folder_name(title, 1, 3, 5))
+        os.makedirs(folder)
+        page(os.path.join(folder, "001.png"), "clean")
+        page(os.path.join(folder, "002.png"), "bottom")
+        page(os.path.join(folder, "003.png"), "middle")
+        c = cleaner.clean_chapter(d, title, 3, 5, words)
+        assert c == {"scanned": 3, "cut": 1, "blurred": 1, "deleted": 0, "skipped": 0}, c
+        c2 = cleaner.clean_chapter(d, title, 3, 5, words)
+        assert c2["scanned"] == 0, c2
+    print("word hiding OK")
 
 
 if __name__ == "__main__":
