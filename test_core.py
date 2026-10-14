@@ -53,6 +53,7 @@ def main():
         assert sorted(os.listdir(os.path.join(d, folders[2]))) == [
             "006.webp", "007.webp", "008.webp", "009.webp", "010.webp"]
     test_devices()
+    test_all_presets()
     print("ALL TESTS PASSED")
 
 
@@ -106,6 +107,50 @@ def test_devices():
                 pages = re.findall(rb"/Type\s*/Page(?![A-Za-z])", data)
                 assert len(pages) > 5, len(pages)  # the strip became several PDF pages
     print("e-reader files OK")
+
+
+def test_all_presets():
+    """Every gadget in the Send to menu (and Custom size) makes correctly sized files."""
+    if not core.HAS_PIL:
+        return
+    import io
+    import zipfile
+    from PIL import Image
+
+    custom = {"width": 1000, "height": 1500, "ext": ".cbz", "gray": True}
+    count = 0
+    for key in core.DEVICE_KEYS:
+        if key == "images":
+            continue
+        dev = core.resolve_device(key, custom if key == "custom" else None)
+        W, H = dev["size"]
+        assert dev["next"].startswith("Next:") and dev["folder"] in dev["next"], key
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+            name = core.group_folder_name("Book", 1, 2, 5)
+            os.makedirs(os.path.join(d, name))
+            Image.new("RGB", (900, 1300), (200, 220, 240)).save(os.path.join(d, name, "001.png"))
+            Image.new("RGB", (800, 4200), "white").save(os.path.join(d, name, "002.png"))
+            made, bad = core.build_device_files(d, "Book", 2, 5, key,
+                                                custom=custom if key == "custom" else None)
+            assert bad == [] and len(made) == 1, (key, made, bad)
+            assert made[0].endswith(dev["ext"]) and os.path.basename(
+                os.path.dirname(made[0])) == dev["folder"], (key, made)
+            if dev["ext"] == ".cbz":
+                with zipfile.ZipFile(made[0]) as z:
+                    names = sorted(z.namelist())
+                    assert len(names) >= 3, (key, names)
+                    im = Image.open(io.BytesIO(z.read(names[0])))
+                    assert im.size == (W, H), (key, im.size)
+                    if dev["gray"]:
+                        assert im.mode == "L", (key, im.mode)
+            else:
+                with open(made[0], "rb") as fh:
+                    assert fh.read(5) == b"%PDF-", key
+        count += 1
+    # colour devices keep colour; gray devices become black and white
+    assert core.DEVICES["kindle_color"]["gray"] is False
+    assert core.DEVICES["kindle_68"]["gray"] is True
+    print(f"all {count} gadget choices OK")
 
 
 if __name__ == "__main__":

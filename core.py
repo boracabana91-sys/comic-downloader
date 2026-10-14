@@ -272,31 +272,107 @@ def download_images(images, title, out_root, referer, progress=None, stop=None,
 
 
 # ---------------------------------------------------------------------------
-# E-reader files (Kobo Clara -> .cbz, Kindle Paperwhite -> .pdf)
+# E-reader files (Kobo -> .cbz; Kindle, PocketBook, Boox, reMarkable, tablets -> .pdf)
 # Screen sizes are portrait pixels: width x height.
 # ---------------------------------------------------------------------------
+def _dev(label, ext, size, gray, folder, kind):
+    return {"label": label, "ext": ext, "size": size, "gray": gray,
+            "folder": folder, "kind": kind}
+
+
 DEVICES = {
     "images": {"label": "Just the images (folders)"},
-    "kobo": {"label": "Kobo Clara (.cbz files)", "ext": ".cbz", "size": (1072, 1448),
-             "gray": False, "folder": "For Kobo Clara",
-             "next": ("Next: plug your Kobo into the computer with its USB cable, tap Connect on "
-                      "the Kobo screen, then drag the .cbz files from the folder 'For Kobo Clara' "
-                      "onto the drive named KOBOeReader. Eject it, and the comics appear in your library.")},
-    "kindle_6": {"label": "Kindle Paperwhite - 6 inch (2015 to 2020) (.pdf files)", "ext": ".pdf",
-                 "size": (1072, 1448), "gray": True, "folder": "For Kindle Paperwhite"},
-    "kindle_68": {"label": "Kindle Paperwhite - 6.8 inch (2021) (.pdf files)", "ext": ".pdf",
-                  "size": (1236, 1648), "gray": True, "folder": "For Kindle Paperwhite"},
-    "kindle_7": {"label": "Kindle Paperwhite - 7 inch (2024) (.pdf files)", "ext": ".pdf",
-                 "size": (1264, 1680), "gray": True, "folder": "For Kindle Paperwhite"},
+    # --- Kobo (.cbz) ---
+    "kobo": _dev("Kobo Clara - HD, 2E, BW, Colour (.cbz)", ".cbz", (1072, 1448), False,
+                 "For Kobo Clara", "kobo"),
+    "kobo_libra": _dev("Kobo Libra 2 / Libra Colour (.cbz)", ".cbz", (1264, 1680), False,
+                       "For Kobo Libra", "kobo"),
+    "kobo_sage": _dev("Kobo Sage / Forma (.cbz)", ".cbz", (1440, 1920), False,
+                      "For Kobo Sage", "kobo"),
+    "kobo_elipsa": _dev("Kobo Elipsa / Elipsa 2E (.cbz)", ".cbz", (1404, 1872), False,
+                        "For Kobo Elipsa", "kobo"),
+    # --- Kindle (.pdf) ---
+    "kindle_basic": _dev("Kindle - basic 6 inch, 2022 or 2024 (.pdf)", ".pdf", (1072, 1448), True,
+                         "For Kindle", "kindle"),
+    "kindle_6": _dev("Kindle Paperwhite - 6 inch, 2015 to 2020 (.pdf)", ".pdf", (1072, 1448), True,
+                     "For Kindle Paperwhite", "kindle"),
+    "kindle_68": _dev("Kindle Paperwhite - 6.8 inch, 2021 (.pdf)", ".pdf", (1236, 1648), True,
+                      "For Kindle Paperwhite", "kindle"),
+    "kindle_7": _dev("Kindle Paperwhite - 7 inch, 2024 (.pdf)", ".pdf", (1264, 1680), True,
+                     "For Kindle Paperwhite", "kindle"),
+    "kindle_color": _dev("Kindle Colorsoft - color (.pdf)", ".pdf", (1264, 1680), False,
+                         "For Kindle Colorsoft", "kindle"),
+    "kindle_scribe": _dev("Kindle Scribe - 10 inch (.pdf)", ".pdf", (1860, 2480), True,
+                          "For Kindle Scribe", "kindle"),
+    # --- PocketBook (.pdf) ---
+    "pocketbook_6": _dev("PocketBook - 6 inch (Touch HD, Verse Pro) (.pdf)", ".pdf", (1072, 1448),
+                         False, "For PocketBook", "pocketbook"),
+    "pocketbook_7": _dev("PocketBook - 7 inch (Era) (.pdf)", ".pdf", (1264, 1680), False,
+                         "For PocketBook", "pocketbook"),
+    "pocketbook_78": _dev("PocketBook - 7.8 inch (InkPad) (.pdf)", ".pdf", (1404, 1872), False,
+                          "For PocketBook", "pocketbook"),
+    # --- Boox (.pdf) ---
+    "boox_6": _dev("Boox - 6 inch (Go 6) (.pdf)", ".pdf", (1072, 1448), False,
+                   "For Boox", "boox"),
+    "boox_7": _dev("Boox - 7 inch (Page, Leaf) (.pdf)", ".pdf", (1264, 1680), False,
+                   "For Boox", "boox"),
+    "boox_103": _dev("Boox - 10.3 inch (Go 10.3) (.pdf)", ".pdf", (1860, 2480), False,
+                     "For Boox", "boox"),
+    "boox_note": _dev("Boox - 10.3 inch (Note Air, Tab Ultra) (.pdf)", ".pdf", (1404, 1872), False,
+                      "For Boox", "boox"),
+    # --- reMarkable, tablets, your own size ---
+    "remarkable": _dev("reMarkable 2 (.pdf)", ".pdf", (1404, 1872), True,
+                       "For reMarkable", "remarkable"),
+    "tablet": _dev("Tablet or phone - iPad, Android (.pdf, color)", ".pdf", (1600, 2400), False,
+                   "For Tablet or Phone", "tablet"),
+    "custom": {"label": "Custom size - type your own", "kind": "custom",
+               "folder": "For Custom Size", "ext": ".pdf", "size": (1072, 1448), "gray": False},
 }
-_KINDLE_NEXT = ("Next: plug your Kindle into the computer with its USB cable. A drive named Kindle "
-                "appears. Open it, open the 'documents' folder, and drag the .pdf files from the "
-                "folder 'For Kindle Paperwhite' into it. Eject the Kindle, and the comics appear in "
-                "your library.")
-for _k in ("kindle_6", "kindle_68", "kindle_7"):
-    DEVICES[_k]["next"] = _KINDLE_NEXT
 
 DEVICE_KEYS = list(DEVICES)
+
+
+def _next_text(kind, ext, folder):
+    f = f"the folder '{folder}'"
+    if kind == "kobo":
+        return (f"Next: plug your Kobo into the computer with its USB cable, tap Connect on the "
+                f"Kobo screen, then drag the {ext} files from {f} onto the drive named KOBOeReader. "
+                "Eject it, and the comics appear in your library.")
+    if kind == "kindle":
+        return ("Next: plug your Kindle into the computer with its USB cable. A drive named Kindle "
+                f"appears. Open it, open the 'documents' folder, and drag the {ext} files from {f} "
+                "into it. Eject the Kindle, and the comics appear in your library.")
+    if kind == "pocketbook":
+        return ("Next: plug your PocketBook into the computer with its USB cable (choose "
+                "'Connect to PC' on its screen if it asks). A drive appears. Drag the "
+                f"{ext} files from {f} into its main folder or its 'Books' folder, then eject it.")
+    if kind == "boox":
+        return ("Next: a Boox runs Android, so copying works a little differently. On the Boox, "
+                "look for its Wi-Fi file transfer (called BooxDrop on many models), open the web page "
+                f"it shows on your computer, and drag the {ext} files from {f} onto it. A USB cable "
+                "also works; on a Mac you may need a free helper app such as OpenMTP.")
+    if kind == "remarkable":
+        return ("Next: on the reMarkable, turn on the USB web interface (Settings, then Storage). "
+                "Plug it into the computer with its USB cable, open http://10.11.99.1 in your "
+                f"browser, and drag the {ext} files from {f} onto the page.")
+    if kind == "tablet":
+        return (f"Next: copy the {ext} files from {f} to your tablet or phone (AirDrop, a USB cable, "
+                "or a cloud drive such as iCloud Drive or Google Drive), then open them in any PDF "
+                "reader or the Books app.")
+    return (f"Next: copy the {ext} files from {f} onto your gadget the way it usually receives "
+            "files (most e-readers show up as a drive when plugged in with a USB cable).")
+
+
+def resolve_device(key, custom=None):
+    """Settings for a device. For 'custom', pass {'width','height','ext','gray'}."""
+    dev = dict(DEVICES[key])
+    if key == "custom":
+        c = custom or {}
+        dev["size"] = (int(c.get("width", 1072)), int(c.get("height", 1448)))
+        dev["ext"] = c.get("ext", ".pdf")
+        dev["gray"] = bool(c.get("gray", False))
+    dev["next"] = _next_text(dev["kind"], dev["ext"], dev["folder"])
+    return dev
 
 
 def _page_to_rgb_or_gray(im, gray):
@@ -372,13 +448,14 @@ def _write_device_file(pages, dest, ext):
                 i.close()
 
 
-def build_device_files(out_root, title, total, size, device_key, progress=None, stop=None):
+def build_device_files(out_root, title, total, size, device_key, progress=None, stop=None,
+                       custom=None):
     """Turn each downloaded 'Pages A-B' folder into one .cbz (Kobo) or .pdf (Kindle).
     Returns (list_of_files_made, list_of_images_that_could_not_be_used)."""
     if not HAS_PIL:
         raise RuntimeError("The picture tools are missing from this copy of the program.")
     stop = stop or threading.Event()
-    dev = DEVICES[device_key]
+    dev = resolve_device(device_key, custom)
     width, height = dev["size"]
     out_dir = os.path.join(out_root, dev["folder"])
     os.makedirs(out_dir, exist_ok=True)

@@ -26,6 +26,8 @@ jobs:
         run: python test_core.py
       - name: Check the window code loads
         run: python -c "import app"
+      - name: Open the window and try the Custom size boxes
+        run: python -c "import tkinter as tk, app; r = tk.Tk(); a = app.App(r); a.device.set(a.device_labels[-1]); a.update_custom(); r.update(); assert a.custom_info(); a.device.set(a.device_labels[0]); a.update_custom(); r.update(); r.destroy(); print('window OK')"
 
       - name: Build Windows app
         if: runner.os == 'Windows'

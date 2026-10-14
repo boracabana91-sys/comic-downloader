@@ -46,25 +46,51 @@ If the Mac still says it cannot be opened: right-click the app, choose **Open**,
 
 Options: **Pages per folder** (default 5) and **Convert WebP to JPG**.
 
-## Send to your Kobo or Kindle
+## Send to your e-reader or tablet
 
-Pick your device in the **Send to** menu before pressing Download. The program also keeps the normal image folders.
+Pick your gadget in the **Send to** menu before pressing Download. The program also keeps the normal image folders.
 Tall pages are cut into screen-sized pages at blank gaps, so the text stays readable.
+When it finishes, the window tells you what to do next, and **Open folder** opens the folder holding the files to drag.
 
-- **Kobo Clara:** makes one `.cbz` file per group, like `Title - Pages 1-5.cbz`, in the folder **For Kobo Clara**.
-  1. Plug the Kobo into the computer with its USB cable.
-  2. On the Kobo screen, tap **Connect**.
-  3. A drive named **KOBOeReader** appears. Drag the `.cbz` files from **For Kobo Clara** onto it.
-  4. Eject the drive (on Mac, click the small eject arrow next to it in Finder), then unplug.
-- **Kindle Paperwhite:** choose the size that matches your Paperwhite (6 inch, 6.8 inch or 7 inch). It makes one `.pdf` file per group in the folder **For Kindle Paperwhite**.
-  1. Plug the Kindle into the computer with its USB cable. A drive named **Kindle** appears.
-  2. Open the drive, then open its **documents** folder.
-  3. Drag the `.pdf` files from **For Kindle Paperwhite** into **documents**.
-  4. Eject the drive, then unplug. The comics show up in your library.
+| Gadget | File made | Folder |
+|---|---|---|
+| Kobo Clara, Libra, Sage, Forma, Elipsa | `.cbz` | For Kobo ... |
+| Kindle (basic), Paperwhite (3 sizes), Colorsoft, Scribe | `.pdf` | For Kindle ... |
+| PocketBook (6, 7, 7.8 inch) | `.pdf` | For PocketBook |
+| Boox (6, 7, 10.3 inch) | `.pdf` | For Boox |
+| reMarkable 2 | `.pdf` | For reMarkable |
+| Tablet or phone | `.pdf` (color) | For Tablet or Phone |
+| Custom size | `.pdf` or `.cbz` | For Custom Size |
 
-The **Open folder** button opens the folder holding the files to drag.
+Color gadgets (Kobo, Kindle Colorsoft, Boox, PocketBook, tablets) keep color. Kindle Paperwhite, Basic, Scribe and reMarkable get black and white pages.
 
-If you paste a series page instead of a chapter page, it asks whether to download all chapters.
+**Custom size:** choose **Custom size**, type your screen width and height in pixels (from your gadget's specifications), choose `.pdf` or `.cbz`, and tick **Black and white** if the screen has no color.
+
+### Kobo (drag and drop)
+1. Plug the Kobo into the computer with its USB cable.
+2. On the Kobo screen, tap **Connect**.
+3. A drive named **KOBOeReader** appears. Drag the `.cbz` files from the "For Kobo ..." folder onto it.
+4. Eject the drive (on Mac, click the small eject arrow next to it in Finder), then unplug.
+
+### Kindle (drag and drop)
+1. Plug the Kindle into the computer with its USB cable. A drive named **Kindle** appears.
+2. Open the drive, then open its **documents** folder.
+3. Drag the `.pdf` files from the "For Kindle ..." folder into **documents**.
+4. Eject the drive, then unplug. The comics show up in your library.
+
+### PocketBook (drag and drop)
+1. Plug it in with its USB cable. If it asks, choose **Connect to PC**.
+2. A drive appears. Drag the `.pdf` files into its main folder (or its **Books** folder).
+3. Eject the drive, then unplug.
+
+### Boox
+Boox readers run Android, so copying works differently. On the Boox, look for its Wi-Fi file transfer (called BooxDrop on many models), open the web page it shows on your computer, and drag the `.pdf` files onto it. A USB cable also works; on a Mac you may need a free helper app such as OpenMTP.
+
+### reMarkable 2
+On the reMarkable turn on the **USB web interface** (Settings, then Storage). Plug it in with its USB cable, open `http://10.11.99.1` in your browser, and drag the `.pdf` files onto the page.
+
+### Tablet or phone
+Copy the `.pdf` files to the device (AirDrop, USB cable, or a cloud drive) and open them in any PDF reader or the Books app.
 
 ## If no images are found
 

@@ -56,13 +56,33 @@ class App:
         self.device_labels = [core.DEVICES[k]["label"] for k in core.DEVICE_KEYS]
         self.device = tk.StringVar(value=self.device_labels[0])
         box = ttk.Combobox(send, textvariable=self.device, values=self.device_labels,
-                           state="readonly", width=52)
+                           state="readonly", width=58)
         box.pack(side="left", padx=6)
         if not core.HAS_PIL:
             box.config(state="disabled")
+        box.bind("<<ComboboxSelected>>", lambda e: self.update_custom())
+
+        # Extra boxes that only appear for "Custom size"
+        self.custom_row = ttk.Frame(root)
+        ttk.Label(self.custom_row, text="Screen width").pack(side="left")
+        self.c_w = tk.StringVar(value="1072")
+        ttk.Spinbox(self.custom_row, from_=300, to=4000, width=6,
+                    textvariable=self.c_w).pack(side="left", padx=(4, 10))
+        ttk.Label(self.custom_row, text="height").pack(side="left")
+        self.c_h = tk.StringVar(value="1448")
+        ttk.Spinbox(self.custom_row, from_=400, to=5000, width=6,
+                    textvariable=self.c_h).pack(side="left", padx=(4, 10))
+        ttk.Label(self.custom_row, text="pixels   File type").pack(side="left")
+        self.c_ext = tk.StringVar(value=".pdf")
+        ttk.Combobox(self.custom_row, textvariable=self.c_ext, values=[".pdf", ".cbz"],
+                     state="readonly", width=5).pack(side="left", padx=(4, 10))
+        self.c_gray = tk.BooleanVar(value=False)
+        ttk.Checkbutton(self.custom_row, text="Black and white",
+                        variable=self.c_gray).pack(side="left")
 
         btns = ttk.Frame(root)
         btns.pack(fill="x", padx=14, pady=4)
+        self.btns = btns
         self.btn_go = ttk.Button(btns, text="Download", command=self.start)
         self.btn_go.pack(side="left")
         self.btn_stop = ttk.Button(btns, text="Stop", command=self.on_stop, state="disabled")
@@ -95,6 +115,22 @@ class App:
             return core.DEVICE_KEYS[self.device_labels.index(self.device.get())]
         except ValueError:
             return "images"
+
+    def update_custom(self):
+        if self.device_key() == "custom":
+            self.custom_row.pack(fill="x", padx=14, pady=(0, 6), before=self.btns)
+        else:
+            self.custom_row.pack_forget()
+
+    def custom_info(self):
+        """The typed-in screen size, or None if it is not a sensible number."""
+        try:
+            w, h = int(self.c_w.get()), int(self.c_h.get())
+        except ValueError:
+            return None
+        if not (300 <= w <= 4000 and 400 <= h <= 5000):
+            return None
+        return {"width": w, "height": h, "ext": self.c_ext.get(), "gray": self.c_gray.get()}
 
     def open_folder(self):
         d = self.folder.get()
@@ -151,13 +187,22 @@ class App:
             size = max(1, int(self.size.get()))
         except Exception:
             size = 5
+        custom = None
+        if self.device_key() == "custom":
+            custom = self.custom_info()
+            if custom is None:
+                messagebox.showinfo("Screen size needed",
+                                    "Please type your screen width (300 to 4000) and height "
+                                    "(400 to 5000) in pixels. You can find it in your gadget's "
+                                    "specifications.")
+                return
         self.stop.clear()
         self.btn_go.config(state="disabled")
         self.btn_stop.config(state="normal")
         self.bar["value"] = 0
         self.worker = threading.Thread(
             target=self.run,
-            args=(link, self.folder.get(), size, self.convert.get(), self.device_key()),
+            args=(link, self.folder.get(), size, self.convert.get(), self.device_key(), custom),
             daemon=True)
         self.worker.start()
 
@@ -165,7 +210,7 @@ class App:
         self.q.put(("progress", done, total))
         self.q.put(("status", text))
 
-    def run(self, link, out_root, size, convert, device="images"):
+    def run(self, link, out_root, size, convert, device="images", custom=None):
         try:
             os.makedirs(out_root, exist_ok=True)
             self.say("Reading the page...")
@@ -211,14 +256,14 @@ class App:
                     self.say(f"  Done: {title}")
                 if device != "images":
                     made, bad = core.build_device_files(out_root, title, len(imgs), size, device,
-                                                        self.progress, self.stop)
-                    dev = core.DEVICES[device]
+                                                        self.progress, self.stop, custom)
+                    dev = core.resolve_device(device, custom)
                     self.say(f"  Made {len(made)} {dev['ext']} file(s) in the folder '{dev['folder']}'.")
                     if bad:
                         self.say(f"  {len(bad)} image(s) could not be used and were skipped.")
             self.q.put(("status", f"All done. Saved in {out_root}"))
             if device != "images":
-                self.say(core.DEVICES[device]["next"])
+                self.say(core.resolve_device(device, custom)["next"])
         except core.Stopped:
             self.q.put(("status", "Stopped."))
             self.say("Stopped. Press Download again to continue where it left off.")
