@@ -50,6 +50,17 @@ class App:
             ttk.Checkbutton(opts, text="Convert WebP to JPG",
                             variable=self.convert).pack(side="left", padx=18)
 
+        send = ttk.Frame(root)
+        send.pack(fill="x", padx=14, pady=(0, 6))
+        ttk.Label(send, text="Send to:").pack(side="left")
+        self.device_labels = [core.DEVICES[k]["label"] for k in core.DEVICE_KEYS]
+        self.device = tk.StringVar(value=self.device_labels[0])
+        box = ttk.Combobox(send, textvariable=self.device, values=self.device_labels,
+                           state="readonly", width=52)
+        box.pack(side="left", padx=6)
+        if not core.HAS_PIL:
+            box.config(state="disabled")
+
         btns = ttk.Frame(root)
         btns.pack(fill="x", padx=14, pady=4)
         self.btn_go = ttk.Button(btns, text="Download", command=self.start)
@@ -79,9 +90,20 @@ class App:
         if d:
             self.folder.set(d)
 
+    def device_key(self):
+        try:
+            return core.DEVICE_KEYS[self.device_labels.index(self.device.get())]
+        except ValueError:
+            return "images"
+
     def open_folder(self):
         d = self.folder.get()
         os.makedirs(d, exist_ok=True)
+        key = self.device_key()
+        if key != "images":  # open the folder holding the files to drag onto the e-reader
+            sub = os.path.join(d, core.DEVICES[key]["folder"])
+            if os.path.isdir(sub):
+                d = sub
         if sys.platform == "darwin":
             subprocess.Popen(["open", d])
         elif sys.platform.startswith("win"):
@@ -134,14 +156,16 @@ class App:
         self.btn_stop.config(state="normal")
         self.bar["value"] = 0
         self.worker = threading.Thread(
-            target=self.run, args=(link, self.folder.get(), size, self.convert.get()), daemon=True)
+            target=self.run,
+            args=(link, self.folder.get(), size, self.convert.get(), self.device_key()),
+            daemon=True)
         self.worker.start()
 
     def progress(self, done, total, text):
         self.q.put(("progress", done, total))
         self.q.put(("status", text))
 
-    def run(self, link, out_root, size, convert):
+    def run(self, link, out_root, size, convert, device="images"):
         try:
             os.makedirs(out_root, exist_ok=True)
             self.say("Reading the page...")
@@ -185,7 +209,16 @@ class App:
                     self.say(f"  Pages that failed: {failed}. Press Download again to retry them.")
                 else:
                     self.say(f"  Done: {title}")
+                if device != "images":
+                    made, bad = core.build_device_files(out_root, title, len(imgs), size, device,
+                                                        self.progress, self.stop)
+                    dev = core.DEVICES[device]
+                    self.say(f"  Made {len(made)} {dev['ext']} file(s) in the folder '{dev['folder']}'.")
+                    if bad:
+                        self.say(f"  {len(bad)} image(s) could not be used and were skipped.")
             self.q.put(("status", f"All done. Saved in {out_root}"))
+            if device != "images":
+                self.say(core.DEVICES[device]["next"])
         except core.Stopped:
             self.q.put(("status", "Stopped."))
             self.say("Stopped. Press Download again to continue where it left off.")
@@ -211,6 +244,7 @@ def selftest(path):
     """Used by the build: opens a secure (https) page from the packaged app itself."""
     try:
         core.fetch_text("https://github.com")
+        core.selftest_device()
         result = "OK"
     except Exception as e:
         result = f"FAIL {e}"

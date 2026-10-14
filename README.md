@@ -46,6 +46,24 @@ If the Mac still says it cannot be opened: right-click the app, choose **Open**,
 
 Options: **Pages per folder** (default 5) and **Convert WebP to JPG**.
 
+## Send to your Kobo or Kindle
+
+Pick your device in the **Send to** menu before pressing Download. The program also keeps the normal image folders.
+Tall pages are cut into screen-sized pages at blank gaps, so the text stays readable.
+
+- **Kobo Clara:** makes one `.cbz` file per group, like `Title - Pages 1-5.cbz`, in the folder **For Kobo Clara**.
+  1. Plug the Kobo into the computer with its USB cable.
+  2. On the Kobo screen, tap **Connect**.
+  3. A drive named **KOBOeReader** appears. Drag the `.cbz` files from **For Kobo Clara** onto it.
+  4. Eject the drive (on Mac, click the small eject arrow next to it in Finder), then unplug.
+- **Kindle Paperwhite:** choose the size that matches your Paperwhite (6 inch, 6.8 inch or 7 inch). It makes one `.pdf` file per group in the folder **For Kindle Paperwhite**.
+  1. Plug the Kindle into the computer with its USB cable. A drive named **Kindle** appears.
+  2. Open the drive, then open its **documents** folder.
+  3. Drag the `.pdf` files from **For Kindle Paperwhite** into **documents**.
+  4. Eject the drive, then unplug. The comics show up in your library.
+
+The **Open folder** button opens the folder holding the files to drag.
+
 If you paste a series page instead of a chapter page, it asks whether to download all chapters.
 
 ## If no images are found

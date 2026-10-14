@@ -52,7 +52,59 @@ def main():
                            "My Comic - Chapter 7 - Pages 6-10"], folders
         assert sorted(os.listdir(os.path.join(d, folders[2]))) == [
             "006.webp", "007.webp", "008.webp", "009.webp", "010.webp"]
+    test_devices()
     print("ALL TESTS PASSED")
+
+
+def test_devices():
+    """Kobo .cbz and Kindle .pdf: tall strips are cut at blank rows, every page is screen-sized."""
+    if not core.HAS_PIL:
+        print("(skipped e-reader test: Pillow not installed)")
+        return
+    import io
+    import zipfile
+    from PIL import Image, ImageDraw
+
+    title, total, size = "Strip", 7, 5
+    for key, ext in (("kobo", ".cbz"), ("kindle_68", ".pdf")):
+        W, H = core.DEVICES[key]["size"]
+        with tempfile.TemporaryDirectory() as d:
+            for i in range(1, total + 1):
+                folder = os.path.join(d, core.group_folder_name(title, i, total, size))
+                os.makedirs(folder, exist_ok=True)
+                if i == 2:  # tall webtoon strip with dark "text" bars and white gaps
+                    im = Image.new("RGB", (800, 7000), "white")
+                    dr = ImageDraw.Draw(im)
+                    for y in range(60, 6900, 140):
+                        dr.rectangle((100, y, 700, y + 60), fill="black")
+                    im.save(os.path.join(folder, f"{i:03d}.png"))
+                else:
+                    Image.new("RGBA", (900, 1300), (240, 240, 240, 255)).save(
+                        os.path.join(folder, f"{i:03d}.webp"))
+            made, bad = core.build_device_files(d, title, total, size, key)
+            assert bad == [], bad
+            names = sorted(os.path.basename(m) for m in made)
+            assert names == [f"Strip - Pages 1-5{ext}", f"Strip - Pages 6-7{ext}"], names
+            first = [m for m in made if "Pages 1-5" in m][0]
+            if ext == ".cbz":
+                z = zipfile.ZipFile(first)
+                files = sorted(z.namelist())
+                assert len(files) > 5, len(files)  # the strip became several pages
+                for f in files:
+                    im = Image.open(io.BytesIO(z.read(f)))
+                    assert im.size == (W, H), (f, im.size)
+                    g = im.convert("L")
+                    # cuts land on blank rows: top and bottom edge of every page are clear
+                    for edge in (0, H - 1):
+                        row = g.crop((0, edge, W, edge + 1))
+                        assert row.getextrema()[0] > 200, (f, edge)
+            else:
+                data = open(first, "rb").read()
+                assert data.startswith(b"%PDF")
+                import re
+                pages = re.findall(rb"/Type\s*/Page(?![A-Za-z])", data)
+                assert len(pages) > 5, len(pages)  # the strip became several PDF pages
+    print("e-reader files OK")
 
 
 if __name__ == "__main__":

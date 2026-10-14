@@ -1,15 +1,18 @@
 """Core logic for Comic Downloader (no window code here, so it can be tested alone)."""
 import os
 import re
+import math
 import ssl
+import tempfile
 import threading
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 try:
-    from PIL import Image  # optional: only used for WebP -> JPG
+    from PIL import Image, ImageStat  # optional: WebP -> JPG and e-reader files
     HAS_PIL = True
 except Exception:  # pragma: no cover
     HAS_PIL = False
@@ -266,3 +269,158 @@ def download_images(images, title, out_root, referer, progress=None, stop=None,
     if stop.is_set():
         raise Stopped()
     return sorted(failed)
+
+
+# ---------------------------------------------------------------------------
+# E-reader files (Kobo Clara -> .cbz, Kindle Paperwhite -> .pdf)
+# Screen sizes are portrait pixels: width x height.
+# ---------------------------------------------------------------------------
+DEVICES = {
+    "images": {"label": "Just the images (folders)"},
+    "kobo": {"label": "Kobo Clara (.cbz files)", "ext": ".cbz", "size": (1072, 1448),
+             "gray": False, "folder": "For Kobo Clara",
+             "next": ("Next: plug your Kobo into the computer with its USB cable, tap Connect on "
+                      "the Kobo screen, then drag the .cbz files from the folder 'For Kobo Clara' "
+                      "onto the drive named KOBOeReader. Eject it, and the comics appear in your library.")},
+    "kindle_6": {"label": "Kindle Paperwhite - 6 inch (2015 to 2020) (.pdf files)", "ext": ".pdf",
+                 "size": (1072, 1448), "gray": True, "folder": "For Kindle Paperwhite"},
+    "kindle_68": {"label": "Kindle Paperwhite - 6.8 inch (2021) (.pdf files)", "ext": ".pdf",
+                  "size": (1236, 1648), "gray": True, "folder": "For Kindle Paperwhite"},
+    "kindle_7": {"label": "Kindle Paperwhite - 7 inch (2024) (.pdf files)", "ext": ".pdf",
+                 "size": (1264, 1680), "gray": True, "folder": "For Kindle Paperwhite"},
+}
+_KINDLE_NEXT = ("Next: plug your Kindle into the computer with its USB cable. A drive named Kindle "
+                "appears. Open it, open the 'documents' folder, and drag the .pdf files from the "
+                "folder 'For Kindle Paperwhite' into it. Eject the Kindle, and the comics appear in "
+                "your library.")
+for _k in ("kindle_6", "kindle_68", "kindle_7"):
+    DEVICES[_k]["next"] = _KINDLE_NEXT
+
+DEVICE_KEYS = list(DEVICES)
+
+
+def _page_to_rgb_or_gray(im, gray):
+    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+        rgba = im.convert("RGBA")
+        bg = Image.new("RGB", rgba.size, "white")
+        bg.paste(rgba, mask=rgba.split()[3])
+        im = bg
+    return im.convert("L" if gray else "RGB")
+
+
+def _quietest_row(gray_im, lo, hi):
+    """Row between lo and hi with the least ink (blank gap between panels or text)."""
+    width = gray_im.width
+    best_y, best = hi, None
+    for y in range(lo, hi):
+        s = ImageStat.Stat(gray_im.crop((0, y, width, y + 1))).stddev[0]
+        if best is None or s <= best:
+            best, best_y = s, y
+    return best_y
+
+
+def make_pages(src, tmp_dir, start_no, width, height, gray):
+    """Fit one downloaded image to the screen. Tall strips are cut into screen-sized
+    pages at blank rows. Returns the JPEG page files written to tmp_dir."""
+    im = Image.open(src)
+    im.load()
+    im = _page_to_rgb_or_gray(im, gray)
+    scale = min(width / im.width, 2.0)
+    new_w = max(1, round(im.width * scale))
+    new_h = max(1, round(im.height * scale))
+    im = im.resize((new_w, new_h), Image.LANCZOS)
+    lum = im if im.mode == "L" else im.convert("L")
+
+    chunks, y = [], 0
+    while True:
+        remaining = new_h - y
+        if remaining <= height * 1.12:
+            chunks.append((y, new_h))
+            break
+        target = y + height
+        lo = max(y + int(height * 0.6), target - int(height * 0.25))
+        cut = _quietest_row(lum, lo, target)
+        chunks.append((y, cut))
+        y = cut
+
+    white = 255 if im.mode == "L" else (255, 255, 255)
+    out = []
+    for n, (a, b) in enumerate(chunks):
+        piece = im.crop((0, a, new_w, b))
+        if piece.height > height:  # slightly too tall: shrink to fit
+            f = height / piece.height
+            piece = piece.resize((max(1, round(piece.width * f)), height), Image.LANCZOS)
+        canvas = Image.new(im.mode, (width, height), white)
+        canvas.paste(piece, ((width - piece.width) // 2, (height - piece.height) // 2))
+        path = os.path.join(tmp_dir, f"p{start_no + n:05d}.jpg")
+        canvas.save(path, "JPEG", quality=85, optimize=True)
+        out.append(path)
+    return out
+
+
+def _write_device_file(pages, dest, ext):
+    if ext == ".cbz":
+        with zipfile.ZipFile(dest, "w", zipfile.ZIP_STORED) as z:
+            for i, p in enumerate(pages, 1):
+                z.write(p, f"{i:04d}.jpg")
+    else:  # .pdf
+        imgs = [Image.open(p) for p in pages]
+        try:
+            imgs[0].save(dest, "PDF", save_all=True, append_images=imgs[1:], resolution=300.0)
+        finally:
+            for i in imgs:
+                i.close()
+
+
+def build_device_files(out_root, title, total, size, device_key, progress=None, stop=None):
+    """Turn each downloaded 'Pages A-B' folder into one .cbz (Kobo) or .pdf (Kindle).
+    Returns (list_of_files_made, list_of_images_that_could_not_be_used)."""
+    if not HAS_PIL:
+        raise RuntimeError("The picture tools are missing from this copy of the program.")
+    stop = stop or threading.Event()
+    dev = DEVICES[device_key]
+    width, height = dev["size"]
+    out_dir = os.path.join(out_root, dev["folder"])
+    os.makedirs(out_dir, exist_ok=True)
+    groups = math.ceil(total / size)
+    made, problems = [], []
+    for g in range(groups):
+        if stop.is_set():
+            raise Stopped()
+        first = g * size + 1
+        name = group_folder_name(title, first, total, size)
+        folder = os.path.join(out_root, name)
+        if not os.path.isdir(folder):
+            continue
+        files = sorted(f for f in os.listdir(folder) if f.lower().endswith(IMG_EXT))
+        if progress:
+            progress(g, groups, f"Making files for your e-reader: {g + 1} of {groups}")
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            pages = []
+            for f in files:
+                try:
+                    pages += make_pages(os.path.join(folder, f), tmp, len(pages), width, height,
+                                        dev["gray"])
+                except Exception:
+                    problems.append(f"{name}/{f}")
+            if not pages:
+                continue
+            dest = os.path.join(out_dir, name + dev["ext"])
+            _write_device_file(pages, dest, dev["ext"])
+            made.append(dest)
+    if progress:
+        progress(groups, groups, "E-reader files are ready.")
+    return made, problems
+
+
+def selftest_device():
+    """Used by the build to prove the packaged app can make both file types."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        src = os.path.join(d, "x.png")
+        Image.new("RGB", (400, 1500), "white").save(src)
+        for ext in (".cbz", ".pdf"):
+            pages = make_pages(src, d, 0, 1072, 1448, ext == ".pdf")
+            dest = os.path.join(d, "t" + ext)
+            _write_device_file(pages, dest, ext)
+            if os.path.getsize(dest) < 100:
+                raise RuntimeError("empty " + ext)
