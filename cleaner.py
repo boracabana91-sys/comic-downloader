@@ -16,6 +16,7 @@ import re
 import threading
 
 import core
+import covers
 
 try:
     import numpy as np
@@ -228,7 +229,8 @@ def clean_chapter(out_root, title, total, size, words, progress=None, stop=None)
             if os.path.exists(_marker(folder)):
                 with open(_marker(folder), encoding="utf-8") as f:
                     done = {ln.rstrip("\n") for ln in f}
-            files = sorted(f for f in os.listdir(folder) if f.lower().endswith(core.IMG_EXT))
+            files = sorted(f for f in os.listdir(folder)
+                           if f.lower().endswith(core.IMG_EXT) and f.lower() != covers.COVER_NAME)
             groups.append((folder, [f for f in files if f"{f}|{sig}" not in done]))
     todo = sum(len(files) for _, files in groups)
     counts = {"scanned": 0, "cut": 0, "blurred": 0, "deleted": 0, "skipped": 0}

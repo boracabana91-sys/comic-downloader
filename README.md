@@ -57,6 +57,15 @@ After downloading, the program reads every page and finds the words wherever the
 You can type other words in the box, separated by commas. Untick the box to skip this step and download faster.
 Reading every page takes time (roughly 6 to 7 seconds for a very tall page), so a whole chapter takes a few minutes. The first run also loads the text reader, which takes a moment.
 
+## Cover picture (thumbnail)
+
+Drag a picture onto the **Drop your cover picture here** box (or click it, or press **Choose cover**). A small preview shows it. **Clear cover** removes it. If dragging from a web page doesn't work, save the picture to your Downloads folder first and drag the file.
+The cover is used for every download until you clear it:
+- It is saved as `cover.jpg` in each `Title - Pages ...` folder.
+- On Mac and Windows, each of those folders shows your picture as its thumbnail. If it doesn't appear right away, close and reopen the folder.
+- It becomes **page 1** of every Kobo `.cbz` and Kindle/other `.pdf` file, so the file opens on your cover.
+- Your Kobo or Kindle decides which picture to show in its library. A Kobo normally uses page 1. Newer Kindles may show a plain cover for files you copied over yourself, whatever the file contains.
+
 ## Send to your e-reader or tablet
 
 Pick your gadget in the **Send to** menu before pressing Download. The program also keeps the normal image folders.

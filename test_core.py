@@ -55,6 +55,7 @@ def main():
     test_devices()
     test_all_presets()
     test_cleaner()
+    test_covers()
     print("ALL TESTS PASSED")
 
 
@@ -225,6 +226,75 @@ def test_cleaner():
         c2 = cleaner.clean_chapter(d, title, 3, 5, words)
         assert c2["scanned"] == 0, c2
     print("word hiding OK")
+
+
+def test_covers():
+    """Cover picture: fitted as page 1, saved as cover.jpg, shown on the folder (Mac, Windows)."""
+    import io
+    import re
+    import sys
+    import zipfile
+    import covers
+    from PIL import Image
+    if not core.HAS_PIL:
+        return
+
+    def is_red(px):
+        return px[0] > 180 and px[1] < 80 and px[2] < 80
+
+    def is_blue(px):
+        return px[2] > 150 and px[0] < 100
+
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        cover = os.path.join(d, "my cover.png")
+        Image.new("RGB", (300, 500), (220, 20, 20)).save(cover)
+        fake = os.path.join(d, "x.png")
+        with open(fake, "wb") as fh:
+            fh.write(b"not a picture")
+        assert covers.is_cover_file(cover)
+        assert not covers.is_cover_file(fake)
+        assert not covers.is_cover_file(os.path.join(d, "missing.png"))
+
+        fit = covers.fit_cover(cover, 1072, 1448, False, os.path.join(d, "fit.jpg"))
+        im = Image.open(fit)
+        assert im.size == (1072, 1448) and is_red(im.getpixel((536, 724)))
+
+        title = "Cov"
+        folder = os.path.join(d, core.group_folder_name(title, 1, 2, 5))
+        os.makedirs(folder)
+        for i in (1, 2):
+            Image.new("RGB", (900, 1300), (30, 30, 200)).save(os.path.join(folder, f"{i:03d}.png"))
+        res = covers.apply_folder_covers(d, title, 2, 5, cover)
+        assert res["folders"] == 1 and res["problems"] == [], res
+        assert os.path.exists(os.path.join(folder, "cover.jpg"))
+        if sys.platform == "darwin":  # Finder keeps a custom picture in a hidden "Icon" file
+            assert res["icons"] == 1 and os.path.exists(os.path.join(folder, "Icon\r")), res
+        elif sys.platform.startswith("win"):
+            assert res["icons"] == 1, res
+            with open(os.path.join(folder, "desktop.ini"), encoding="utf-8") as fh:
+                assert "IconResource=cover.ico" in fh.read()
+            assert os.path.exists(os.path.join(folder, "cover.ico"))
+        else:
+            assert res["icons"] == 0, res
+
+        made, bad = core.build_device_files(d, title, 2, 5, "kobo", cover=cover)
+        assert bad == [] and len(made) == 1, (made, bad)
+        with zipfile.ZipFile(made[0]) as z:
+            names = sorted(z.namelist())
+            assert len(names) == 3, names  # cover + 2 pages; cover.jpg is not counted as a page
+            assert is_red(Image.open(io.BytesIO(z.read(names[0]))).getpixel((536, 724)))
+            assert is_blue(Image.open(io.BytesIO(z.read(names[1]))).getpixel((536, 724)))
+
+        made, bad = core.build_device_files(d, title, 2, 5, "kindle_68", cover=cover)
+        with open(made[0], "rb") as fh:
+            data = fh.read()
+        assert len(re.findall(rb"/Type\s*/Page(?![A-Za-z])", data)) == 3
+
+        import cleaner
+        if cleaner.ocr_available():
+            c = cleaner.clean_chapter(d, title, 2, 5, ["luacomic.org"])
+            assert c["scanned"] == 2, c  # the cover.jpg is never scanned or changed
+    print("covers OK")
 
 
 if __name__ == "__main__":

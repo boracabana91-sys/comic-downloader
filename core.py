@@ -6,6 +6,7 @@ import ssl
 import tempfile
 import threading
 import zipfile
+import covers
 from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
@@ -449,8 +450,9 @@ def _write_device_file(pages, dest, ext):
 
 
 def build_device_files(out_root, title, total, size, device_key, progress=None, stop=None,
-                       custom=None):
+                       custom=None, cover=None):
     """Turn each downloaded 'Pages A-B' folder into one .cbz (Kobo) or .pdf (Kindle).
+    If a cover picture is given it becomes page 1 of every file.
     Returns (list_of_files_made, list_of_images_that_could_not_be_used)."""
     if not HAS_PIL:
         raise RuntimeError("The picture tools are missing from this copy of the program.")
@@ -469,11 +471,15 @@ def build_device_files(out_root, title, total, size, device_key, progress=None, 
         folder = os.path.join(out_root, name)
         if not os.path.isdir(folder):
             continue
-        files = sorted(f for f in os.listdir(folder) if f.lower().endswith(IMG_EXT))
+        files = sorted(f for f in os.listdir(folder)
+                       if f.lower().endswith(IMG_EXT) and f.lower() != covers.COVER_NAME)
         if progress:
             progress(g, groups, f"Making files for your e-reader: {g + 1} of {groups}")
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             pages = []
+            if cover:
+                pages.append(covers.fit_cover(cover, width, height, dev["gray"],
+                                              os.path.join(tmp, "cover_page.jpg")))
             for f in files:
                 try:
                     pages += make_pages(os.path.join(folder, f), tmp, len(pages), width, height,

@@ -9,6 +9,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import cleaner
 import core
+import covers
 
 # A windowed app on Windows has no console; some libraries write to it and would crash.
 if sys.stdout is None:
@@ -18,11 +19,13 @@ if sys.stderr is None:
 
 
 class App:
-    def __init__(self, root):
+    def __init__(self, root, dnd=False):
         self.root = root
         root.title("Comic Downloader")
-        root.geometry("680x520")
-        root.minsize(600, 460)
+        root.geometry("720x720")
+        root.minsize(640, 640)
+        self.cover_path = None
+        self._photo = None
         self.q = queue.Queue()
         self.stop = threading.Event()
         self.worker = None
@@ -68,6 +71,28 @@ class App:
         if not cleaner.ocr_available():
             self.hide.set(False)
             self.hide_box.config(state="disabled")
+
+        cover_row = ttk.Frame(root)
+        cover_row.pack(fill="x", padx=14, pady=(0, 8))
+        self.zone = tk.Label(cover_row, text="Drop your cover picture here\n(or click to choose)",
+                             relief="groove", borderwidth=2, width=30, height=5,
+                             cursor="hand2", justify="center")
+        self.zone.pack(side="left")
+        self.zone.bind("<Button-1>", lambda e: self.choose_cover())
+        side = ttk.Frame(cover_row)
+        side.pack(side="left", padx=12)
+        ttk.Button(side, text="Choose cover", command=self.choose_cover).pack(anchor="w")
+        ttk.Button(side, text="Clear cover", command=self.clear_cover).pack(anchor="w", pady=(4, 0))
+        self.cover_note = tk.StringVar(value="No cover picture chosen.")
+        ttk.Label(side, textvariable=self.cover_note, foreground="#555",
+                  wraplength=360).pack(anchor="w", pady=(6, 0))
+        if dnd:
+            try:
+                from tkinterdnd2 import DND_FILES
+                self.zone.drop_target_register(DND_FILES)
+                self.zone.dnd_bind("<<Drop>>", self.on_drop)
+            except Exception:
+                pass  # the Choose cover button still works
 
         send = ttk.Frame(root)
         send.pack(fill="x", padx=14, pady=(0, 6))
@@ -134,6 +159,44 @@ class App:
             return core.DEVICE_KEYS[self.device_labels.index(self.device.get())]
         except ValueError:
             return "images"
+
+    def choose_cover(self):
+        path = filedialog.askopenfilename(
+            title="Choose your cover picture",
+            filetypes=[("Pictures", "*.jpg *.jpeg *.png *.webp *.gif *.bmp *.tif *.tiff")])
+        if path:
+            self.set_cover(path)
+
+    def on_drop(self, event):
+        for p in self.root.tk.splitlist(event.data):
+            if covers.is_cover_file(p):
+                self.set_cover(p)
+                return
+        self.cover_note.set("That is not a picture I can use. Drop a JPG, PNG or WebP picture.")
+
+    def set_cover(self, path):
+        if not covers.is_cover_file(path):
+            self.cover_note.set("That is not a picture I can use. Choose a JPG, PNG or WebP picture.")
+            return
+        try:
+            from PIL import Image, ImageTk
+            im = covers.load_cover(path)
+            im.thumbnail((150, 150))
+            self._photo = ImageTk.PhotoImage(im)
+            self.zone.config(image=self._photo, text="", width=self._photo.width(),
+                             height=self._photo.height())
+        except Exception:
+            pass  # no preview, but the cover is still used
+        self.cover_path = path
+        self.cover_note.set(f"Cover: {os.path.basename(path)}\nIt is used for every download "
+                            "until you press Clear cover.")
+
+    def clear_cover(self):
+        self.cover_path = None
+        self._photo = None
+        self.zone.config(image="", text="Drop your cover picture here\n(or click to choose)",
+                         width=30, height=5)
+        self.cover_note.set("No cover picture chosen.")
 
     def update_custom(self):
         if self.device_key() == "custom":
@@ -216,6 +279,7 @@ class App:
                                     "specifications.")
                 return
         words = cleaner.parse_words(self.words.get()) if self.hide.get() else []
+        cover = self.cover_path if self.cover_path and os.path.isfile(self.cover_path) else None
         self.stop.clear()
         self.btn_go.config(state="disabled")
         self.btn_stop.config(state="normal")
@@ -223,7 +287,7 @@ class App:
         self.worker = threading.Thread(
             target=self.run,
             args=(link, self.folder.get(), size, self.convert.get(), self.device_key(), custom,
-                  words),
+                  words, cover),
             daemon=True)
         self.worker.start()
 
@@ -231,7 +295,8 @@ class App:
         self.q.put(("progress", done, total))
         self.q.put(("status", text))
 
-    def run(self, link, out_root, size, convert, device="images", custom=None, words=None):
+    def run(self, link, out_root, size, convert, device="images", custom=None, words=None,
+            cover=None):
         try:
             os.makedirs(out_root, exist_ok=True)
             self.say("Reading the page...")
@@ -288,9 +353,20 @@ class App:
                         raise
                     except Exception as e:
                         self.say(f"  Could not look for the words ({e}). Continuing without it.")
+                if cover:
+                    try:
+                        res = covers.apply_folder_covers(out_root, title, len(imgs), size, cover)
+                        msg = f"  Cover picture saved in {res['folders']} folder(s)"
+                        if res["icons"]:
+                            msg += f", and {res['icons']} folder(s) now show it as their thumbnail"
+                        self.say(msg + ".")
+                        if res["problems"]:
+                            self.say(f"  Some folders could not get the cover: {res['problems'][0]}")
+                    except Exception as e:
+                        self.say(f"  Could not add the cover to the folders ({e}).")
                 if device != "images":
                     made, bad = core.build_device_files(out_root, title, len(imgs), size, device,
-                                                        self.progress, self.stop, custom)
+                                                        self.progress, self.stop, custom, cover)
                     dev = core.resolve_device(device, custom)
                     self.say(f"  Made {len(made)} {dev['ext']} file(s) in the folder '{dev['folder']}'.")
                     if bad:
@@ -328,6 +404,11 @@ def selftest(path):
             cleaner.selftest()
         else:
             raise RuntimeError("the text reader is missing from this app")
+        root, dnd = make_root()  # proves the drag-and-drop tool loads inside the packaged app
+        root.withdraw()
+        root.destroy()
+        if not dnd:
+            raise RuntimeError("drag and drop is missing from this app")
         result = "OK"
     except Exception as e:
         result = f"FAIL {e}"
@@ -336,9 +417,18 @@ def selftest(path):
     sys.exit(0 if result == "OK" else 1)
 
 
+def make_root():
+    """The window, with drag and drop if the tool is available. Returns (window, has_dnd)."""
+    try:
+        from tkinterdnd2 import TkinterDnD
+        return TkinterDnD.Tk(), True
+    except Exception:
+        return tk.Tk(), False
+
+
 if __name__ == "__main__":
     if "--selftest" in sys.argv:
         selftest(sys.argv[sys.argv.index("--selftest") + 1])
-    r = tk.Tk()
-    App(r)
+    r, has_dnd = make_root()
+    App(r, has_dnd)
     r.mainloop()
