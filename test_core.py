@@ -68,7 +68,7 @@ def test_devices():
     title, total, size = "Strip", 7, 5
     for key, ext in (("kobo", ".cbz"), ("kindle_68", ".pdf")):
         W, H = core.DEVICES[key]["size"]
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             for i in range(1, total + 1):
                 folder = os.path.join(d, core.group_folder_name(title, i, total, size))
                 os.makedirs(folder, exist_ok=True)
@@ -87,19 +87,20 @@ def test_devices():
             assert names == [f"Strip - Pages 1-5{ext}", f"Strip - Pages 6-7{ext}"], names
             first = [m for m in made if "Pages 1-5" in m][0]
             if ext == ".cbz":
-                z = zipfile.ZipFile(first)
-                files = sorted(z.namelist())
-                assert len(files) > 5, len(files)  # the strip became several pages
-                for f in files:
-                    im = Image.open(io.BytesIO(z.read(f)))
-                    assert im.size == (W, H), (f, im.size)
-                    g = im.convert("L")
-                    # cuts land on blank rows: top and bottom edge of every page are clear
-                    for edge in (0, H - 1):
-                        row = g.crop((0, edge, W, edge + 1))
-                        assert row.getextrema()[0] > 200, (f, edge)
+                with zipfile.ZipFile(first) as z:
+                    files = sorted(z.namelist())
+                    assert len(files) > 5, len(files)  # the strip became several pages
+                    for f in files:
+                        im = Image.open(io.BytesIO(z.read(f)))
+                        assert im.size == (W, H), (f, im.size)
+                        g = im.convert("L")
+                        # cuts land on blank rows: top and bottom edge of every page are clear
+                        for edge in (0, H - 1):
+                            row = g.crop((0, edge, W, edge + 1))
+                            assert row.getextrema()[0] > 200, (f, edge)
             else:
-                data = open(first, "rb").read()
+                with open(first, "rb") as fh:
+                    data = fh.read()
                 assert data.startswith(b"%PDF")
                 import re
                 pages = re.findall(rb"/Type\s*/Page(?![A-Za-z])", data)

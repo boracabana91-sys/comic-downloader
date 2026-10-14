@@ -322,9 +322,9 @@ def _quietest_row(gray_im, lo, hi):
 def make_pages(src, tmp_dir, start_no, width, height, gray):
     """Fit one downloaded image to the screen. Tall strips are cut into screen-sized
     pages at blank rows. Returns the JPEG page files written to tmp_dir."""
-    im = Image.open(src)
-    im.load()
-    im = _page_to_rgb_or_gray(im, gray)
+    with Image.open(src) as opened:  # closed right away so Windows can delete files later
+        opened.load()
+        im = _page_to_rgb_or_gray(opened, gray)
     scale = min(width / im.width, 2.0)
     new_w = max(1, round(im.width * scale))
     new_h = max(1, round(im.height * scale))
