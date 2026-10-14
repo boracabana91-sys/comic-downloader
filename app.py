@@ -195,12 +195,33 @@ class App:
                      "then try again. If it keeps happening, send the link to your developer.")
         except Exception as e:
             self.q.put(("status", "Something went wrong."))
-            self.say(f"Error: {e}")
+            msg = str(e)
+            if "HTTP Error 403" in msg or "HTTP Error 401" in msg:
+                msg += " (the website refused the program; send this message to your developer)"
+            elif "CERTIFICATE" in msg.upper():
+                msg += " (secure connection problem; send this message to your developer)"
+            elif "urlopen error" in msg:
+                msg += " (check your internet connection and the link)"
+            self.say(f"Error: {msg}")
         finally:
             self.q.put(("done", None))
 
 
+def selftest(path):
+    """Used by the build: opens a secure (https) page from the packaged app itself."""
+    try:
+        core.fetch_text("https://github.com")
+        result = "OK"
+    except Exception as e:
+        result = f"FAIL {e}"
+    with open(path, "w") as f:
+        f.write(result)
+    sys.exit(0 if result == "OK" else 1)
+
+
 if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        selftest(sys.argv[sys.argv.index("--selftest") + 1])
     r = tk.Tk()
     App(r)
     r.mainloop()

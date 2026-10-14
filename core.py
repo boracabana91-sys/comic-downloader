@@ -1,6 +1,7 @@
 """Core logic for Comic Downloader (no window code here, so it can be tested alone)."""
 import os
 import re
+import ssl
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
@@ -12,6 +13,15 @@ try:
     HAS_PIL = True
 except Exception:  # pragma: no cover
     HAS_PIL = False
+
+# Packaged apps (especially on Mac) have no list of trusted certificates of their
+# own, which caused "CERTIFICATE_VERIFY_FAILED". We ship the certifi list with
+# the app and use it for every https connection. Verification stays ON.
+try:
+    import certifi
+    SSL_CTX = ssl.create_default_context(cafile=certifi.where())
+except Exception:  # pragma: no cover
+    SSL_CTX = ssl.create_default_context()
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
@@ -33,7 +43,7 @@ def fetch(url, referer=None, timeout=30):
     if referer:
         headers["Referer"] = referer
     req = Request(url, headers=headers)
-    with urlopen(req, timeout=timeout) as r:
+    with urlopen(req, timeout=timeout, context=SSL_CTX) as r:
         return r.read(), r.headers.get_content_charset()
 
 
