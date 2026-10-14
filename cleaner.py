@@ -356,8 +356,9 @@ def selftest():
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
         p = os.path.join(d, "t.png")
         im = Image.new("RGB", (600, 900), "white")
-        ImageDraw.Draw(im).text((60, 420), "luacomic.org", fill="black",
-                                font=ImageFont.load_default(size=44))
+        dr = ImageDraw.Draw(im)
+        dr.rectangle((40, 200, 560, 700), fill=(190, 200, 230))  # artwork behind the words
+        dr.text((60, 420), "luacomic.org", fill="black", font=ImageFont.load_default(size=44))
         im.save(p)
         if clean_image(p, ["luacomic.org"]) == "none":
             raise RuntimeError("the text reader did not find the words")
