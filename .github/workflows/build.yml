@@ -1,0 +1,67 @@
+name: Build apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tools
+        run: python -m pip install --upgrade pip pyinstaller pillow
+      - name: Self-test (grouping into 5-page folders)
+        run: python test_core.py
+      - name: Check the window code loads
+        run: python -c "import app"
+
+      - name: Build Windows app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          pyinstaller --onefile --windowed --name ComicDownloader app.py
+          Move-Item dist/ComicDownloader.exe ComicDownloader-Windows.exe
+
+      - name: Build Mac app
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --windowed --name ComicDownloader app.py
+          ditto -c -k --sequesterRsrc --keepParent dist/ComicDownloader.app ComicDownloader-Mac.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ComicDownloader-${{ runner.os }}
+          path: |
+            ComicDownloader-Windows.exe
+            ComicDownloader-Mac.zip
+          if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+          merge-multiple: true
+      - name: Publish downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ github.run_number }}" files/* \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "Comic Downloader v${{ github.run_number }}" \
+            --notes "Windows: download ComicDownloader-Windows.exe. Mac: download ComicDownloader-Mac.zip. Step-by-step help is in the README."
