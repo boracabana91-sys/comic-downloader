@@ -46,15 +46,14 @@ If the Mac still says it cannot be opened: right-click the app, choose **Open**,
 
 Options: **Pages per folder** (default 5) and **Convert WebP to JPG**.
 
-## Hiding the website's words
+## Hiding the promo words
 
-Some pages carry a banner or text with the website's address. **Hide these words on the pages** is ticked by default and set to `luacomic.org`.
-After downloading, the program reads every page and finds the words wherever they are (first page, last page, or anywhere in between):
-- A banner touching the top or bottom of a page is cut off, and a page that is only a banner is removed.
-- Words anywhere else are painted over with the background color, or blurred if the background is busy.
-- Names of the artists and translators are not touched. Only the words in the box are.
+**Hide Lua / translated / website promo** is ticked by default. After downloading, the program reads every page and finds promo text wherever it is: the website name, "Lua Scans", "translated / translating / transcribe", Discord, "official domain", "scam", "our website", "support us", "latest chapters" and similar.
+- A promo block touching the top or bottom of a page is cut away down to where the comic picture starts. A page that is only promo is removed.
+- A promo line in the middle of a page is painted over with the background color, or blurred if the background is busy.
+- Story text and the Translator / Editor credit lines are not touched.
 
-You can type other words in the box, separated by commas. Untick the box to skip this step and download faster.
+Type extra words in the **Also hide** box, separated by commas. Untick the box to skip this step and download faster.
 Reading every page takes time (roughly 6 to 7 seconds for a very tall page), so a whole chapter takes a few minutes. The first run also loads the text reader, which takes a moment.
 
 ## Cover picture (thumbnail)

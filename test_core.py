@@ -163,6 +163,10 @@ def test_cleaner():
     assert cleaner.text_matches("READATLUACOMIC.ORGTO", ["luacomic.org"])
     assert cleaner.text_matches("read at LUACOM1C.ORG to", ["luacomic.org"])  # reader slip
     assert not cleaner.text_matches("hello there", ["luacomic.org"])
+    dw = cleaner.all_words("")
+    assert cleaner.text_matches("LUA SCANS", dw) and cleaner.text_matches("THIS CHAPTER IS TRANSLATED", dw)
+    assert not cleaner.text_matches("a valuable thing", dw)
+    assert not cleaner.text_matches("Translator: Sam / Editor: Joy", dw)  # credits stay
     assert cleaner.parse_words("luacomic.org, other site") == ["luacomic.org", "other site"]
     if not cleaner.ocr_available():
         print("(skipped page-reading test: text reader not installed)")
@@ -185,7 +189,7 @@ def test_cleaner():
             dr.rectangle((0, 0, 600, 300), fill=(18, 18, 18))
             dr.text((70, 120), "READ AT LUACOMIC.ORG TO", fill="white", font=font)
         elif kind == "middle":
-            dr.text((120, 1100), "luacomic.org", fill="black", font=font)
+            dr.text((120, 400), "luacomic.org", fill="black", font=font)
         elif kind == "banner_only":
             im = Image.new("RGB", (600, 300), (18, 18, 18))
             ImageDraw.Draw(im).text((70, 120), "READ AT LUACOMIC.ORG TO", fill="white", font=font)

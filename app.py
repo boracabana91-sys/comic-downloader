@@ -63,11 +63,11 @@ class App:
         hide_row = ttk.Frame(root)
         hide_row.pack(fill="x", padx=14, pady=(0, 6))
         self.hide = tk.BooleanVar(value=True)
-        self.hide_box = ttk.Checkbutton(hide_row, text="Hide these words on the pages:",
+        self.hide_box = ttk.Checkbutton(hide_row, text="Hide Lua / translated / website promo. Also hide:",
                                         variable=self.hide)
         self.hide_box.pack(side="left")
-        self.words = tk.StringVar(value="luacomic.org")
-        ttk.Entry(hide_row, textvariable=self.words, width=34).pack(side="left", padx=6)
+        self.words = tk.StringVar(value="")
+        ttk.Entry(hide_row, textvariable=self.words, width=22).pack(side="left", padx=6)
         if not cleaner.ocr_available():
             self.hide.set(False)
             self.hide_box.config(state="disabled")
@@ -278,7 +278,7 @@ class App:
                                     "(400 to 5000) in pixels. You can find it in your gadget's "
                                     "specifications.")
                 return
-        words = cleaner.parse_words(self.words.get()) if self.hide.get() else []
+        words = cleaner.all_words(self.words.get()) if self.hide.get() else []
         cover = self.cover_path if self.cover_path and os.path.isfile(self.cover_path) else None
         self.stop.clear()
         self.btn_go.config(state="disabled")

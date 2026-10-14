@@ -1,12 +1,16 @@
-"""Finds chosen words (such as a website address) on comic pages and hides them.
+"""Finds promo words on comic pages (the website name, "Lua Scans", "translated by", Discord and
+support banners ...) and hides them.
 
 How it works, for every downloaded page:
-1. The page is read in overlapping slices with a free text reader (RapidOCR).
-2. Any text that matches one of your words (even if a letter is misread) is a "hit".
-3. A hit inside a dark banner that touches the top or bottom of the page: the whole
-   banner is cut off. A page that is only a banner is removed.
-4. Any other hit: painted over with the background color if the background is plain,
-   otherwise blurred until it cannot be read.
+1. The page is read line by line, in overlapping slices, with a free text reader (RapidOCR).
+2. A line that matches a banned word (even if a letter is misread) is a "hit". Lines that sit
+   right next to a hit are part of the same promo text and are hidden with it.
+3. Hits that belong together are joined into a promo block. A block that reaches the top or
+   bottom of the page is cut away together with its empty background; a page that is only
+   promo is removed.
+4. A block in the middle of a page: each line is painted over with the background color if
+   the background is plain, otherwise blurred until it cannot be read.
+Names of artists and the story's own text are not touched.
 """
 import difflib
 import importlib.util
@@ -25,8 +29,23 @@ try:
 except Exception:  # pragma: no cover
     HAS_TOOLS = False
 
-DARK = 100        # a row darker than this (0-255) counts as part of a dark banner
-EDGE = 8          # a banner this close to the page edge counts as touching it
+# Always hidden when the option is ticked (the box in the window adds your own words to these).
+DEFAULT_WORDS = [
+    "luacomic.org", "luacomic", "lua scans", "luascans", "lua", "dsc.gg",
+    "translated", "translate", "translating", "translation", "transcribed", "transcribe",
+    "official domain", "other domain", "is a scam", "scam",
+    "our website", "visit our", "official website",
+    "support us", "supporting us", "fastest releases", "latest chapters",
+    "join our discord", "our discord", "discord", "is now available", "now available",
+    "read it at", "read at", "read on", "scanlation", "scanlated",
+]
+# Words that mean credits. They are kept (never fuzzy-matched as "translate").
+PROTECTED = ("translator", "editor", "proofread", "typeset", "cleaner", "redraw", "quality")
+
+UNIFORM = 12      # a row whose brightness varies less than this is plain background
+EDGE = 80         # a promo block this close to the page edge counts as touching it
+NEAR = 50         # a text line this close under/over a promo line belongs to it
+LINK_GAP = 520    # promo lines further apart than this are separate blocks
 TILE = 900        # height of each slice that is read
 OVERLAP = 150     # slices overlap so no line of text is ever cut in half
 SIZES = (".jpg", ".jpeg", ".png", ".webp")
@@ -56,21 +75,42 @@ def parse_words(text):
     return [w.strip() for w in re.split(r"[,\n;]", text or "") if len(w.strip()) >= 3]
 
 
+def all_words(extra_text=""):
+    """The built-in list plus the words typed in the window."""
+    out = list(DEFAULT_WORDS)
+    for w in parse_words(extra_text):
+        if w.lower() not in out:
+            out.append(w.lower())
+    return out
+
+
 def _norm(s):
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
 
 def text_matches(text, words):
-    """True if the text contains one of the words, allowing for small reading slips."""
+    """True if the text contains one of the words, allowing for small reading slips.
+    Short words (like 'lua') must start a word, so 'valuable' is never hit."""
     t = _norm(text)
     if not t:
         return False
+    tokens = [_norm(x) for x in re.split(r"[^A-Za-z0-9]+", text or "") if x]
     for w in words:
         wn = _norm(w)
         if len(wn) < 3:
             continue
+        if len(wn) < 6:
+            if any(tok == wn or (tok.startswith(wn) and len(wn) >= 3) for tok in tokens):
+                return True
+            continue
         if wn in t:
             return True
+    if any(p in t for p in PROTECTED):
+        return False
+    for w in words:
+        wn = _norm(w)
+        if len(wn) < 7:
+            continue
         n = len(wn)
         for length in (n - 1, n, n + 1):
             if length < 3 or length > len(t):
@@ -94,25 +134,75 @@ def _merge(boxes, gap=6):
     return out
 
 
-def find_hits(im, words, engine, stop=None):
-    """Boxes (x0, y0, x1, y1) of text matching the words, in whole-page coordinates."""
+def read_lines(im, engine, stop=None):
+    """Every text line on the page as (x0, y0, x1, y1, text), in whole-page coordinates."""
     arr = np.asarray(im.convert("RGB"))
     height = arr.shape[0]
-    hits, y = [], 0
+    lines, y = [], 0
     while True:
         if stop is not None and stop.is_set():
             raise core.Stopped()
         end = min(height, y + TILE)
         result, _ = engine(arr[y:end])
         for box, text, _conf in (result or []):
-            if text_matches(text, words):
-                xs = [p[0] for p in box]
-                ys = [p[1] for p in box]
-                hits.append((int(min(xs)), int(min(ys)) + y, int(max(xs)), int(max(ys)) + y))
+            xs = [p[0] for p in box]
+            ys = [p[1] for p in box]
+            lines.append((int(min(xs)), int(min(ys)) + y, int(max(xs)), int(max(ys)) + y, text))
         if end >= height:
             break
         y = end - OVERLAP
-    return _merge(hits)
+    return lines
+
+
+def find_blocks(lines, words, stats):
+    """Promo blocks as (y0, y1, [boxes]) from the page's text lines. stats = (row_std, row_mean)."""
+    row_std, row_mean = stats
+    hits = [ln for ln in lines if text_matches(ln[4], words)]
+    if not hits:
+        return []
+    chosen = list(hits)
+    for ln in lines:  # lines right next to a hit are part of the same promo text
+        if ln in chosen:
+            continue
+        for h in hits:
+            gap = max(ln[1] - h[3], h[1] - ln[3])
+            if gap <= NEAR:
+                chosen.append(ln)
+                break
+    chosen.sort(key=lambda b: (b[1], b[0]))
+    blocks = []
+    for ln in chosen:
+        box = (ln[0], ln[1], ln[2], ln[3])
+        if blocks:
+            y0, y1, boxes = blocks[-1]
+            gap = ln[1] - y1
+            plain = float(np.mean((row_std[y1:ln[1]] < UNIFORM) | (row_mean[y1:ln[1]] < 80))) if gap > 0 else 1
+            if gap <= 300 or (gap <= LINK_GAP and plain >= 0.6):
+                blocks[-1] = (y0, max(y1, ln[3]), boxes + [box])
+                continue
+        blocks.append((ln[1], ln[3], [box]))
+    return blocks
+
+
+def _extend(row_std, row_mean, y, step, limit):
+    """Move from y in the given direction through plain background of the banner's own color."""
+    h = len(row_std)
+    r = y
+    ref = None
+    for k in range(1, 41):  # find the banner's plain background just outside the text
+        i = y + step * k
+        if i < 0 or i >= h:
+            return limit  # ran into the page edge
+        if row_std[i] < UNIFORM:
+            ref = row_mean[i]
+            y = i
+            break
+    if ref is None:
+        return y
+    r = y
+    while 0 <= r + step < h and row_std[r + step] < UNIFORM and abs(row_mean[r + step] - ref) < 30:
+        r += step
+    return r
 
 
 def _hide_box(im, box):
@@ -167,7 +257,7 @@ def _save(im, path):
 
 
 def clean_image(path, words, engine=None, stop=None):
-    """Hide the words on one page file. Returns 'none', 'cut', 'blurred', 'deleted'
+    """Hide the promo words on one page file. Returns 'none', 'cut', 'blurred', 'deleted'
     or 'skipped'. A page with no hits is left exactly as it was."""
     if os.path.splitext(path)[1].lower() not in SIZES:
         return "skipped"
@@ -180,35 +270,37 @@ def clean_image(path, words, engine=None, stop=None):
     w, h = im.size
     if w < 60 or h < 20:
         return "none"
-    hits = find_hits(im, words, engine or get_engine(), stop)
-    if not hits:
+    lines = read_lines(im, engine or get_engine(), stop)
+    gray = np.asarray(im.convert("L"), dtype=np.float32)
+    row_std, row_mean = gray.std(axis=1), gray.mean(axis=1)
+    blocks = find_blocks(lines, words, (row_std, row_mean))
+    if not blocks:
         return "none"
 
-    rows = np.asarray(im.convert("L"), dtype=np.float32).mean(axis=1)
     top_cut, bottom_cut, others = 0, h, []
-    for (x0, y0, x1, y1) in hits:
-        a, b = y0, y1
-        while a > 0 and rows[a - 1] < DARK:
-            a -= 1
-        while b < h and rows[b] < DARK:
-            b += 1
-        banner_like = (b - a) <= 0.8 * w + 60
-        if banner_like and a <= EDGE:
-            top_cut = max(top_cut, b)
-        elif banner_like and h - b <= EDGE:
-            bottom_cut = min(bottom_cut, a)
+    for (y0, y1, boxes) in blocks:
+        up = _extend(row_std, row_mean, y0, -1, 0)
+        down = _extend(row_std, row_mean, y1, 1, h)
+        if y0 <= EDGE or up <= 4:
+            top_cut = max(top_cut, down if down > y1 else y1 + 1)
+        elif h - y1 <= EDGE or down >= h - 4:
+            bottom_cut = min(bottom_cut, up if up < y0 else y0)
         else:
-            others.append((x0, y0, x1, y1))
+            others.extend(boxes)
 
     work = im
-    for box in others:
+    for box in _merge(others, gap=10):
         work = _hide_box(work, box)
-    if bottom_cut - top_cut < 60:  # the page was only a banner
-        os.remove(path)
-        return "deleted"
     cut = top_cut > 0 or bottom_cut < h
     if cut:
+        if bottom_cut - top_cut < 60:
+            os.remove(path)
+            return "deleted"
         work = work.crop((0, top_cut, w, bottom_cut))
+        left = row_std[top_cut:bottom_cut]
+        if int(np.sum(left >= UNIFORM)) < 40:  # only blank space (and a small credit) is left
+            os.remove(path)
+            return "deleted"
     _save(work, path)
     return "cut" if cut else "blurred"
 
