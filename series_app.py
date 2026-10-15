@@ -23,8 +23,8 @@ class SeriesApp:
     def __init__(self, root, dnd=False):
         self.root = root
         root.title("Comic Series Downloader")
-        root.geometry("760x900")
-        root.minsize(680, 760)
+        root.geometry("760x1010")
+        root.minsize(680, 860)
         self.cover_path = None
         self._photo = None
         self.chapters = []          # urls, oldest first
@@ -100,9 +100,23 @@ class SeriesApp:
         ebox.pack(side="left", padx=6)
         if not core.HAS_PIL:
             ebox.config(state="disabled")
-        ttk.Label(ep, text="Pages per folder:").pack(side="left", padx=(16, 0))
+        ebox.bind("<<ComboboxSelected>>", self.update_preview)
+        ttk.Label(ep, text="Pages per part:").pack(side="left", padx=(16, 0))
         self.size = tk.IntVar(value=5)
-        ttk.Spinbox(ep, from_=1, to=50, width=4, textvariable=self.size).pack(side="left", padx=6)
+        self.size_spin = ttk.Spinbox(ep, from_=1, to=50, width=4, textvariable=self.size)
+        self.size_spin.pack(side="left", padx=6)
+
+        lay = ttk.Frame(root)
+        lay.pack(fill="x", padx=14, pady=(8, 0))
+        ttk.Label(lay, text="Folder layout:").pack(side="left")
+        self.layout = tk.StringVar(value="one")
+        ttk.Radiobutton(lay, text="Sample 1: one file per chapter", value="one",
+                        variable=self.layout, command=self.update_preview).pack(side="left", padx=(8, 0))
+        ttk.Radiobutton(lay, text="Sample 2: files in parts of N pages", value="parts",
+                        variable=self.layout, command=self.update_preview).pack(side="left", padx=(8, 0))
+        self.preview = tk.Label(root, justify="left", anchor="w", font=("Menlo", 11),
+                                relief="groove", borderwidth=1, padx=8, pady=4)
+        self.preview.pack(fill="x", padx=14, pady=(4, 0))
 
         self.custom_row = ttk.Frame(root)
         ttk.Label(self.custom_row, text="Screen width").pack(side="left")
@@ -180,6 +194,9 @@ class SeriesApp:
         ttk.Label(root, textvariable=self.status).pack(anchor="w", padx=14)
         self.log = tk.Text(root, height=9, state="disabled", wrap="word")
         self.log.pack(fill="both", expand=True, padx=14, pady=(6, 14))
+        self.size.trace_add("write", self.update_preview)
+        self.sname.trace_add("write", self.update_preview)
+        self.update_preview()
         root.after(100, self.pump)
 
     # ----- helpers -----
@@ -238,7 +255,25 @@ class SeriesApp:
                          width=30, height=4)
         self.cover_note.set("No cover picture chosen.")
 
+    def update_preview(self, *_):
+        key = self.device_key()
+        ext = ""
+        if key not in ("images",):
+            try:
+                ext = core.resolve_device(key, self.custom_info() if key == "custom" else None)["ext"]
+            except Exception:
+                ext = core.DEVICES.get(key, {}).get("ext", "")
+        try:
+            size = max(1, int(self.size.get()))
+        except Exception:
+            size = 5
+        name = core.clean_title(self.sname.get(), "") or "Series name"
+        lay = self.layout.get()
+        self.size_spin.config(state="disabled" if lay == "one" else "normal")
+        self.preview.config(text=series.layout_preview(lay, name, ext, self.epub.get() == "Yes", size))
+
     def update_custom(self):
+        self.update_preview()
         if self.device_key() == "custom":
             self.custom_row.pack(fill="x", padx=14, pady=(6, 0), before=self.btns)
         else:
@@ -259,9 +294,6 @@ class SeriesApp:
         if name and os.path.isdir(os.path.join(d, name)):
             d = os.path.join(d, name)
         os.makedirs(d, exist_ok=True)
-        key = self.device_key()
-        if key != "images" and os.path.isdir(os.path.join(d, core.DEVICES[key]["folder"])):
-            d = os.path.join(d, core.DEVICES[key]["folder"])
         if sys.platform == "darwin":
             subprocess.Popen(["open", d])
         elif sys.platform.startswith("win"):
@@ -396,7 +428,7 @@ class SeriesApp:
                                     "(400 to 5000) in pixels.")
                 return
         cover = self.cover_path if self.cover_path and os.path.isfile(self.cover_path) else None
-        opts = {"size": size, "convert": self.convert.get(), "device": self.device_key(),
+        opts = {"layout": self.layout.get(), "size": size, "convert": self.convert.get(), "device": self.device_key(),
                 "custom": custom, "epub": self.epub.get() == "Yes", "cover": cover,
                 "words": cleaner.all_words(self.words.get()) if self.hide.get() else [],
                 "redo": self.redo.get(), "all_urls": self.chapters}

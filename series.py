@@ -5,8 +5,10 @@ download -> hide promo -> cover -> make the gadget's file(s). It remembers what 
 so running it again only does the new or unfinished chapters.
 It reuses the proven v11 engine in core.py / cleaner.py / covers.py unchanged."""
 import json
+import math
 import os
 import re
+import shutil
 import time
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
@@ -232,7 +234,7 @@ def save_state(series_dir, state):
 def signature(opts):
     """What the finished files depend on. If it changes, the chapter is made again."""
     return json.dumps({
-        "device": opts.get("device"), "epub": bool(opts.get("epub")), "size": opts.get("size"),
+        "layout": opts.get("layout", "one"), "device": opts.get("device"), "epub": bool(opts.get("epub")), "size": opts.get("size"),
         "convert": bool(opts.get("convert")), "custom": opts.get("custom"),
         "cover": os.path.basename(opts["cover"]) if opts.get("cover") else None,
         "words": sorted(opts.get("words") or [])}, sort_keys=True)
@@ -255,22 +257,92 @@ def _inspect_with_retry(inspect, url, stop, tries=3):
     raise last
 
 
-def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect):
+LAYOUTS = {"one": "Sample 1", "parts": "Sample 2"}
+
+
+def chapter_folder(name, series_title):
+    """'Series - Chapter 012' -> 'Chapter 012' (the folder of that chapter)."""
+    pre = f"{series_title} - "
+    return name[len(pre):] if name.startswith(pre) else name
+
+
+def layout_preview(layout, series_title, ext, epub, size):
+    """A little picture of the folders, shown in the window before downloading."""
+    t = series_title or "Series name"
+    files = ([f"{{n}}{ext}"] if ext else []) + ([f"{{n}}.epub"] if epub and ext != ".epub" else [])
+    one = layout != "parts"
+    lines = [f"{t}/", "  Chapter 001/"]
+    if one:
+        lines.append("    001.webp  002.webp  003.webp ...")
+        lines += ["    " + f.format(n=f"{t} - Chapter 001") for f in files]
+    else:
+        lines.append("    Pages/  (001.webp 002.webp ... all the pictures)")
+        for a, b in ((1, size), (size + 1, size * 2)):
+            lines += ["    " + f.format(n=f"{t} - Chapter 001 - Pages {a}-{b}") for f in files]
+        if files:
+            lines.append("    ...")
+    lines += ["  Chapter 002/", "    ...", "  Chapter 003/ ..."]
+    return "\n".join(lines)
+
+
+def _finish_layout(work_root, name, total, size, series_dir, folder, layout, device_folder, cover):
+    """Move the finished work out of the hidden work area into the chapter's own folder."""
+    final = os.path.join(series_dir, folder)
+    if os.path.isdir(final):
+        shutil.rmtree(final)  # an older copy of this chapter made by this program
+    os.makedirs(final)
+    pages_dir = final if layout == "one" else os.path.join(final, "Pages")
+    os.makedirs(pages_dir, exist_ok=True)
+    for g in range(math.ceil(total / size)):
+        gf = os.path.join(work_root, core.group_folder_name(name, g * size + 1, total, size))
+        if not os.path.isdir(gf):
+            continue
+        for f in sorted(os.listdir(gf)):
+            if f.lower().endswith(core.IMG_EXT) and f.lower() != covers.COVER_NAME:
+                os.replace(os.path.join(gf, f), os.path.join(pages_dir, f))
+        shutil.rmtree(gf, ignore_errors=True)
+    dev = os.path.join(work_root, device_folder) if device_folder else None
+    if dev and os.path.isdir(dev):
+        for f in sorted(os.listdir(dev)):
+            base, ext = os.path.splitext(f)
+            if layout == "one" and base == core.group_folder_name(name, 1, total, total):
+                f2 = name + ext  # one file per chapter: no "Pages 1-40" in its name
+            else:
+                f2 = f
+            os.replace(os.path.join(dev, f), os.path.join(final, f2))
+        shutil.rmtree(dev, ignore_errors=True)
+    if cover:
+        try:
+            covers.save_folder_cover(final, cover)
+            covers.set_folder_icon(final, cover)
+        except Exception:
+            pass  # the thumbnail is only a nicety
+    try:
+        os.rmdir(work_root)  # only succeeds when empty
+    except OSError:
+        pass
+    return final
+
+
+def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series_title=""):
     """Everything for one chapter. Returns the number of pages. Raises on any problem."""
     info = _inspect_with_retry(inspect, url, stop)
     imgs = info["images"]
     if not imgs:
         raise core.NoImages()
     say(f"  {len(imgs)} pages found.")
-    size = opts["size"]
-    failed = core.download_images(imgs, name, series_dir, url, progress, stop, size,
+    layout = opts.get("layout", "one")
+    total = len(imgs)
+    size = total if layout == "one" else max(1, opts["size"])   # Sample 1: the whole chapter is one part
+    work = os.path.join(series_dir, ".work")                    # hidden work area, tidied afterwards
+    failed = core.download_images(imgs, name, work, url, progress, stop, size,
                                   opts.get("convert", False))
     if failed:
         raise ChapterFailed(f"pages {failed} did not download")
     words = opts.get("words")
     if words:
         try:
-            c = cleaner.clean_chapter(series_dir, name, len(imgs), size, words, progress, stop)
+            c = cleaner.clean_chapter(work, name, total, size, words, progress, stop)
             hidden = c["cut"] + c["blurred"] + c["deleted"]
             if c["scanned"]:
                 say(f"  Promo hidden on {hidden} of {c['scanned']} page(s).")
@@ -279,20 +351,19 @@ def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect):
         except Exception as e:
             say(f"  Could not look for the promo words ({e}). Continuing without it.")
     cover = opts.get("cover")
-    if cover:
-        try:
-            covers.apply_folder_covers(series_dir, name, len(imgs), size, cover)
-        except Exception as e:
-            say(f"  Could not add the cover to the folders ({e}).")
     device = opts.get("device", "images")
     target = device if device != "images" else ("epub_only" if opts.get("epub") else None)
+    device_folder = None
     if target:
-        _made, bad = core.build_device_files(series_dir, name, len(imgs), size, target, progress,
-                                             stop, opts.get("custom"), cover,
+        _made, bad = core.build_device_files(work, name, total, size, target, progress, stop,
+                                             opts.get("custom"), cover,
                                              epub=bool(opts.get("epub")))
+        device_folder = core.resolve_device(target, opts.get("custom"))["folder"]
         if bad:
             say(f"  {len(bad)} image(s) could not be used and were skipped.")
-    return len(imgs)
+    _finish_layout(work, name, total, size, series_dir, chapter_folder(name, series_title),
+                   layout, device_folder, cover)
+    return total
 
 
 def run_series(series_title, chapter_urls, out_root, opts, progress=None, stop=None, say=None,
@@ -335,7 +406,7 @@ def run_series(series_title, chapter_urls, out_root, opts, progress=None, stop=N
             def prog(d, t, s, k=k, n=n):
                 progress(d, t, f"[{k}/{n}] {s}")
             try:
-                pages = do_chapter(u, name, series_dir, opts, prog, stop, say, inspect)
+                pages = do_chapter(u, name, series_dir, opts, prog, stop, say, inspect, series_title)
                 state["done"][u] = {"name": name, "pages": pages, "sig": sig}
                 save_state(series_dir, state)
                 result["done"].append(name)

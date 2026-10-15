@@ -90,37 +90,59 @@ def main():
     names2 = series.chapter_names("S", ["https://x/a/b", "https://x/a/c"])  # no numbers: by position
     assert names2 == ["S - Chapter 001", "S - Chapter 002"], names2
 
-    # --- downloading: chapter 2 is broken at first, the others must still finish ---
+    # --- Sample 1: one folder per chapter, one .cbz and one .epub each. Chapter 2 is broken
+    #     at first; the others must still finish.
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
-        opts = {"size": 2, "device": "kobo", "epub": True, "words": [], "cover": None}
+        opts = {"layout": "one", "size": 2, "device": "kobo", "epub": True, "words": [], "cover": None}
         logs = []
         res = series.run_series("Demo Comic", info["chapters"], d, opts, say=logs.append, pause=0)
         assert len(res["done"]) == 2 and len(res["failed"]) == 1, res
         assert res["failed"][0][0].endswith("Chapter 002"), res["failed"]
-        kobo = os.path.join(d, "Demo Comic", "For Kobo Clara")
-        files = sorted(os.listdir(kobo))
-        # 2 good chapters x 2 groups (pages 1-2, 3-3) x (.cbz + .epub)
-        assert len([f for f in files if f.endswith(".cbz")]) == 4, files
-        assert len([f for f in files if f.endswith(".epub")]) == 4, files
-        with zipfile.ZipFile(os.path.join(kobo, "Demo Comic - Chapter 001 - Pages 1-2.cbz")) as z:
-            assert len(z.namelist()) == 2
-        assert os.path.isdir(os.path.join(d, "Demo Comic", "Demo Comic - Chapter 003 - Pages 1-2"))
+        sd = os.path.join(d, "Demo Comic")
+        assert sorted(x for x in os.listdir(sd) if not x.startswith(".")) == ["Chapter 001", "Chapter 003"], os.listdir(sd)
+        assert sorted(os.listdir(os.path.join(sd, "Chapter 001"))) == [
+            "001.png", "002.png", "003.png", "Demo Comic - Chapter 001.cbz",
+            "Demo Comic - Chapter 001.epub"], os.listdir(os.path.join(sd, "Chapter 001"))
+        with zipfile.ZipFile(os.path.join(sd, "Chapter 001", "Demo Comic - Chapter 001.cbz")) as z:
+            assert len(z.namelist()) == 3
+        assert not os.path.exists(os.path.join(sd, ".work")), "work area should be tidied away"
+        assert not os.path.exists(os.path.join(sd, "For Kobo Clara"))
 
         # --- run again after the website is fixed: only chapter 2 is done, others skipped ---
         Site.fixed = True
         res = series.run_series("Demo Comic", info["chapters"], d, opts, say=logs.append, pause=0)
         assert len(res["done"]) == 1 and len(res["skipped"]) == 2 and not res["failed"], res
-        assert len([f for f in os.listdir(kobo) if f.endswith(".cbz")]) == 6
+        assert os.path.isdir(os.path.join(sd, "Chapter 002"))
 
-        # --- changing the gadget makes finished chapters be made again ---
+        # --- changing the gadget makes finished chapters be made again (.pdf, no epub) ---
         opts2 = dict(opts, device="kindle_68", epub=False)
         res = series.run_series("Demo Comic", info["chapters"], d, opts2, say=logs.append, pause=0)
         assert len(res["done"]) == 3 and not res["skipped"], res
+        assert sorted(os.listdir(os.path.join(sd, "Chapter 001"))) == [
+            "001.png", "002.png", "003.png", "Demo Comic - Chapter 001.pdf"]
+
+        # --- Sample 2: pictures in Pages/, files in parts of 2 pages, all inside the chapter folder ---
+        opts3 = dict(opts, layout="parts")
+        res = series.run_series("Demo Comic", info["chapters"], d, opts3, say=logs.append, pause=0)
+        assert len(res["done"]) == 3, res
+        ch = os.path.join(sd, "Chapter 001")
+        assert sorted(os.listdir(ch)) == [
+            "Demo Comic - Chapter 001 - Pages 1-2.cbz", "Demo Comic - Chapter 001 - Pages 1-2.epub",
+            "Demo Comic - Chapter 001 - Pages 3-3.cbz", "Demo Comic - Chapter 001 - Pages 3-3.epub",
+            "Pages"], sorted(os.listdir(ch))
+        assert sorted(os.listdir(os.path.join(ch, "Pages"))) == ["001.png", "002.png", "003.png"]
 
         # --- ticking only some chapters keeps the numbering ---
-        res = series.run_series("Demo Comic", info["chapters"][2:], d, dict(opts2, all_urls=info["chapters"], redo=True),
+        res = series.run_series("Demo Comic", info["chapters"][2:],
+                                d, dict(opts3, all_urls=info["chapters"], redo=True),
                                 say=logs.append, pause=0)
         assert res["done"] == ["Demo Comic - Chapter 003"], res
+
+    # --- the little picture shown in the window ---
+    p1 = series.layout_preview("one", "Demo", ".cbz", True, 5)
+    assert "Demo - Chapter 001.cbz" in p1 and "Demo - Chapter 001.epub" in p1 and "Pages/" not in p1
+    p2 = series.layout_preview("parts", "Demo", ".pdf", False, 5)
+    assert "Pages 1-5.pdf" in p2 and "Pages 6-10.pdf" in p2 and "Pages/" in p2 and ".epub" not in p2
     srv.shutdown()
     print("series OK")
 

@@ -13,7 +13,9 @@ Comic Downloader = one chapter link. **Comic Series Downloader = a page that lis
 
 ## What it does for you
 - Each chapter: download, hide promo, add cover, make your gadget's file (and EPUB if Yes). Same engine as Comic Downloader v11.
-- Files go in `<Series name>/`: image folders `Series - Chapter 012 - Pages 1-5`, and all the e-reader files together in the gadget folder (e.g. `For Kobo Clara`).
+- One folder per chapter: `<Series name>/Chapter 012/`. Pick the layout with the **Folder layout** toggle (a picture of the folders updates as you click):
+  - **Sample 1:** the pictures (webp) and ONE file for the gadget (.cbz/.pdf) plus ONE .epub (if Yes), all loose inside the chapter folder.
+  - **Sample 2:** the pictures in a `Pages` folder, and the gadget/EPUB files split into parts of N pages, inside the chapter folder.
 - One bad chapter never stops the rest. Problem chapters are tried once more at the end and listed in the log.
 - **Stop** any time. Press Download again and finished chapters are skipped. Come back later when new chapters appear and use **Only new ones**.
 - If you change gadget, EPUB, pages per folder, cover or promo words, finished chapters are made again for the new settings. "Make finished chapters again" forces it.
