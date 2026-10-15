@@ -22,7 +22,7 @@ class App:
     def __init__(self, root, dnd=False):
         self.root = root
         root.title("Comic Downloader")
-        root.geometry("720x720")
+        root.geometry("720x760")
         root.minsize(640, 640)
         self.cover_path = None
         self._photo = None
@@ -106,6 +106,18 @@ class App:
             box.config(state="disabled")
         box.bind("<<ComboboxSelected>>", lambda e: self.update_custom())
 
+        ftype = ttk.Frame(root)
+        ftype.pack(fill="x", padx=14, pady=(0, 6))
+        ttk.Label(ftype, text="File type:").pack(side="left")
+        self.fmt = tk.StringVar(value=core.FILE_TYPES[0])
+        fbox = ttk.Combobox(ftype, textvariable=self.fmt, values=core.FILE_TYPES,
+                            state="readonly", width=20)
+        fbox.pack(side="left", padx=6)
+        ttk.Label(ftype, text="(Best = the type shown in brackets after your gadget)",
+                  foreground="#555").pack(side="left")
+        if not core.HAS_PIL:
+            fbox.config(state="disabled")
+
         # Extra boxes that only appear for "Custom size"
         self.custom_row = ttk.Frame(root)
         ttk.Label(self.custom_row, text="Screen width").pack(side="left")
@@ -118,7 +130,7 @@ class App:
                     textvariable=self.c_h).pack(side="left", padx=(4, 10))
         ttk.Label(self.custom_row, text="pixels   File type").pack(side="left")
         self.c_ext = tk.StringVar(value=".pdf")
-        ttk.Combobox(self.custom_row, textvariable=self.c_ext, values=[".pdf", ".cbz"],
+        ttk.Combobox(self.custom_row, textvariable=self.c_ext, values=[".pdf", ".cbz", ".epub"],
                      state="readonly", width=5).pack(side="left", padx=(4, 10))
         self.c_gray = tk.BooleanVar(value=False)
         ttk.Checkbutton(self.custom_row, text="Black and white",
@@ -278,6 +290,16 @@ class App:
                                     "(400 to 5000) in pixels. You can find it in your gadget's "
                                     "specifications.")
                 return
+        key = self.device_key()
+        if key != "images":
+            custom = dict(custom or {})
+            custom["fmt"] = self.fmt.get()
+            warn = core.epub_warning(key) if self.fmt.get().startswith("EPUB") else None
+            if warn:
+                if messagebox.askyesno("EPUB on a Kindle",
+                                       warn + "\n\nMake PDF files instead? (Recommended)"):
+                    self.fmt.set("PDF (.pdf)")
+                    custom["fmt"] = "PDF (.pdf)"
         words = cleaner.all_words(self.words.get()) if self.hide.get() else []
         cover = self.cover_path if self.cover_path and os.path.isfile(self.cover_path) else None
         self.stop.clear()

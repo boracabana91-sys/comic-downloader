@@ -68,7 +68,9 @@ The cover is used for every download until you clear it:
 ## Send to your e-reader or tablet
 
 Pick your gadget in the **Send to** menu before pressing Download. The program also keeps the normal image folders.
-Tall pages are cut into screen-sized pages at blank gaps, so the text stays readable.
+Tall pages are cut into screen-sized pages at blank gaps, so the text stays readable. Any space around a page is filled with the page's own edge color, so no white bars appear.
+
+**File type:** leave it on **Best for this gadget**, or choose **EPUB**, **PDF** or **CBZ** for any gadget. On a Kobo, EPUB is saved as `.kepub.epub` (Kobo's own kind, full-screen pictures). A Kindle cannot open EPUB files copied over with a USB cable, so the program offers PDF instead.
 When it finishes, the window tells you what to do next, and **Open folder** opens the folder holding the files to drag.
 
 | Gadget | File made | Folder |

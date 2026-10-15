@@ -335,6 +335,9 @@ DEVICE_KEYS = list(DEVICES)
 
 def _next_text(kind, ext, folder):
     f = f"the folder '{folder}'"
+    if kind == "kindle" and ext.endswith("epub"):
+        return ("Note: a Kindle cannot open EPUB files copied over with a USB cable. To read them, "
+                "use Amazon's free Send to Kindle page in your browser, or choose PDF instead.")
     if kind == "kobo":
         return (f"Next: plug your Kobo into the computer with its USB cable, tap Connect on the "
                 f"Kobo screen, then drag the {ext} files from {f} onto the drive named KOBOeReader. "
@@ -364,16 +367,34 @@ def _next_text(kind, ext, folder):
             "files (most e-readers show up as a drive when plugged in with a USB cable).")
 
 
+FILE_TYPES = ["Best for this gadget", "EPUB (.epub)", "PDF (.pdf)", "CBZ (.cbz)"]
+_FILE_EXT = {"EPUB (.epub)": ".epub", "PDF (.pdf)": ".pdf", "CBZ (.cbz)": ".cbz"}
+
+
 def resolve_device(key, custom=None):
-    """Settings for a device. For 'custom', pass {'width','height','ext','gray'}."""
+    """Settings for a device. For 'custom', pass {'width','height','ext','gray'}.
+    Any device can also get {'fmt': one of FILE_TYPES} to choose its file type."""
     dev = dict(DEVICES[key])
+    c = custom or {}
     if key == "custom":
-        c = custom or {}
         dev["size"] = (int(c.get("width", 1072)), int(c.get("height", 1448)))
         dev["ext"] = c.get("ext", ".pdf")
         dev["gray"] = bool(c.get("gray", False))
-    dev["next"] = _next_text(dev["kind"], dev["ext"], dev["folder"])
+    if key != "images":
+        ext = _FILE_EXT.get(c.get("fmt"), dev["ext"])
+        if ext == ".epub" and dev["kind"] == "kobo":
+            ext = ".kepub.epub"  # Kobo's own EPUB kind: shows full-screen pictures best
+        dev["ext"] = ext
+        dev["next"] = _next_text(dev["kind"], dev["ext"], dev["folder"])
     return dev
+
+
+def epub_warning(key):
+    """A note when EPUB will not work on the chosen gadget, else None."""
+    if DEVICES[key].get("kind") == "kindle":
+        return ("Kindles cannot open EPUB files that are copied over with a USB cable. "
+                "PDF works by simple drag and drop.")
+    return None
 
 
 def _page_to_rgb_or_gray(im, gray):
@@ -394,6 +415,35 @@ def _quietest_row(gray_im, lo, hi):
         if best is None or s <= best:
             best, best_y = s, y
     return best_y
+
+
+def _edge(piece, box):
+    """Typical color of a thin strip of the page (used to fill around it, never white bars)."""
+    strip = piece.crop(box)
+    stat = ImageStat.Stat(strip)
+    vals = [int(round(v)) for v in stat.median]
+    return vals[0] if piece.mode == "L" else tuple(vals[:3])
+
+
+def _padded(piece, width, height):
+    """Put the page on a screen-sized canvas. Any space left over is filled with the page's
+    own top, bottom and side colors, so no white lines appear above or below it."""
+    pw, ph = piece.size
+    if (pw, ph) == (width, height):
+        return piece
+    x, y = (width - pw) // 2, (height - ph) // 2
+    k = max(1, min(4, ph // 20 or 1))
+    top = _edge(piece, (0, 0, pw, k))
+    bottom = _edge(piece, (0, ph - k, pw, ph))
+    canvas = Image.new(piece.mode, (width, height), top)
+    if y + ph < height:
+        canvas.paste(bottom, (0, y + ph, width, height))
+    if x > 0:
+        j = max(1, min(4, pw // 20 or 1))
+        canvas.paste(_edge(piece, (0, 0, j, ph)), (0, y, x, y + ph))
+        canvas.paste(_edge(piece, (pw - j, 0, pw, ph)), (x + pw, y, width, y + ph))
+    canvas.paste(piece, (x, y))
+    return canvas
 
 
 def make_pages(src, tmp_dir, start_no, width, height, gray):
@@ -420,23 +470,108 @@ def make_pages(src, tmp_dir, start_no, width, height, gray):
         chunks.append((y, cut))
         y = cut
 
-    white = 255 if im.mode == "L" else (255, 255, 255)
     out = []
     for n, (a, b) in enumerate(chunks):
         piece = im.crop((0, a, new_w, b))
+        if n == len(chunks) - 1 and n > 0 and max(ImageStat.Stat(piece).stddev) < 3:
+            continue  # an empty gap at the end of a strip: no blank page
         if piece.height > height:  # slightly too tall: shrink to fit
             f = height / piece.height
             piece = piece.resize((max(1, round(piece.width * f)), height), Image.LANCZOS)
-        canvas = Image.new(im.mode, (width, height), white)
-        canvas.paste(piece, ((width - piece.width) // 2, (height - piece.height) // 2))
-        path = os.path.join(tmp_dir, f"p{start_no + n:05d}.jpg")
+        canvas = _padded(piece, width, height)
+        path = os.path.join(tmp_dir, f"p{start_no + len(out):05d}.jpg")
         canvas.save(path, "JPEG", quality=85, optimize=True)
         out.append(path)
     return out
 
 
-def _write_device_file(pages, dest, ext):
-    if ext == ".cbz":
+def _xml(t):
+    return (str(t).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;"))
+
+
+def _write_epub(pages, dest, title):
+    """Fixed-layout picture book: one screen-sized picture per page, nothing else."""
+    import uuid
+    from datetime import datetime, timezone
+    with Image.open(pages[0]) as first:
+        w, h = first.size
+    t = _xml(title)
+    book_id = "urn:uuid:" + str(uuid.uuid5(uuid.NAMESPACE_URL, title + str(len(pages))))
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    items, spine, navli, ncx = [], [], [], []
+    for i in range(1, len(pages) + 1):
+        cover = ' properties="cover-image"' if i == 1 else ""
+        items.append(f'<item id="img{i:04d}" href="Images/{i:04d}.jpg" media-type="image/jpeg"{cover}/>')
+        items.append(f'<item id="p{i:04d}" href="Text/{i:04d}.xhtml" '
+                     f'media-type="application/xhtml+xml"/>')
+        spine.append(f'<itemref idref="p{i:04d}"/>')
+    navli.append('<li><a href="Text/0001.xhtml">' + t + "</a></li>")
+    ncx.append('<navPoint id="n1" playOrder="1"><navLabel><text>' + t +
+               '</text></navLabel><content src="Text/0001.xhtml"/></navPoint>')
+    opf = f'''<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="BookId">
+<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+<dc:identifier id="BookId">{book_id}</dc:identifier>
+<dc:title>{t}</dc:title>
+<dc:language>en</dc:language>
+<meta property="dcterms:modified">{now}</meta>
+<meta property="rendition:layout">pre-paginated</meta>
+<meta property="rendition:spread">none</meta>
+<meta property="rendition:orientation">portrait</meta>
+<meta name="cover" content="img0001"/>
+<meta name="fixed-layout" content="true"/>
+<meta name="original-resolution" content="{w}x{h}"/>
+<meta name="book-type" content="comic"/>
+</metadata>
+<manifest>
+<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+{chr(10).join(items)}
+</manifest>
+<spine toc="ncx">
+{chr(10).join(spine)}
+</spine>
+</package>
+'''
+    nav = ('<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n'
+           '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">'
+           f"<head><title>{t}</title></head><body>"
+           '<nav epub:type="toc"><ol>' + "".join(navli) + "</ol></nav></body></html>")
+    toc = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+           '<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">'
+           f'<head><meta name="dtb:uid" content="{book_id}"/></head>'
+           f"<docTitle><text>{t}</text></docTitle><navMap>" + "".join(ncx) + "</navMap></ncx>")
+    container = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                 '<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+                 '<rootfiles><rootfile full-path="OEBPS/content.opf" '
+                 'media-type="application/oebps-package+xml"/></rootfiles></container>')
+    with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr(zipfile.ZipInfo("mimetype"), "application/epub+zip",
+                   compress_type=zipfile.ZIP_STORED)  # must be first and not compressed
+        z.writestr("META-INF/container.xml", container)
+        z.writestr("OEBPS/content.opf", opf)
+        z.writestr("OEBPS/nav.xhtml", nav)
+        z.writestr("OEBPS/toc.ncx", toc)
+        for i, p in enumerate(pages, 1):
+            with Image.open(p) as im:
+                pw, ph = im.size
+            z.write(p, f"OEBPS/Images/{i:04d}.jpg", compress_type=zipfile.ZIP_STORED)
+            z.writestr(f"OEBPS/Text/{i:04d}.xhtml",
+                       '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>\n'
+                       '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">'
+                       f'<head><title>{t} - {i}</title>'
+                       f'<meta name="viewport" content="width={pw}, height={ph}"/>'
+                       "<style>html,body{margin:0;padding:0;background:#000}"
+                       f"img{{display:block;width:{pw}px;height:{ph}px;margin:0;padding:0}}</style>"
+                       f'</head><body><div><img src="../Images/{i:04d}.jpg" alt="{i}"/></div>'
+                       "</body></html>")
+
+
+def _write_device_file(pages, dest, ext, title="Comic"):
+    if ext in (".epub", ".kepub.epub"):
+        _write_epub(pages, dest, title)
+    elif ext == ".cbz":
         with zipfile.ZipFile(dest, "w", zipfile.ZIP_STORED) as z:
             for i, p in enumerate(pages, 1):
                 z.write(p, f"{i:04d}.jpg")
@@ -489,7 +624,7 @@ def build_device_files(out_root, title, total, size, device_key, progress=None, 
             if not pages:
                 continue
             dest = os.path.join(out_dir, name + dev["ext"])
-            _write_device_file(pages, dest, dev["ext"])
+            _write_device_file(pages, dest, dev["ext"], name)
             made.append(dest)
     if progress:
         progress(groups, groups, "E-reader files are ready.")
@@ -501,9 +636,9 @@ def selftest_device():
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
         src = os.path.join(d, "x.png")
         Image.new("RGB", (400, 1500), "white").save(src)
-        for ext in (".cbz", ".pdf"):
+        for ext in (".cbz", ".pdf", ".epub"):
             pages = make_pages(src, d, 0, 1072, 1448, ext == ".pdf")
             dest = os.path.join(d, "t" + ext)
-            _write_device_file(pages, dest, ext)
+            _write_device_file(pages, dest, ext, "Test")
             if os.path.getsize(dest) < 100:
                 raise RuntimeError("empty " + ext)

@@ -36,6 +36,46 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
+def test_epub_and_padding():
+    """EPUB for every gadget, Kobo gets .kepub.epub, and no white bars around dark pages."""
+    if not core.HAS_PIL:
+        return
+    import zipfile
+    from PIL import Image
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        src = os.path.join(d, "dark.png")
+        Image.new("RGB", (800, 500), (10, 10, 10)).save(src)  # short dark page
+        page = core.make_pages(src, d, 0, 1072, 1448, False)[0]
+        with Image.open(page) as im:
+            assert im.size == (1072, 1448)
+            for xy in ((5, 5), (500, 3), (500, 1444), (1068, 1440)):
+                assert max(im.getpixel(xy)) < 40, (xy, im.getpixel(xy))  # filled dark, not white
+        assert core.resolve_device("kobo", {"fmt": "EPUB (.epub)"})["ext"] == ".kepub.epub"
+        assert core.resolve_device("boox_7", {"fmt": "EPUB (.epub)"})["ext"] == ".epub"
+        assert core.resolve_device("kindle_6", {"fmt": "CBZ (.cbz)"})["ext"] == ".cbz"
+        assert core.resolve_device("kindle_6", {"fmt": "Best for this gadget"})["ext"] == ".pdf"
+        assert core.epub_warning("kindle_color") and not core.epub_warning("kobo")
+        for key in core.DEVICE_KEYS:
+            if key != "images":
+                core.resolve_device(key, {"fmt": "EPUB (.epub)"})
+        title = "Book"
+        folder = os.path.join(d, core.group_folder_name(title, 1, 2, 5))
+        os.makedirs(folder)
+        for i in (1, 2):
+            Image.new("RGB", (700, 2500), (200, 220, 240)).save(os.path.join(folder, f"{i:03d}.jpg"))
+        made, bad = core.build_device_files(d, title, 2, 5, "pocketbook_7", custom={"fmt": "EPUB (.epub)"})
+        assert bad == [] and made[0].endswith("Book - Pages 1-2.epub"), made
+        with zipfile.ZipFile(made[0]) as z:
+            info = z.infolist()
+            assert info[0].filename == "mimetype" and info[0].compress_type == zipfile.ZIP_STORED
+            assert z.read("mimetype") == b"application/epub+zip"
+            opf = z.read("OEBPS/content.opf").decode()
+            assert "pre-paginated" in opf and "cover-image" in opf
+            pics = [n for n in z.namelist() if n.startswith("OEBPS/Images/")]
+            assert len(pics) >= 4, pics  # two tall pictures became several screen pages
+    print("EPUB and no-white-bars OK")
+
+
 def main():
     srv = HTTPServer(("127.0.0.1", 0), H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -54,6 +94,7 @@ def main():
             "006.webp", "007.webp", "008.webp", "009.webp", "010.webp"]
     test_devices()
     test_all_presets()
+    test_epub_and_padding()
     test_cleaner()
     test_covers()
     print("ALL TESTS PASSED")
