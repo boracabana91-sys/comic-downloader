@@ -1,0 +1,6 @@
+numpy
+yt-dlp
+google-api-python-client
+google-auth-oauthlib
+cloudinary
+tkinterdnd2
