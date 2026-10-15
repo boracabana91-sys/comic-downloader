@@ -84,3 +84,53 @@ def fetch(v: Video, work_dir: str, max_height: int = 1080) -> str:
     dest = os.path.join(work_dir, safe + ".mp4")
     urllib.request.urlretrieve(v.url, dest)
     return dest
+
+
+_UC = r"(UC[\w-]{22})"
+
+
+def parse_channel_html(page: str):
+    """Pull (channel_id, display_name) out of a YouTube channel page."""
+    import html as _h
+    cid = None
+    for pat in (r'"channelId":"' + _UC + '"', r'itemprop="channelId" content="' + _UC + '"',
+                r'"browseId":"' + _UC + '"'):
+        m = re.search(pat, page)
+        if m:
+            cid = m.group(1)
+            break
+    nm = re.search(r'<meta property="og:title" content="([^"]+)"', page)
+    return cid, (_h.unescape(nm.group(1)) if nm else "")
+
+
+def resolve_youtube(text: str) -> dict:
+    """Any YouTube channel link (or @name, or UC... id) -> {'name', 'location'} with the channel ID filled in."""
+    s = (text or "").strip()
+    if not s:
+        raise ValueError("Paste the channel link first.")
+    m = re.search(r"/channel/" + _UC, s) or re.fullmatch(_UC, s)
+    name = ""
+    if m:
+        cid = m.group(1)
+    else:
+        if s.startswith("@"):
+            s = "https://www.youtube.com/" + s
+        if not s.startswith("http"):
+            s = "https://" + s
+        if "youtube.com" not in s and "youtu.be" not in s:
+            raise ValueError("That is not a YouTube link.")
+        req = urllib.request.Request(s, headers={"User-Agent": "Mozilla/5.0",
+                                                 "Accept-Language": "en-US,en;q=0.9"})
+        page = urllib.request.urlopen(req, timeout=30).read().decode("utf-8", "replace")
+        cid, name = parse_channel_html(page)
+        if not cid:
+            raise ValueError("Could not find a channel in that link. Paste the channel's main page link, "
+                             "for example https://www.youtube.com/@ChannelName")
+    if not name:  # the channel's RSS feed gives the name; if offline, the ID is used as the name for now
+        try:
+            feed = ET.fromstring(urllib.request.urlopen(
+                f"https://www.youtube.com/feeds/videos.xml?channel_id={cid}", timeout=30).read())
+            name = feed.findtext("a:author/a:name", namespaces=NS) or cid
+        except Exception:
+            name = cid
+    return {"name": name, "kind": "youtube", "location": cid}

@@ -37,7 +37,8 @@ class Pipeline:
                 self.log(f"Cloudinary backup failed: {e}")
         if upload and cfg["upload"]["enabled"]:
             h = cfg["upload_resolution"]
-            best = outs.get(h) or outs[max(k for k in outs if k <= h) if any(k <= h for k in outs) else max(outs)]
+            fits = [k for k in outs if k <= h]
+            best = outs[max(fits)] if fits else outs[min(outs)]
             meta = metadata.build(cfg, v.title, src.name, res["kept_s"], self.log)
             lo, hi = cfg["publish_delay_min"]
             due = v.published + timedelta(minutes=random.uniform(lo, hi))

@@ -1,25 +1,13 @@
 """Self-tests. Run: python3 -m unittest discover -s tests"""
-import json
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from sportsclipper import analyze, config, media, render, rights, schedule, store  # noqa: E402
-
-
-def make_video(path, secs=60, w=1280, h=720):
-    """A fake broadcast: the 'clock' digits flip every second while live (0-20s, 30-50s), frozen otherwise."""
-    live = "between(t,0,20)+between(t,30,50)"
-    x, y = int(w * 0.475), int(h * 0.828)
-    a = f"drawbox=x={x+4}:y={y+4}:w=20:h=14:color=white:t=fill:enable='(lt(mod(t,2),1)*({live}))+(1-({live}))'"
-    b = f"drawbox=x={x+36}:y={y+16}:w=20:h=14:color=white:t=fill:enable='gte(mod(t,2),1)*({live})'"
-    subprocess.run([media.need("ffmpeg"), "-v", "error", "-y", "-f", "lavfi", "-i", f"color=c=0x101010:s={w}x{h}:r=30:d={secs}",
-                    "-f", "lavfi", "-i", f"sine=f=440:d={secs}", "-vf", f"{a},{b}",
-                    "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-shortest", path], check=True)
+from sportsclipper import analyze, checks, config, media, metadata, render, rights, schedule, sources, store  # noqa: E402
+from sportsclipper.selfcheck import make_video  # noqa: E402
 
 
 class Tests(unittest.TestCase):
@@ -69,7 +57,34 @@ class Tests(unittest.TestCase):
             rights.check(rights.Source("x", "youtube", "UC" + "a" * 22))
         with self.assertRaises(rights.NotLicensed):
             rights.check(rights.Source("x", "youtube", "UC" + "a" * 22, licensed=True, license_note="  "))
-        rights.check(rights.Source("x", "youtube", "UC" + "a" * 22, True, "written permission 2026-10-01"))
+        rights.check(rights.Source("x", "youtube", "UC" + "a" * 22, True, "owner confirmed"))
+
+    def test_channel_html_parsing(self):
+        page = ('<meta property="og:title" content="NBA &amp; Friends">'
+                '<script>{"channelId":"UC' + "a" * 22 + '"}</script>')
+        cid, name = sources.parse_channel_html(page)
+        self.assertEqual(cid, "UC" + "a" * 22)
+        self.assertEqual(name, "NBA & Friends")
+
+    def test_channel_link_forms_without_network(self):
+        cid = "UC" + "b" * 22
+        self.assertEqual(sources.resolve_youtube(cid)["location"], cid)
+        self.assertEqual(sources.resolve_youtube(f"https://www.youtube.com/channel/{cid}")["location"], cid)
+        with self.assertRaises(ValueError):
+            sources.resolve_youtube("https://example.com/x")
+        with self.assertRaises(ValueError):
+            sources.resolve_youtube("")
+
+    def test_metadata_falls_back_without_key(self):
+        c = config.load("/nonexistent"); c["ai"]["enabled"] = True; c["ai"]["api_key"] = ""
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+        m = metadata.build(c, "Game", "src", 300, log=lambda *_: None)
+        self.assertIn("Game", m["title"])
+
+    def test_setup_check_engine(self):
+        results = checks.run(config.load("/nonexistent"), log=lambda *_: None, network=False)
+        engine = [r for r in results if "cutting engine" in r[1]]
+        self.assertTrue(engine and engine[0][0])
 
     def test_schedule(self):
         now = datetime(2026, 10, 15, 10, 0)

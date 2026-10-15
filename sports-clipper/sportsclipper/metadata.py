@@ -1,8 +1,12 @@
-"""Title / description / tags. Uses a Claude model if enabled, else a plain template."""
+"""Title / description / tags. Uses Claude Haiku 5.5 if a key is set, otherwise a plain template."""
 from __future__ import annotations
 import json
 import os
 import urllib.request
+
+
+def api_key(cfg: dict) -> str:
+    return cfg["ai"].get("api_key") or os.environ.get(cfg["ai"]["api_key_env"], "")
 
 
 def build(cfg: dict, source_title: str, source_name: str, kept_s: float, log=print) -> dict:
@@ -10,8 +14,11 @@ def build(cfg: dict, source_title: str, source_name: str, kept_s: float, log=pri
                 "description": f"Condensed live-play cut of: {source_title}\nSource: {source_name}\n",
                 "tags": list(cfg.get("tags", []))[:30]}
     ai = cfg["ai"]
-    key = os.environ.get(ai["api_key_env"], "")
-    if not (ai["enabled"] and key):
+    if not ai["enabled"]:
+        return fallback
+    key = api_key(cfg)
+    if not key:
+        log("no Anthropic API key set - using plain titles (add it in config.json, see README)")
         return fallback
     prompt = (f"Write YouTube metadata for a condensed ({kept_s / 60:.1f} min) live-play cut of the video "
               f"titled '{source_title}' from {source_name}. Channel: {cfg.get('channel_name') or 'our channel'}. "
@@ -26,6 +33,6 @@ def build(cfg: dict, source_title: str, source_name: str, kept_s: float, log=pri
         j = json.loads(txt[txt.index("{"): txt.rindex("}") + 1])
         return {"title": str(j["title"])[:100], "description": str(j["description"]),
                 "tags": (list(cfg.get("tags", [])) + list(j.get("tags", [])))[:30]}
-    except Exception as e:  # never let a metadata hiccup stop the pipeline
-        log(f"AI metadata failed ({e}); using template")
+    except Exception as e:  # a metadata hiccup must never stop the pipeline
+        log(f"AI titles failed ({e}); using plain titles")
         return fallback

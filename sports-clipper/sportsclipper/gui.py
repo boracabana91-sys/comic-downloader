@@ -5,7 +5,9 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from . import analyze, config, pipeline, render, rights
+from datetime import datetime
+
+from . import analyze, checks, config, pipeline, render, rights, sources
 
 RES = [2160, 1080, 720, 480, 360]
 
@@ -26,27 +28,23 @@ class App:
         ttk.Label(root, text="Watches your licensed sources, cuts out the dead time, makes every resolution, and posts.",
                   foreground="#555").pack(anchor="w", padx=14)
 
-        # --- sources
-        ttk.Label(root, text="Sources (only sources you have permission to use)").pack(anchor="w", **pad)
-        self.tree = ttk.Treeview(root, columns=("kind", "where", "lic"), show="headings", height=5)
-        for c, t, w in (("kind", "Type", 80), ("where", "Channel / folder / link", 430), ("lic", "Licensed", 70)):
+        # --- sources: paste a link, nothing else to fill in
+        ttk.Label(root, text="Add a channel - paste its YouTube link").pack(anchor="w", **pad)
+        form = ttk.Frame(root); form.pack(fill="x", padx=14)
+        self.s_link = tk.StringVar()
+        ttk.Entry(form, textvariable=self.s_link).pack(side="left", fill="x", expand=True)
+        ttk.Button(form, text="Paste", command=self.paste_link).pack(side="left", padx=6)
+        ttk.Button(form, text="Add channel", command=self.add_source).pack(side="left")
+        ttk.Label(root, text="Example: https://www.youtube.com/@ChannelName  - the name and channel ID are found automatically.",
+                  foreground="#777").pack(anchor="w", padx=14)
+        self.s_lic = tk.BooleanVar(value=False)
+        ttk.Checkbutton(root, text="I own this channel or have permission / a license to use its videos",
+                        variable=self.s_lic).pack(anchor="w", padx=14, pady=(4, 0))
+        self.tree = ttk.Treeview(root, columns=("name", "id", "lic"), show="headings", height=4)
+        for c, t, w in (("name", "Channel", 330), ("id", "Channel ID", 300), ("lic", "Permission", 90)):
             self.tree.heading(c, text=t); self.tree.column(c, width=w)
-        self.tree.pack(fill="x", padx=14)
-        form = ttk.Frame(root); form.pack(fill="x", padx=14, pady=4)
-        self.s_name = tk.StringVar(); self.s_kind = tk.StringVar(value="youtube"); self.s_loc = tk.StringVar()
-        self.s_lic = tk.BooleanVar(); self.s_note = tk.StringVar()
-        ttk.Entry(form, textvariable=self.s_name, width=14).grid(row=0, column=0, padx=(0, 6))
-        ttk.Combobox(form, textvariable=self.s_kind, values=["youtube", "folder", "url"], width=8, state="readonly").grid(row=0, column=1, padx=(0, 6))
-        ttk.Entry(form, textvariable=self.s_loc).grid(row=0, column=2, sticky="ew", padx=(0, 6))
-        form.columnconfigure(2, weight=1)
-        ttk.Button(form, text="Folder...", command=self.pick_src_folder).grid(row=0, column=3)
-        ttk.Label(form, text="name / type / channel ID (UC...), folder or link", foreground="#777").grid(row=1, column=0, columnspan=4, sticky="w")
-        lic = ttk.Frame(root); lic.pack(fill="x", padx=14)
-        ttk.Checkbutton(lic, text="I have permission / a license for this source. Where from:", variable=self.s_lic).pack(side="left")
-        ttk.Entry(lic, textvariable=self.s_note).pack(side="left", fill="x", expand=True, padx=6)
-        b = ttk.Frame(root); b.pack(fill="x", padx=14, pady=4)
-        ttk.Button(b, text="Add source", command=self.add_source).pack(side="left")
-        ttk.Button(b, text="Remove selected", command=self.remove_source).pack(side="left", padx=8)
+        self.tree.pack(fill="x", padx=14, pady=4)
+        ttk.Button(root, text="Remove selected channel", command=self.remove_source).pack(anchor="w", padx=14)
 
         # --- schedule
         ttk.Label(root, text="When to scan").pack(anchor="w", **pad)
@@ -95,7 +93,7 @@ class App:
         ttk.Button(yt, text="Choose", command=self.pick_secret).pack(side="left")
         ex = ttk.Frame(root); ex.pack(fill="x", padx=14, pady=4)
         self.ai_on = tk.BooleanVar(value=self.cfg["ai"]["enabled"]); self.cl_on = tk.BooleanVar(value=self.cfg["cloudinary"]["enabled"])
-        ttk.Checkbutton(ex, text="Write titles with Claude Haiku 5.5 (needs ANTHROPIC_API_KEY)", variable=self.ai_on).pack(side="left")
+        ttk.Checkbutton(ex, text="Write titles with Claude Haiku 5.5 (key goes in config.json)", variable=self.ai_on).pack(side="left")
         ttk.Checkbutton(ex, text="Back up to Cloudinary (set keys in config.json)", variable=self.cl_on).pack(side="left", padx=14)
 
         # --- buttons
@@ -105,6 +103,7 @@ class App:
         ttk.Button(bb, text="Scan now", command=self.scan_now).pack(side="left", padx=6)
         ttk.Button(bb, text="Test on a video file...", command=self.test_file).pack(side="left", padx=6)
         ttk.Button(bb, text="Save settings", command=self.save).pack(side="left", padx=6)
+        ttk.Button(bb, text="Check setup", command=self.check_setup).pack(side="left", padx=6)
         self.bar = ttk.Progressbar(root, mode="indeterminate"); self.bar.pack(fill="x", padx=14)
         self.logbox = tk.Text(root, height=12, wrap="word", state="disabled"); self.logbox.pack(fill="both", expand=True, padx=14, pady=8)
         self.refresh_tree()
@@ -117,6 +116,11 @@ class App:
         try:
             while True:
                 m = self.q.get_nowait()
+                if isinstance(m, tuple) and m[0] == "__add__":
+                    self.cfg["sources"].append(m[1]); self.refresh_tree(); self.save()
+                    self.s_link.set(""); self.s_lic.set(False)
+                    self.log(f"added channel: {m[1]['name']} ({m[1]['location']})")
+                    continue
                 if m == "\0done":
                     self.bar.stop(); self.start_btn.config(state="normal"); self.stop_btn.config(state="disabled"); continue
                 self.logbox.config(state="normal"); self.logbox.insert("end", m + "\n"); self.logbox.see("end"); self.logbox.config(state="disabled")
@@ -127,25 +131,37 @@ class App:
     def refresh_tree(self):
         self.tree.delete(*self.tree.get_children())
         for d in self.cfg["sources"]:
-            self.tree.insert("", "end", values=(d["kind"], f'{d["name"]}  -  {d["location"]}', "yes" if d.get("licensed") and d.get("license_note") else "NO"))
+            self.tree.insert("", "end", values=(d["name"], d["location"],
+                                                "yes" if d.get("licensed") and d.get("license_note") else "NO"))
+
+    def paste_link(self):
+        try:
+            self.s_link.set(self.root.clipboard_get().strip())
+        except tk.TclError:
+            pass
 
     def add_source(self):
-        if not self.s_name.get().strip() or not self.s_loc.get().strip():
-            return messagebox.showinfo("Sources", "Give the source a name and a location.")
-        if not (self.s_lic.get() and self.s_note.get().strip()):
-            return messagebox.showwarning("Sources", "Tick the permission box and write where the permission comes from. Sources without it are never processed.")
-        self.cfg["sources"].append(rights.Source(self.s_name.get().strip(), self.s_kind.get(), self.s_loc.get().strip(), True, self.s_note.get().strip()).to_dict())
-        self.s_name.set(""); self.s_loc.set(""); self.s_note.set(""); self.s_lic.set(False)
-        self.refresh_tree(); self.save()
+        if not self.s_lic.get():
+            return messagebox.showwarning("Add channel", "Tick the box first: you own the channel or have permission to use its videos.")
+        link = self.s_link.get()
+        self.log("looking up the channel ...")
+        def job():
+            try:
+                info = sources.resolve_youtube(link)
+            except Exception as e:
+                self.q.put(f"could not add the channel: {e}")
+                return
+            note = f"Owner confirmed in the app on {datetime.now():%Y-%m-%d}"
+            self.q.put(("__add__", rights.Source(info["name"], "youtube", info["location"], True, note).to_dict()))
+        threading.Thread(target=job, daemon=True).start()
 
     def remove_source(self):
         for i in sorted((self.tree.index(x) for x in self.tree.selection()), reverse=True):
             del self.cfg["sources"][i]
         self.refresh_tree(); self.save()
 
-    def pick_src_folder(self):
-        d = filedialog.askdirectory()
-        if d: self.s_kind.set("folder"); self.s_loc.set(d)
+    def check_setup(self):
+        self._go(lambda: checks.run(config.load(), self.log))
 
     def pick_out(self):
         d = filedialog.askdirectory()

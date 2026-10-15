@@ -15,12 +15,15 @@ so hiding logos would not make unlicensed footage safe - use licensed, own, or p
 2. Double-click `SportsClipper-Mac.zip` in Downloads. A file named **SportsClipper** appears.
 3. Open **Terminal** (`Command + Space`, type `Terminal`, Enter). Type `xattr -cr ` (with a space at the end, do NOT press Enter yet), drag **SportsClipper** from Downloads into the Terminal window, then press **Enter**. Nothing visible happens, which is normal.
 4. Close Terminal and double-click **SportsClipper**. If the Mac still refuses: right-click it, choose **Open**, then **Open**.
-5. In the window: add a source (name, type, channel ID starting with UC or a folder, tick the permission box and write where the permission comes from), choose the scan schedule and the minutes after the source posts, then **Save settings**.
+5. **Add a channel.** Paste the channel's YouTube link (for example `https://www.youtube.com/@ChannelName`) and press **Add channel**. The name and channel ID fill in by themselves. Tick the box saying you own the channel or have permission to use its videos first. Choose the scan schedule and the minutes after the source posts, then **Save settings**.
+5b. **Check setup.** Press **Check setup**. Every line says OK or FAIL with the reason, so you can see what works.
 6. Press **Test on a video file...** first and pick any video. Results are saved in `SportsClipper/output/manual` inside your home folder.
 7. For auto-upload: in Google Cloud Console create a project, enable *YouTube Data API v3*, create an *OAuth client ID* (type *Desktop app*) and download the json file. In the program tick **Upload to our channel**, choose that file, **Save settings**. The first upload opens a browser page where you approve once.
 8. Press **Start 24/7** and leave the program open. Keep the Mac plugged in with sleep turned off (System Settings > Battery > Options).
 
 Nothing else to install - ffmpeg is built into the app, and no password is needed.
+
+**AI titles (Claude Haiku 5.5, optional):** this is the default. Without a key the app uses plain titles. To use it, open `~/SportsClipper/config.json` and put your Anthropic API key in `"api_key"` under `"ai"`, then Save settings. The key is separate from a Claude chat subscription.
 
 ## Developers: run from source
 `pip install -r requirements.txt` then `python -m sportsclipper gui` (or `clip FILE`, `scan`, `run`). `install-launchd` makes the CLI start at login.

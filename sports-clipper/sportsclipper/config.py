@@ -26,7 +26,7 @@ DEFAULTS = {
     "upload": {"enabled": False, "privacy": "public", "category_id": "17",
                "client_secret": "", "token": os.path.join(HOME, "youtube_token.json")},
     "cloudinary": {"enabled": False, "cloud_name": "", "api_key": "", "api_secret": ""},
-    "ai": {"enabled": False, "model": "claude-haiku-5-5", "api_key_env": "ANTHROPIC_API_KEY"},
+    "ai": {"enabled": True, "model": "claude-haiku-5-5", "api_key_env": "ANTHROPIC_API_KEY", "api_key": ""},
     "channel_name": "",
     "tags": [],
 }
