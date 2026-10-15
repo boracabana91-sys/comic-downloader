@@ -109,11 +109,11 @@ class App:
         self.ratio = tk.IntVar(value=int(self.cfg["target_ratio"] * 100))
         ttk.Label(rr, text="   Keep about").pack(side="left")
         ttk.Spinbox(rr, from_=20, to=100, width=4, textvariable=self.ratio).pack(side="left", padx=4)
-        ttk.Label(rr, text="% of the video").pack(side="left")
+        ttk.Label(rr, text="% of the video (Highlights: the final length)").pack(side="left")
         self.hl = tk.BooleanVar(value=bool(self.cfg.get("highlights", False)))
         hlf = ttk.Frame(page); hlf.pack(fill="x", padx=14, pady=(2, 0))
         ttk.Checkbutton(hlf, text="Highlights", variable=self.hl).pack(side="left")
-        ttk.Label(hlf, text="  cut only dead time (first minute, timeouts, free throws, post-game). Play stays in game order at normal speed.",
+        ttk.Label(hlf, text="  dead time out (intro, timeouts, free throws, post-game), then whole chunks of play spread evenly to reach the length. Game order, normal speed.",
                   foreground="#555").pack(side="left")
         ttk.Label(page, text="Sizes above the source are upscaled and marked 'upscaled': sharper than a plain stretch, but not real extra detail.",
                   foreground="#777").pack(anchor="w", padx=14)
@@ -160,7 +160,7 @@ class App:
         self.preview.pack(fill="both", expand=True)
         btns = ttk.Frame(right); btns.pack(pady=6)
         ttk.Button(btns, text="Open thumbnail", command=lambda: self.open_selected("thumb")).pack(side="left", padx=4)
-        ttk.Button(btns, text="Open video (best size)", command=lambda: self.open_selected("video")).pack(side="left", padx=4)
+        ttk.Button(btns, text="Open video (upload size)", command=lambda: self.open_selected("video")).pack(side="left", padx=4)
         ttk.Button(btns, text="Show folder", command=lambda: self.open_selected("folder")).pack(side="left", padx=4)
         ttk.Button(btns, text="Refresh", command=self.refresh_results).pack(side="left", padx=4)
         self.result_items = {}
@@ -194,6 +194,9 @@ class App:
                     self.cfg["sources"].append(m[1]); self.refresh_tree(); self.save()
                     self.s_link.set(""); self.s_lic.set(False)
                     self.log(f"added channel: {m[1]['name']} ({m[1]['location']})")
+                    continue
+                if isinstance(m, tuple) and m[0] == "__error__":
+                    messagebox.showerror(m[1], m[2])
                     continue
                 if isinstance(m, tuple) and m[0] == "__status__":
                     self.st, self.st_t = (m[1], m[2]), time.time()
@@ -284,7 +287,7 @@ class App:
             except Exception as e:
                 msg = str(e)[:800]
                 self.log(f"RECLIP FAILED: {msg}")
-                self.root.after(0, lambda: messagebox.showerror("Reclip failed", msg))
+                self.q.put(("__error__", "Reclip failed", msg))   # pop-ups only from the main thread (macOS crash fix)
         self._go(fn)
 
     def check_setup(self):
@@ -353,7 +356,7 @@ class App:
             except Exception as e:
                 msg = str(e)[:800]
                 self.log(f"TEST FAILED: {msg}")
-                self.root.after(0, lambda: messagebox.showerror("Test failed", msg))
+                self.q.put(("__error__", "Test failed", msg))
         self._go(fn)
 
     def refresh_results(self):
@@ -388,7 +391,8 @@ class App:
         if what == "thumb":
             path = r["thumb"]
         elif what == "video":
-            path = r["videos"][0][1] if r["videos"] else None
+            want = config.load().get("upload_resolution", 1080)     # not the 4K: that one is huge
+            path = min(r["videos"], key=lambda v: (abs(v[0] - want), -v[0]))[1] if r["videos"] else None
         else:
             path = r["folder"]
         if not path:

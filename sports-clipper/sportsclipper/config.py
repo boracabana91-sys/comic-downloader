@@ -22,10 +22,13 @@ DEFAULTS = {
     "min_clip_s": 6,
     "trim_start_s": 0,
     "clock_roi": [0.475, 0.828, 0.052, 0.050],  # x, y, w, h as fractions of the frame
-    "highlights": False,                  # tick in the window: cut only dead time, keep play in game order
-    "highlight_start_s": 60,              # highlights: cut the first minute (pre-game)
-    "preset": "fast",                     # x264 speed: fast is ~1.5x quicker than medium at the same CRF
-    "encoder": "libx264",                 # auto | libx264 | h264_videotoolbox
+    "highlights": False,                  # tick in the window: dead time out, then whole chunks to reach the length
+    "highlight_lead_s": 3,                # highlights: keep this many seconds before tip-off
+    "highlight_chunk_s": 45,              # highlights: longest chunk that can be dropped in one piece
+    "preset": "fast",                     # x264 speed (software encoder only)
+    "encoder": "auto",                    # auto = Apple hardware encoder on a Mac, libx264 elsewhere
+    "parallel_renders": 3,                # sizes made at the same time after the upload size (Mac)
+    "config_version": 9,
     "upload": {"enabled": False, "privacy": "public", "category_id": "17",
                "client_secret": "", "token": os.path.join(HOME, "youtube_token.json")},
     "cloudinary": {"enabled": False, "cloud_name": "", "api_key": "", "api_secret": ""},
@@ -49,7 +52,11 @@ def _merge(base: dict, over: dict) -> dict:
 def load(path: str = CONFIG_PATH) -> dict:
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return _merge(DEFAULTS, json.load(f))
+            saved = json.load(f)
+        if saved.get("config_version", 0) < 9:          # 0.9: older files saved the slow software encoder
+            saved["encoder"] = "auto"
+            saved["config_version"] = 9
+        return _merge(DEFAULTS, saved)
     except (OSError, ValueError):
         return deepcopy(DEFAULTS)
 

@@ -58,7 +58,12 @@ Outputs go to `~/SportsClipper/output/manual/`. Use `--ratio 0.6` to change how 
 
 ## Quality and resolutions
 - Every size you tick is produced. A size above your source's height (for example 1080p from a 720p video) is **upscaled** and its file name says `_upscaled`. It looks sharper than a plain stretch but cannot add detail the source never had. Real 1080p needs a 1080p source.
-- Encoding uses the software encoder (libx264) with a quality setting per size, which keeps more detail than the Mac's hardware encoder. It is slower: expect several minutes per video.
+- On a Mac, encoding uses Apple's hardware encoder (VideoToolbox) with a bitrate per size. If it is not available, that size is redone with the software encoder (libx264) automatically. To always use the software encoder, set `"encoder": "libx264"` in config.json.
+- The upload size (1080p) is made first and uploaded; the other sizes are made afterwards, several at once. The activity log shows how long each step took.
+- The source frame rate is kept exactly (29.97 stays 29.97).
+
+## Highlights tick
+Dead time is cut first: the intro before tip-off, timeouts, free-throw stretches and the post-game interview. If the video is still longer than "Keep about %", whole chunks of play (12-45 s) are dropped, spread evenly through the game, the way the reference reclip does it. Never dropped: the tip-off, the last 2 minutes, and the loudest crowd moments. Play stays in game order at normal speed.
 
 ## Thumbnail (automatic)
 After each render the app picks the clearest **solo close-up** from the video (one prominent face, sharp, not a crowd shot), keeps the scoreboard out of the frame, and adds the team names stacked on the left, the date band, and the duration badge. Grey smoke and haze are re-graded to ember red. It is uploaded to YouTube with the video. The "Auto thumbnail" tick turns it off.

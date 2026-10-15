@@ -89,6 +89,44 @@ def _chunk(segs, motion, min_len, max_len):
     return sorted(out)
 
 
+def _even_drop(segs: list, loud_z: np.ndarray, target: float) -> list:
+    """Highlights: shorten to the target by dropping whole chunks of play, spread evenly through the game
+    (what the reference reclip does). Never dropped: the tip-off chunk, the last 2 minutes of play, and
+    any chunk holding one of the loudest crowd moments. Returns the indices of the chunks kept, in order."""
+    n = len(segs)
+    if n < 3:
+        return list(range(n))
+    length = [b - a for a, b in segs]
+    center = [(a + b) / 2 for a, b in segs]
+    end = segs[-1][1]
+    live_secs = np.concatenate([np.arange(int(a), int(b)) for a, b in segs])
+    live_secs = live_secs[live_secs < len(loud_z)]
+    thr = np.quantile(loud_z[live_secs], 0.98) if len(live_secs) else np.inf
+    protect = {0}
+    for i, (a, b) in enumerate(segs):
+        if b > end - 120:
+            protect.add(i)
+        sl = loud_z[int(a):int(b)]
+        if len(sl) and sl.max() > thr:
+            protect.add(i)
+    cur = sum(length)
+    dropped: list = []
+    while cur > target * 1.01:
+        avail = [i for i in range(n) if i not in protect and i not in dropped and cur - length[i] >= target * 0.95]
+        apart = [i for i in avail if i - 1 not in dropped and i + 1 not in dropped]   # no back-to-back drops
+        avail = apart or avail
+        if not avail:
+            break
+        k = len(dropped) + max(1, round((cur - target) / (sum(length[i] for i in avail) / len(avail))))
+        span_a, span_b = segs[0][0], end
+        slots = [span_a + (j + 0.5) * (span_b - span_a) / k for j in range(k)]
+        pos = max(slots, key=lambda p: min([abs(p - center[d]) for d in dropped] or [1e9]))
+        i = min(avail, key=lambda i: abs(center[i] - pos))
+        dropped.append(i)
+        cur -= length[i]
+    return [i for i in range(n) if i not in dropped]
+
+
 def plan(path: str, cfg: dict, log=print) -> dict:
     progress.set("analysing the video")
     info = media.probe(path)
@@ -99,11 +137,16 @@ def plan(path: str, cfg: dict, log=print) -> dict:
     live = live_mask(clk, secs, cfg["min_dead_s"])
     hl = bool(cfg.get("highlights"))
     if hl:
-        # highlights: cut only dead time. Short gaps in the scoreboard read are kept as play.
+        # highlights: short gaps in the scoreboard read are kept as play
         for r in _runs(~live):
             if r[1] - r[0] <= 8 and r[0] > 0 and r[1] < secs:
                 live[r[0]:r[1]] = True
-        live[: int(cfg.get("highlight_start_s", 60))] = False      # first minute: pre-game
+        # start a few seconds before tip-off (first stretch of running clock), like the reference reclip
+        tip = next((a for a, b in _runs(live) if b - a >= 20), None)     # 20 s of running clock = game on
+        if tip is not None:
+            lead = int(cfg.get("highlight_lead_s", 3))
+            live[:tip] = False
+            live[max(0, tip - lead):tip] = True
     else:
         live[: int(cfg.get("trim_start_s", 0))] = False
     pad = cfg["pad_s"]
@@ -117,7 +160,10 @@ def plan(path: str, cfg: dict, log=print) -> dict:
     segs = [s for s in merged if s[1] - s[0] >= cfg["min_clip_s"]]
     after_dead = sum(b - a for a, b in segs)
     motion = np.r_[0, np.abs(np.diff(mot, axis=0)).mean(1)] if len(mot) > 1 else np.zeros(secs)
-    segs = _chunk(segs, motion, cfg["min_clip_s"], cfg.get("max_clip_s", 30))
+    if hl:      # possession-sized chunks (12-45 s), split at camera cuts, so whole stretches can be dropped
+        segs = _chunk(segs, motion, max(12, cfg["min_clip_s"]), cfg.get("highlight_chunk_s", 45))
+    else:
+        segs = _chunk(segs, motion, cfg["min_clip_s"], cfg.get("max_clip_s", 30))
 
     # interest per segment: crowd loudness + motion, z-scored over the whole video
     rms = np.sqrt((aud[: len(aud) // 8000 * 8000].reshape(-1, 8000) ** 2).mean(1)) if len(aud) >= 8000 else np.zeros(secs)
@@ -132,9 +178,11 @@ def plan(path: str, cfg: dict, log=print) -> dict:
     total = info["duration"]
     target = cfg["target_ratio"] * total
     kept = list(range(len(segs)))
-    if not hl and target > 0 and after_dead > target:
+    if hl and target > 0 and after_dead > target:
+        kept = _even_drop(segs, rz, target)
+    elif not hl and target > 0 and after_dead > target:
         order = sorted(kept, key=lambda i: interest(segs[i]))
-        cur = after_chunked = sum(b - a for a, b in segs)
+        cur = sum(b - a for a, b in segs)
         for i in order:
             if cur <= target:
                 break
