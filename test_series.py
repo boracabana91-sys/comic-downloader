@@ -29,7 +29,18 @@ class Site(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
-        if path == "/series/demo":
+        if path == "/series/hidden":  # chapter list is NOT in the page: only the series number
+            body = ('<html><head><title>Hidden Comic - Lua Comic</title></head><body>'
+                    '<script>self.__next_f.push([1,"{\\"series_id\\":769}"])</script></body></html>')
+        elif path == "/chapter/query":
+            page = int(self.path.split("page=")[1].split("&")[0])
+            rows = [3, 2, 1][(page - 1) * 2: page * 2]  # 2 per page here, newest first
+            import json as _j
+            body = _j.dumps({"meta": {"total": 3, "last_page": 2, "current_page": page},
+                             "data": [{"chapter_name": f"Chapter {n}", "chapter_slug": f"chapter-{n}",
+                                       "price": 0, "series": {"series_slug": "hidden"}}
+                                      for n in rows]})
+        elif path == "/series/demo":
             # newest first, one link twice, a sidebar link to ANOTHER series, one broken chapter
             links = "".join(f'<a href="/series/demo/chapter-{n}">Chapter {n}</a>' for n in (3, 2, 1))
             body = ('<html><head><title>Demo Comic | Lua Comic</title></head><body>'
@@ -69,6 +80,10 @@ def main():
     info = series.inspect_series(base + "/series/demo")
     assert info["title"] == "Demo Comic", info["title"]
     assert [u.rsplit("-", 1)[1] for u in info["chapters"]] == ["1", "2", "3"], info["chapters"]
+    hid = series.inspect_series(base + "/series/hidden", api_base=base)
+    assert hid["title"] == "Hidden Comic" and hid["total"] == 3, hid
+    assert [u.rsplit("/", 1)[1] for u in hid["chapters"]] == ["chapter-1", "chapter-2", "chapter-3"], hid
+    assert hid["chapters"][0] == base + "/series/hidden/chapter-1"
     names = series.chapter_names("Demo Comic", info["chapters"])
     assert names[0] == "Demo Comic - Chapter 001" and names[2] == "Demo Comic - Chapter 003"
     assert series.chapter_number("https://x/a/chapter-12-5") == 12.5

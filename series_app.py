@@ -357,6 +357,11 @@ class SeriesApp:
                 self.q.put(("chapters", info["title"], info["chapters"]))
                 self.say(f"Found {len(info['chapters'])} chapters of '{info['title']}'. "
                          "Tick the ones you want, choose your gadget, then press Download.")
+                tot = info.get("total")
+                if tot and tot != len(info["chapters"]):
+                    self.say(f"Note: the website says it has {tot} chapters but only "
+                             f"{len(info['chapters'])} can be downloaded (some may be paid or "
+                             "locked).")
                 self.q.put(("status", "Ready."))
         except Exception as e:
             msg = str(e)

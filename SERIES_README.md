@@ -21,5 +21,8 @@ Comic Downloader = one chapter link. **Comic Series Downloader = a page that lis
 ## Mac "blocked app" fix
 Terminal: type `xattr -cr ` (with a space), drag the app into the window, press Enter.
 
+## Chapter finder
+On luacomic.org it asks the website for the full chapter list (all pages, 30 at a time) using the series number in the page. Other sites: it reads the chapter links in the page.
+
 ## Not yet tested on a real site
-Finding the chapter list has been tested on a practice website only, not on luacomic.org (the build computer cannot reach it). If "No chapters found" appears, send the link to your developer.
+The chapter finder was written from the real luacomic.org data you sent, but was tested here on a practice website, because the build computer cannot reach luacomic.org. If "No chapters found" appears, send the link to your developer.

@@ -119,12 +119,63 @@ def find_chapters(parsed, base_url):
     return cand
 
 
-def inspect_series(url, fetch_text=None):
-    """Read the series page. Returns {'title': str, 'chapters': [urls oldest first]}."""
-    html = (fetch_text or core.fetch_text)(url)
+SERIES_ID = re.compile(r'series_id\\*"\s*:\s*(\d+)')
+
+
+def _chapters_from_api(url, html, fetch_text, api_base=None):
+    """Sites like luacomic.org fill the chapter list in after the page opens, from their own
+    server. The page source holds the series number; the server returns 30 chapters a page.
+    Returns (urls oldest first, total the site reports) or None if this is not such a site."""
+    m = SERIES_ID.search(core._unescape_js(html).replace('\\"', '"')) or SERIES_ID.search(html)
+    if not m:
+        return None
+    u = urlparse(url)
+    host = u.netloc[4:] if u.netloc.startswith("www.") else u.netloc
+    api = api_base or f"{u.scheme}://api.{host}"
+    slug = u.path.rstrip("/").rsplit("/", 1)[-1]
+    urls, total, page, last = [], None, 1, 1
+    while page <= last and page <= 200:
+        data = json.loads(fetch_text(
+            f"{api}/chapter/query?page={page}&perPage=30&query=&order=desc&series_id={m.group(1)}"))
+        meta = data.get("meta") or {}
+        total = meta.get("total", total)
+        last = meta.get("last_page", 1) or 1
+        for ch in data.get("data") or []:
+            cs = ch.get("chapter_slug")
+            if not cs or ch.get("price"):   # a paid chapter cannot be downloaded
+                continue
+            ss = (ch.get("series") or {}).get("series_slug") or slug
+            urls.append(f"{u.scheme}://{u.netloc}/series/{ss}/{cs}")
+        page += 1
+    return urls, total
+
+
+def _sort_chapters(urls):
+    seen = list(dict.fromkeys(urls))
+    nums = [chapter_number(x) for x in seen]
+    if seen and all(n is not None for n in nums):
+        best = {}
+        for n, x in zip(nums, seen):
+            best.setdefault(n, x)
+        return [best[n] for n in sorted(best)]
+    return list(reversed(seen))
+
+
+def inspect_series(url, fetch_text=None, api_base=None):
+    """Read the series page. Returns {'title': str, 'chapters': [urls oldest first],
+    'total': number the site says it has, or None}."""
+    ft = fetch_text or core.fetch_text
+    html = ft(url)
     p = _Links()
     p.feed(html)
     p.close()
+    title = core.clean_title(p.og_title or p.title, "Series")
+    try:
+        got = _chapters_from_api(url, html, ft, api_base)
+    except Exception:
+        got = None
+    if got and got[0]:
+        return {"title": title, "chapters": _sort_chapters(got[0]), "total": got[1]}
     chapters = find_chapters(p, url)
     # Some sites show the chapter list over several pages (?page=2 ...). Best effort.
     if any("page=" in h for h, _t in p.links):
@@ -132,16 +183,15 @@ def inspect_series(url, fetch_text=None):
             sep = "&" if "?" in url else "?"
             try:
                 q = _Links()
-                q.feed((fetch_text or core.fetch_text)(f"{url}{sep}page={n}"))
+                q.feed(ft(f"{url}{sep}page={n}"))
                 q.close()
             except Exception:
                 break
             more = [c for c in find_chapters(q, url) if c not in chapters]
             if not more:
                 break
-            chapters = sorted(set(chapters) | set(more),
-                              key=lambda u: (chapter_number(u) is None, chapter_number(u) or 0))
-    return {"title": core.clean_title(p.og_title or p.title, "Series"), "chapters": chapters}
+            chapters = _sort_chapters(chapters + more)
+    return {"title": title, "chapters": chapters, "total": None}
 
 
 def chapter_names(series_title, urls):
