@@ -134,18 +134,23 @@ def _chapters_from_api(url, html, fetch_text, api_base=None):
     api = api_base or f"{u.scheme}://api.{host}"
     slug = u.path.rstrip("/").rsplit("/", 1)[-1]
     urls, total, page, last = [], None, 1, 1
-    while page <= last and page <= 200:
+    while page <= 300:
         data = json.loads(fetch_text(
             f"{api}/chapter/query?page={page}&perPage=30&query=&order=desc&series_id={m.group(1)}"))
         meta = data.get("meta") or {}
         total = meta.get("total", total)
-        last = meta.get("last_page", 1) or 1
-        for ch in data.get("data") or []:
+        last = meta.get("last_page") or 0
+        rows = data.get("data") or []
+        before = len(urls)
+        for ch in rows:
             cs = ch.get("chapter_slug")
             if not cs or ch.get("price"):   # a paid chapter cannot be downloaded
                 continue
             ss = (ch.get("series") or {}).get("series_slug") or slug
             urls.append(f"{u.scheme}://{u.netloc}/series/{ss}/{cs}")
+        # any number of chapters and pages: stop when the site runs out, not at a fixed count
+        if not rows or (last and page >= last) or (not last and len(rows) < 30 and before == len(urls)):
+            break
         page += 1
     return urls, total
 
