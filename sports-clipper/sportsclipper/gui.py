@@ -8,7 +8,10 @@ from tkinter import filedialog, messagebox, ttk
 
 from datetime import datetime
 
-from . import analyze, checks, config, pipeline, render, rights, sources
+import subprocess
+import sys
+
+from . import checks, config, job, pipeline, results, rights, sources
 
 RES = [2160, 1080, 720, 480, 360]
 
@@ -108,7 +111,28 @@ class App:
         ttk.Button(bb, text="Save settings", command=self.save).pack(side="left", padx=6)
         ttk.Button(bb, text="Check setup", command=self.check_setup).pack(side="left", padx=6)
         self.bar = ttk.Progressbar(root, mode="indeterminate"); self.bar.pack(fill="x", padx=14)
-        self.logbox = tk.Text(root, height=12, wrap="word", state="disabled"); self.logbox.pack(fill="both", expand=True, padx=14, pady=8)
+        self.logbox = tk.Text(root, height=8, wrap="word", state="disabled"); self.logbox.pack(fill="both", expand=True, padx=14, pady=8)
+        # --- results: thumbnail and video outputs
+        res = ttk.LabelFrame(root, text="Results: thumbnail and video outputs")
+        res.pack(fill="both", expand=True, padx=14, pady=(0, 10))
+        left = ttk.Frame(res); left.pack(side="left", fill="y", padx=6, pady=6)
+        self.res_tree = ttk.Treeview(left, columns=("title", "sizes"), show="headings", height=7)
+        self.res_tree.heading("title", text="Clip"); self.res_tree.column("title", width=280)
+        self.res_tree.heading("sizes", text="Sizes"); self.res_tree.column("sizes", width=120)
+        self.res_tree.pack()
+        self.res_tree.bind("<<TreeviewSelect>>", self.show_result)
+        right = ttk.Frame(res); right.pack(side="left", fill="both", expand=True, padx=6, pady=6)
+        self.preview = ttk.Label(right, text="Pick a clip on the left", anchor="center")
+        self.preview.pack(fill="both", expand=True)
+        btns = ttk.Frame(right); btns.pack(pady=6)
+        ttk.Button(btns, text="Open thumbnail", command=lambda: self.open_selected("thumb")).pack(side="left", padx=4)
+        ttk.Button(btns, text="Open video (best size)", command=lambda: self.open_selected("video")).pack(side="left", padx=4)
+        ttk.Button(btns, text="Show folder", command=lambda: self.open_selected("folder")).pack(side="left", padx=4)
+        ttk.Button(btns, text="Refresh", command=self.refresh_results).pack(side="left", padx=4)
+        self.result_items = {}
+        self._photo = None
+        self.refresh_results()
+
         self.refresh_tree()
         self.root.after(200, self.pump)
 
@@ -125,7 +149,7 @@ class App:
                     self.log(f"added channel: {m[1]['name']} ({m[1]['location']})")
                     continue
                 if m == "\0done":
-                    self.bar.stop(); self.start_btn.config(state="normal"); self.stop_btn.config(state="disabled"); continue
+                    self.bar.stop(); self.start_btn.config(state="normal"); self.stop_btn.config(state="disabled"); self.refresh_results(); continue
                 self.logbox.config(state="normal"); self.logbox.insert("end", m + "\n"); self.logbox.see("end"); self.logbox.config(state="disabled")
         except queue.Empty:
             pass
@@ -216,19 +240,60 @@ class App:
             filetypes=[("Video", "*.mp4 *.mov *.mkv *.m4v *.webm"), ("All files", "*")])
         if not f:
             return
+        title = os.path.splitext(os.path.basename(f))[0]
         self.log(f"testing: {os.path.basename(f)}")
         def fn():
             try:
-                cfg = config.load()
-                p = analyze.plan(f, cfg, self.log)
-                base = os.path.join(cfg["output_dir"], "manual", os.path.splitext(os.path.basename(f))[0])
-                outs = render.render(f, p["segments"], p["info"], cfg, base, self.log)
-                self.log("done. Files:\n" + "\n".join(f"  {h}p  {o}" for h, o in sorted(outs.items(), reverse=True)))
-                self.log(f"Open this folder: {os.path.dirname(base)}")
+                r = job.clip_file(f, config.load(), title, self.log)
+                self.log("done. Sizes: " + ", ".join(f"{h}p" for h in sorted(r["outputs"], reverse=True))
+                         + ("  + thumbnail" if r["thumb"] else ""))
             except Exception as e:
-                self.log(f"TEST FAILED: {e}")
-                self.root.after(0, lambda: messagebox.showerror("Test failed", str(e)[:800]))
+                msg = str(e)[:800]
+                self.log(f"TEST FAILED: {msg}")
+                self.root.after(0, lambda: messagebox.showerror("Test failed", msg))
         self._go(fn)
+
+    def refresh_results(self):
+        self.res_tree.delete(*self.res_tree.get_children())
+        self.result_items = {}
+        for i, r in enumerate(results.scan_outputs(config.load()["output_dir"])):
+            iid = str(i)
+            self.res_tree.insert("", "end", iid=iid, values=(r["title"], ", ".join(f"{h}p" for h, _ in r["videos"])))
+            self.result_items[iid] = r
+
+    def _selected(self):
+        sel = self.res_tree.selection()
+        return self.result_items.get(sel[0]) if sel else None
+
+    def show_result(self, _=None):
+        r = self._selected()
+        if not r:
+            return
+        if r["thumb"]:
+            from PIL import Image, ImageTk
+            im = Image.open(r["thumb"]); im.thumbnail((720, 405))
+            self._photo = ImageTk.PhotoImage(im)
+            self.preview.config(image=self._photo, text="")
+        else:
+            self._photo = None
+            self.preview.config(image="", text="No thumbnail for this clip")
+
+    def open_selected(self, what):
+        r = self._selected()
+        if not r:
+            return messagebox.showinfo("Results", "Pick a clip on the left first.")
+        if what == "thumb":
+            path = r["thumb"]
+        elif what == "video":
+            path = r["videos"][0][1] if r["videos"] else None
+        else:
+            path = r["folder"]
+        if not path:
+            return messagebox.showinfo("Results", "That file is not there.")
+        if sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
 
 
 def main() -> int:

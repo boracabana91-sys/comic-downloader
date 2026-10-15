@@ -3,7 +3,7 @@ import argparse
 import os
 import sys
 
-from . import analyze, config, media, pipeline, render
+from . import analyze, config, pipeline, render
 
 
 def main(argv=None) -> int:

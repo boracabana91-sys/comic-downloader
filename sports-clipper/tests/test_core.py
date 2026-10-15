@@ -102,6 +102,13 @@ class Tests(unittest.TestCase):
         self.assertEqual(img.shape[:2], (1080, 1920))
         self.assertLess(os.path.getsize(out), 2 * 1024 * 1024)
 
+    def test_clip_file_makes_videos_and_thumbnail(self):
+        from sportsclipper import job
+        c = self.cfg(); c["resolutions"] = [720]
+        r = job.clip_file(self.vid, c, "Test Game - October 14, 2026", log=lambda *_: None)
+        self.assertTrue(os.path.exists(r["outputs"][720]))
+        self.assertTrue(r["thumb"] and os.path.exists(r["thumb"]))
+
     def test_setup_check_engine(self):
         results = checks.run(config.load("/nonexistent"), log=lambda *_: None, network=False)
         engine = [r for r in results if "cutting engine" in r[1]]
