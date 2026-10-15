@@ -10,20 +10,20 @@ A source is only processed if it is ticked **licensed** AND has a note saying wh
 before a single byte is downloaded. There is no blur / recrop / logo-hiding step: copyright matching works on the footage itself,
 so hiding logos would not make unlicensed footage safe - use licensed, own, or permissioned sources.
 
-## Install on Mac - step by step
-1. **Get the files.** Download `sports-clipper-v0.1.zip` (or on GitHub: branch `sports-clipper` > Code > Download ZIP, then use the `sports-clipper` folder inside). Double-click the zip. Move the `sports-clipper` folder to your Documents folder.
-2. **Install Homebrew** (skip if you already have it). Open https://brew.sh, copy the one line it shows, open **Terminal** (`Command + Space`, type `Terminal`, Enter), paste it, press Enter, and follow what it says. This takes a few minutes.
-3. **Allow the installer to run.** In Terminal type `xattr -cr ` (with a space at the end, do NOT press Enter yet), drag the `sports-clipper` folder from Documents into the Terminal window, then press Enter. Nothing visible happens, which is normal.
-4. **Run the installer.** Double-click `install-mac.command` inside the folder. If the Mac refuses, right-click it, choose **Open**, then **Open**. Wait until it says **DONE** (a few minutes).
-5. **Open the program.** Double-click `Open Sports Clipper.command`. The window opens.
-6. **Add a source.** Type a name, choose the type (youtube / folder / link), paste the channel ID (starts with UC) or pick a folder. Tick the permission box and write where the permission comes from. Press **Add source**.
-7. **Pick your settings.** Scan schedule, minutes after the source posts (5 to 10), sizes, and Save settings.
-8. **Try it before going live.** Press **Test on a video file...**, choose any video. The result is saved in `~/SportsClipper/output/manual` (a folder named SportsClipper in your home folder).
-9. **Connect YouTube** (needed only for auto-upload). In Google Cloud Console: create a project, enable *YouTube Data API v3*, create an *OAuth client ID* of type *Desktop app*, download the json file. In the program tick **Upload to our channel**, choose that json file, Save settings. The first upload opens a browser page where you approve once.
-10. **Run 24/7.** In the program press **Start 24/7**. For it to survive restarts, open Terminal in the folder and run `.venv/bin/python -m sportsclipper install-launchd`, then paste the `launchctl load ...` line it prints. In System Settings > Battery > Options turn on preventing automatic sleep, and keep the Mac plugged in.
+## Get the program (Mac) - same way as Comic Downloader
+1. On the GitHub page of this project click **Releases** (right side), then the newest **Sports Clipper** release. Under **Assets** download `SportsClipper-Mac.zip`.
+2. Double-click `SportsClipper-Mac.zip` in Downloads. A file named **SportsClipper** appears.
+3. Open **Terminal** (`Command + Space`, type `Terminal`, Enter). Type `xattr -cr ` (with a space at the end, do NOT press Enter yet), drag **SportsClipper** from Downloads into the Terminal window, then press **Enter**. Nothing visible happens, which is normal.
+4. Close Terminal and double-click **SportsClipper**. If the Mac still refuses: right-click it, choose **Open**, then **Open**.
+5. In the window: add a source (name, type, channel ID starting with UC or a folder, tick the permission box and write where the permission comes from), choose the scan schedule and the minutes after the source posts, then **Save settings**.
+6. Press **Test on a video file...** first and pick any video. Results are saved in `SportsClipper/output/manual` inside your home folder.
+7. For auto-upload: in Google Cloud Console create a project, enable *YouTube Data API v3*, create an *OAuth client ID* (type *Desktop app*) and download the json file. In the program tick **Upload to our channel**, choose that file, **Save settings**. The first upload opens a browser page where you approve once.
+8. Press **Start 24/7** and leave the program open. Keep the Mac plugged in with sleep turned off (System Settings > Battery > Options).
 
-Optional: titles written by Claude Haiku 5.5 need an API key: in Terminal run `launchctl setenv ANTHROPIC_API_KEY your-key` and tick the box in the program.
+Nothing else to install - ffmpeg is built into the app, and no password is needed.
 
+## Developers: run from source
+`pip install -r requirements.txt` then `python -m sportsclipper gui` (or `clip FILE`, `scan`, `run`). `install-launchd` makes the CLI start at login.
 
 ## Try it on a video file first (no upload)
 ```

@@ -42,27 +42,34 @@ def render(path: str, segments: list, info: dict, cfg: dict, out_base: str, log=
     if info["has_audio"]:
         fc.append(f"[0:a]aselect='{expr}',asetpts=N/SR/TB[a]" + ";[a]asplit=%d%s" % (len(hs), "".join(f"[a{h}]" for h in hs)))
     os.makedirs(os.path.dirname(out_base), exist_ok=True)
-    outs = {}
-    cmd = [media.need("ffmpeg"), "-v", "error", "-y", "-i", path]
+    outs = {h: f"{out_base}_{h}p.mp4" for h in hs}
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
         f.write(";".join(fc)); script = f.name
-    cmd += ["-filter_complex_script", script]
-    for h in hs:
-        out = f"{out_base}_{h}p.mp4"
-        outs[h] = out
-        cmd += ["-map", f"[v{h}]"]
-        if info["has_audio"]:
-            cmd += ["-map", f"[a{h}]"]
-        if enc == "libx264":
+
+    def build(enc):
+        cmd = [media.need("ffmpeg"), "-v", "error", "-y", "-i", path, "-filter_complex_script", script]
+        for h in hs:
+            cmd += ["-map", f"[v{h}]"]
+            if info["has_audio"]:
+                cmd += ["-map", f"[a{h}]"]
             br = _bitrate(h)
-            cap = str(int(float(br[:-1]) * (1000 if br.endswith("M") else 1))) + "k"
-            cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-maxrate", cap, "-bufsize", f"{2 * int(cap[:-1])}k"]
-        else:
-            cmd += ["-c:v", enc, "-b:v", _bitrate(h)]
-        cmd += ["-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out]
+            if enc == "libx264":
+                cap = str(int(float(br[:-1]) * (1000 if br.endswith("M") else 1))) + "k"
+                cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-maxrate", cap, "-bufsize", f"{2 * int(cap[:-1])}k"]
+            else:
+                cmd += ["-c:v", enc, "-b:v", br]
+            cmd += ["-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", outs[h]]
+        return cmd
+
     log(f"rendering {', '.join(f'{h}p' for h in hs)} with {enc} ...")
     try:
-        media.run(cmd)
+        try:
+            media.run(build(enc))
+        except RuntimeError:
+            if enc == "libx264":
+                raise
+            log(f"{enc} not available, using the software encoder")
+            media.run(build("libx264"))
     finally:
         os.unlink(script)
     return outs

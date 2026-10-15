@@ -1,0 +1,59 @@
+name: Build Sports Clipper (Mac)
+
+on:
+  push:
+    branches: [sports-clipper]
+    paths: ["sports-clipper/**", ".github/workflows/build-sports-clipper.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: sports-clipper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tools
+        run: python -m pip install --upgrade pip pyinstaller -r requirements.txt
+      - name: Self-tests
+        run: python -m unittest discover -s tests
+      - name: Build Mac app
+        run: |
+          pyinstaller --windowed --collect-data certifi --collect-all imageio_ffmpeg --collect-all yt_dlp --collect-all googleapiclient --collect-all google_auth_oauthlib --collect-all tkinterdnd2 --name SportsClipper sports_clipper_app.py
+          dist/SportsClipper.app/Contents/MacOS/SportsClipper --selftest selftest.txt || true
+          echo "Built app self-test: $(cat selftest.txt)"
+          grep -qx OK selftest.txt
+          ditto -c -k --sequesterRsrc --keepParent dist/SportsClipper.app SportsClipper-Mac.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SportsClipper-Mac
+          path: sports-clipper/SportsClipper-Mac.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SportsClipper-Mac
+          path: files
+      - uses: actions/checkout@v4
+        with:
+          path: src
+      - name: Publish download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="sports-clipper-v$(tr -d '[:space:]' < src/sports-clipper/VERSION)"
+          gh release delete "$V" --repo "${{ github.repository }}" --cleanup-tag --yes || true
+          gh release create "$V" files/SportsClipper-Mac.zip \
+            --repo "${{ github.repository }}" --target "${{ github.sha }}" \
+            --title "Sports Clipper $V" \
+            --notes "Mac: download SportsClipper-Mac.zip, then follow the steps in sports-clipper/README.md."
