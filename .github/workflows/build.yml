@@ -64,12 +64,18 @@ jobs:
         with:
           path: files
           merge-multiple: true
+      - uses: actions/checkout@v4
+        with:
+          path: src
       - name: Publish downloads
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${{ github.run_number }}" files/* \
+          V="v$(tr -d '[:space:]' < src/VERSION)"
+          # the same version number replaces the old release of that number
+          gh release delete "$V" --repo "${{ github.repository }}" --cleanup-tag --yes || true
+          gh release create "$V" files/* \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
-            --title "Comic Downloader v${{ github.run_number }}" \
+            --title "Comic Downloader $V" \
             --notes "Windows: download ComicDownloader-Windows.exe. Mac: download ComicDownloader-Mac.zip. Step-by-step help is in the README."

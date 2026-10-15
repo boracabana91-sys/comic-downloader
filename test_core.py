@@ -37,43 +37,58 @@ class H(BaseHTTPRequestHandler):
 
 
 def test_epub_and_padding():
-    """EPUB for every gadget, Kobo gets .kepub.epub, and no white bars around dark pages."""
+    """Extra EPUB next to the gadget's own file, full-screen pages, no white bars on dark art."""
     if not core.HAS_PIL:
         return
     import zipfile
-    from PIL import Image
+    from PIL import Image, ImageDraw
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
-        src = os.path.join(d, "dark.png")
-        Image.new("RGB", (800, 500), (10, 10, 10)).save(src)  # short dark page
-        page = core.make_pages(src, d, 0, 1072, 1448, False)[0]
-        with Image.open(page) as im:
-            assert im.size == (1072, 1448)
-            for xy in ((5, 5), (500, 3), (500, 1444), (1068, 1440)):
-                assert max(im.getpixel(xy)) < 40, (xy, im.getpixel(xy))  # filled dark, not white
-        assert core.resolve_device("kobo", {"fmt": "EPUB (.epub)"})["ext"] == ".kepub.epub"
-        assert core.resolve_device("boox_7", {"fmt": "EPUB (.epub)"})["ext"] == ".epub"
-        assert core.resolve_device("kindle_6", {"fmt": "CBZ (.cbz)"})["ext"] == ".cbz"
-        assert core.resolve_device("kindle_6", {"fmt": "Best for this gadget"})["ext"] == ".pdf"
-        assert core.epub_warning("kindle_color") and not core.epub_warning("kobo")
-        for key in core.DEVICE_KEYS:
-            if key != "images":
-                core.resolve_device(key, {"fmt": "EPUB (.epub)"})
+        # dark webtoon strip split over two files, with a dark gap between panels
         title = "Book"
         folder = os.path.join(d, core.group_folder_name(title, 1, 2, 5))
         os.makedirs(folder)
         for i in (1, 2):
-            Image.new("RGB", (700, 2500), (200, 220, 240)).save(os.path.join(folder, f"{i:03d}.jpg"))
-        made, bad = core.build_device_files(d, title, 2, 5, "pocketbook_7", custom={"fmt": "EPUB (.epub)"})
-        assert bad == [] and made[0].endswith("Book - Pages 1-2.epub"), made
-        with zipfile.ZipFile(made[0]) as z:
+            im = Image.new("RGB", (800, 3000), (12, 12, 12))
+            dr = ImageDraw.Draw(im)
+            for y in range(100, 2900, 700):
+                dr.rectangle((60, y, 740, y + 520), fill=(150, 40, 60))
+                dr.text((120, y + 200), "panel", fill="white")
+            im.save(os.path.join(folder, f"{i:03d}.webp"))
+        before = {f: os.path.getsize(os.path.join(folder, f)) for f in os.listdir(folder)}
+        made, bad = core.build_device_files(d, title, 2, 5, "kobo", epub=True)
+        assert bad == [], bad
+        names = sorted(os.path.basename(m) for m in made)
+        assert names == ["Book - Pages 1-2.cbz", "Book - Pages 1-2.epub"], names
+        after = {f: os.path.getsize(os.path.join(folder, f)) for f in os.listdir(folder)}
+        assert before == after  # the original images (master files) are never changed
+        cbz = [m for m in made if m.endswith(".cbz")][0]
+        with zipfile.ZipFile(cbz) as z:
+            pages = sorted(z.namelist())
+            for n in pages:
+                with z.open(n) as fh:
+                    im = Image.open(fh).convert("RGB")
+                    assert im.size == (1072, 1448)
+                    for xy in ((3, 3), (536, 2), (536, 1445), (1068, 1444)):
+                        assert min(im.getpixel(xy)) < 120, (n, xy, im.getpixel(xy))  # no white bars
+        epub = [m for m in made if m.endswith(".epub")][0]
+        with zipfile.ZipFile(epub) as z:
             info = z.infolist()
             assert info[0].filename == "mimetype" and info[0].compress_type == zipfile.ZIP_STORED
             assert z.read("mimetype") == b"application/epub+zip"
             opf = z.read("OEBPS/content.opf").decode()
-            assert "pre-paginated" in opf and "cover-image" in opf
+            assert "cover-image" in opf and 'properties="svg"' in opf
             pics = [n for n in z.namelist() if n.startswith("OEBPS/Images/")]
-            assert len(pics) >= 4, pics  # two tall pictures became several screen pages
-    print("EPUB and no-white-bars OK")
+            assert len(pics) == len(pages), (len(pics), len(pages))  # every picture is inside
+            page1 = z.read("OEBPS/Text/0001.xhtml").decode()
+            assert "../Images/0001.jpg" in page1
+        # Kindle gets its PDF plus the EPUB, with a note
+        made, bad = core.build_device_files(d, title, 2, 5, "kindle_6", epub=True)
+        assert sorted(os.path.splitext(m)[1] for m in made) == [".epub", ".pdf"], made
+        assert "Kindle" in core.epub_note("kindle_6")
+        # "Just the images" + EPUB
+        made, bad = core.build_device_files(d, title, 2, 5, "epub_only")
+        assert len(made) == 1 and made[0].endswith(".epub"), made
+    print("EPUB and full-screen pages OK")
 
 
 def main():
@@ -172,7 +187,10 @@ def test_all_presets():
             name = core.group_folder_name("Book", 1, 2, 5)
             os.makedirs(os.path.join(d, name))
             Image.new("RGB", (900, 1300), (200, 220, 240)).save(os.path.join(d, name, "001.png"))
-            Image.new("RGB", (800, 4200), "white").save(os.path.join(d, name, "002.png"))
+            strip = Image.new("RGB", (800, 4200), "white")
+            for y in range(100, 4100, 300):
+                strip.paste((30, 30, 30), (80, y, 720, y + 200))  # panels with white gaps
+            strip.save(os.path.join(d, name, "002.png"))
             made, bad = core.build_device_files(d, "Book", 2, 5, key,
                                                 custom=custom if key == "custom" else None)
             assert bad == [] and len(made) == 1, (key, made, bad)

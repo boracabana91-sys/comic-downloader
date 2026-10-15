@@ -68,9 +68,15 @@ The cover is used for every download until you clear it:
 ## Send to your e-reader or tablet
 
 Pick your gadget in the **Send to** menu before pressing Download. The program also keeps the normal image folders.
-Tall pages are cut into screen-sized pages at blank gaps, so the text stays readable. Any space around a page is filled with the page's own edge color, so no white bars appear.
+Webtoon strips are joined together and cut into full-screen pages at the empty gaps between panels, so the text stays readable and the pages fill the screen. Long empty gaps are shortened. Where a page needs a little extra space, it uses the page's own plain background, so nothing extra can be seen.
 
-**File type:** leave it on **Best for this gadget**, or choose **EPUB**, **PDF** or **CBZ** for any gadget. On a Kobo, EPUB is saved as `.kepub.epub` (Kobo's own kind, full-screen pictures). A Kindle cannot open EPUB files copied over with a USB cable, so the program offers PDF instead.
+**Do you want an additional EPUB file?** Choose **Yes** to get an `.epub` file next to your gadget's own file. For each `Pages` folder you then have:
+- the gadget's own file (`.cbz` for Kobo, `.pdf` for the others),
+- the `.epub` file,
+- your original downloaded images (the master files), kept unchanged in the `Pages` folder.
+
+A Kindle cannot open EPUB files copied over with a USB cable, so on a Kindle use the PDF.
+
 When it finishes, the window tells you what to do next, and **Open folder** opens the folder holding the files to drag.
 
 | Gadget | File made | Folder |

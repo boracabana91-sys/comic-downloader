@@ -10,6 +10,11 @@ root, dnd = app.make_root()
 assert dnd, "the drag-and-drop tool did not load"
 a = app.App(root, dnd)
 
+# EPUB question is there and starts on No
+assert a.epub.get() == "No"
+a.epub.set("Yes")
+root.update()
+
 # Custom size boxes appear and read back
 a.device.set(a.device_labels[-1])
 a.update_custom()

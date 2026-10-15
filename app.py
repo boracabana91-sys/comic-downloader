@@ -106,17 +106,17 @@ class App:
             box.config(state="disabled")
         box.bind("<<ComboboxSelected>>", lambda e: self.update_custom())
 
-        ftype = ttk.Frame(root)
-        ftype.pack(fill="x", padx=14, pady=(0, 6))
-        ttk.Label(ftype, text="File type:").pack(side="left")
-        self.fmt = tk.StringVar(value=core.FILE_TYPES[0])
-        fbox = ttk.Combobox(ftype, textvariable=self.fmt, values=core.FILE_TYPES,
-                            state="readonly", width=20)
-        fbox.pack(side="left", padx=6)
-        ttk.Label(ftype, text="(Best = the type shown in brackets after your gadget)",
+        ep = ttk.Frame(root)
+        ep.pack(fill="x", padx=14, pady=(0, 6))
+        ttk.Label(ep, text="Do you want an additional EPUB file?").pack(side="left")
+        self.epub = tk.StringVar(value="No")
+        ebox = ttk.Combobox(ep, textvariable=self.epub, values=["No", "Yes"],
+                            state="readonly", width=5)
+        ebox.pack(side="left", padx=6)
+        ttk.Label(ep, text="(made next to your gadget's own file)",
                   foreground="#555").pack(side="left")
         if not core.HAS_PIL:
-            fbox.config(state="disabled")
+            ebox.config(state="disabled")
 
         # Extra boxes that only appear for "Custom size"
         self.custom_row = ttk.Frame(root)
@@ -130,7 +130,7 @@ class App:
                     textvariable=self.c_h).pack(side="left", padx=(4, 10))
         ttk.Label(self.custom_row, text="pixels   File type").pack(side="left")
         self.c_ext = tk.StringVar(value=".pdf")
-        ttk.Combobox(self.custom_row, textvariable=self.c_ext, values=[".pdf", ".cbz", ".epub"],
+        ttk.Combobox(self.custom_row, textvariable=self.c_ext, values=[".pdf", ".cbz"],
                      state="readonly", width=5).pack(side="left", padx=(4, 10))
         self.c_gray = tk.BooleanVar(value=False)
         ttk.Checkbutton(self.custom_row, text="Black and white",
@@ -290,16 +290,7 @@ class App:
                                     "(400 to 5000) in pixels. You can find it in your gadget's "
                                     "specifications.")
                 return
-        key = self.device_key()
-        if key != "images":
-            custom = dict(custom or {})
-            custom["fmt"] = self.fmt.get()
-            warn = core.epub_warning(key) if self.fmt.get().startswith("EPUB") else None
-            if warn:
-                if messagebox.askyesno("EPUB on a Kindle",
-                                       warn + "\n\nMake PDF files instead? (Recommended)"):
-                    self.fmt.set("PDF (.pdf)")
-                    custom["fmt"] = "PDF (.pdf)"
+        epub = self.epub.get() == "Yes"
         words = cleaner.all_words(self.words.get()) if self.hide.get() else []
         cover = self.cover_path if self.cover_path and os.path.isfile(self.cover_path) else None
         self.stop.clear()
@@ -309,7 +300,7 @@ class App:
         self.worker = threading.Thread(
             target=self.run,
             args=(link, self.folder.get(), size, self.convert.get(), self.device_key(), custom,
-                  words, cover),
+                  words, cover, epub),
             daemon=True)
         self.worker.start()
 
@@ -318,7 +309,7 @@ class App:
         self.q.put(("status", text))
 
     def run(self, link, out_root, size, convert, device="images", custom=None, words=None,
-            cover=None):
+            cover=None, epub=False):
         try:
             os.makedirs(out_root, exist_ok=True)
             self.say("Reading the page...")
@@ -386,16 +377,25 @@ class App:
                             self.say(f"  Some folders could not get the cover: {res['problems'][0]}")
                     except Exception as e:
                         self.say(f"  Could not add the cover to the folders ({e}).")
-                if device != "images":
-                    made, bad = core.build_device_files(out_root, title, len(imgs), size, device,
-                                                        self.progress, self.stop, custom, cover)
-                    dev = core.resolve_device(device, custom)
-                    self.say(f"  Made {len(made)} {dev['ext']} file(s) in the folder '{dev['folder']}'.")
+                target = device if device != "images" else ("epub_only" if epub else None)
+                if target:
+                    made, bad = core.build_device_files(out_root, title, len(imgs), size, target,
+                                                        self.progress, self.stop, custom, cover,
+                                                        epub=epub)
+                    dev = core.resolve_device(target, custom)
+                    kinds = sorted({os.path.splitext(m)[1] for m in made})
+                    self.say(f"  Made {len(made)} file(s) ({', '.join(kinds)}) in the folder "
+                             f"'{dev['folder']}'. Your original images are kept in the "
+                             "'Pages' folders.")
                     if bad:
                         self.say(f"  {len(bad)} image(s) could not be used and were skipped.")
             self.q.put(("status", f"All done. Saved in {out_root}"))
             if device != "images":
                 self.say(core.resolve_device(device, custom)["next"])
+                if epub:
+                    self.say(core.epub_note(device))
+            elif epub:
+                self.say(core.resolve_device("epub_only")["next"])
         except core.Stopped:
             self.q.put(("status", "Stopped."))
             self.say("Stopped. Press Download again to continue where it left off.")
