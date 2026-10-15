@@ -26,7 +26,7 @@ jobs:
         run: python -m unittest discover -s tests
       - name: Build Mac app
         run: |
-          pyinstaller --windowed --collect-data certifi --collect-all imageio_ffmpeg --collect-all yt_dlp --collect-all googleapiclient --collect-all google_auth_oauthlib --collect-all tkinterdnd2 --name SportsClipper sports_clipper_app.py
+          pyinstaller --windowed --collect-data certifi --collect-all imageio_ffmpeg --collect-data cv2 --collect-all yt_dlp --collect-all googleapiclient --collect-all google_auth_oauthlib --collect-all tkinterdnd2 --name SportsClipper sports_clipper_app.py
           dist/SportsClipper.app/Contents/MacOS/SportsClipper --selftest selftest.txt || true
           echo "Built app self-test: $(cat selftest.txt)"
           grep -qx OK selftest.txt

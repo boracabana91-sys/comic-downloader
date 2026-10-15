@@ -55,3 +55,12 @@ Outputs go to `~/SportsClipper/output/manual/`. Use `--ratio 0.6` to change how 
 
 ## Tests
 `python3 -m unittest discover -s tests`
+
+## Quality and resolutions
+- Every size you tick is produced. A size above your source's height (for example 1080p from a 720p video) is **upscaled** and its file name says `_upscaled`. It looks sharper than a plain stretch but cannot add detail the source never had. Real 1080p needs a 1080p source.
+- Encoding uses the software encoder (libx264) with a quality setting per size, which keeps more detail than the Mac's hardware encoder. It is slower: expect several minutes per video.
+
+## Thumbnail (automatic)
+After each render the app picks the clearest **solo close-up** from the video (one prominent face, sharp, not a crowd shot), keeps the scoreboard out of the frame, and adds the team names stacked on the left, the date band, and the duration badge. Grey smoke and haze are re-graded to ember red. It is uploaded to YouTube with the video. The "Auto thumbnail" tick turns it off.
+
+Limits: it can't tell which player is the "best"; it picks the clearest close-up. Choosing by stats needs a stats source, which is a future step.

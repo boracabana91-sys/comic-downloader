@@ -14,7 +14,7 @@ DEFAULTS = {
     "schedule": {"mode": "interval", "hours": 2, "times": ["09:00", "21:00"]},
     "publish_delay_min": [5, 10],      # minutes after the source was published
     "resolutions": [2160, 1080, 720, 480, 360],
-    "allow_upscale": False,            # a 720p source cannot become real 4K
+    "allow_upscale": True,      # 1080p/4K ticked on a 720p source are upscaled and labelled            # a 720p source cannot become real 4K
     "upload_resolution": 1080,
     "target_ratio": 0.59,              # Reclip kept 59% of Original
     "min_dead_s": 4,                   # clock frozen longer than this = cut
@@ -22,12 +22,13 @@ DEFAULTS = {
     "min_clip_s": 6,
     "trim_start_s": 0,
     "clock_roi": [0.475, 0.828, 0.052, 0.050],  # x, y, w, h as fractions of the frame
-    "encoder": "auto",                 # auto | libx264 | h264_videotoolbox
+    "encoder": "libx264",                 # auto | libx264 | h264_videotoolbox
     "upload": {"enabled": False, "privacy": "public", "category_id": "17",
                "client_secret": "", "token": os.path.join(HOME, "youtube_token.json")},
     "cloudinary": {"enabled": False, "cloud_name": "", "api_key": "", "api_secret": ""},
     "ai": {"enabled": True, "model": "claude-haiku-5-5", "api_key_env": "ANTHROPIC_API_KEY", "api_key": ""},
     "channel_name": "",
+    "thumbnail": {"enabled": True},
     "tags": [],
 }
 

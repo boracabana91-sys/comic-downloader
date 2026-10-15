@@ -80,7 +80,7 @@ class App:
         ttk.Label(rr, text="   Keep about").pack(side="left")
         ttk.Spinbox(rr, from_=20, to=100, width=4, textvariable=self.ratio).pack(side="left", padx=4)
         ttk.Label(rr, text="% of the video").pack(side="left")
-        ttk.Label(root, text="Sizes above the source's own height are skipped (a 720p video cannot become real 4K).",
+        ttk.Label(root, text="Sizes above the source are upscaled and marked 'upscaled': sharper than a plain stretch, but not real extra detail.",
                   foreground="#777").pack(anchor="w", padx=14)
 
         # --- YouTube
@@ -93,8 +93,10 @@ class App:
         ttk.Button(yt, text="Choose", command=self.pick_secret).pack(side="left")
         ex = ttk.Frame(root); ex.pack(fill="x", padx=14, pady=4)
         self.ai_on = tk.BooleanVar(value=self.cfg["ai"]["enabled"]); self.cl_on = tk.BooleanVar(value=self.cfg["cloudinary"]["enabled"])
+        self.th_on = tk.BooleanVar(value=self.cfg["thumbnail"]["enabled"])
         ttk.Checkbutton(ex, text="Write titles with Claude Haiku 5.5 (key goes in config.json)", variable=self.ai_on).pack(side="left")
         ttk.Checkbutton(ex, text="Back up to Cloudinary (set keys in config.json)", variable=self.cl_on).pack(side="left", padx=14)
+        ttk.Checkbutton(ex, text="Auto thumbnail", variable=self.th_on).pack(side="left", padx=14)
 
         # --- buttons
         bb = ttk.Frame(root); bb.pack(fill="x", padx=14, pady=8)
@@ -180,7 +182,7 @@ class App:
         c["resolutions"] = [h for h in RES if self.res[h].get()] or [1080]
         c["target_ratio"] = max(0.2, min(1.0, self.ratio.get() / 100))
         c["upload"]["enabled"] = self.up_on.get(); c["upload"]["client_secret"] = self.secret.get()
-        c["ai"]["enabled"] = self.ai_on.get(); c["cloudinary"]["enabled"] = self.cl_on.get()
+        c["ai"]["enabled"] = self.ai_on.get(); c["cloudinary"]["enabled"] = self.cl_on.get(); c["thumbnail"]["enabled"] = self.th_on.get()
         config.save(c)
 
     # ---- actions

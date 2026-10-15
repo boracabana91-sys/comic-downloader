@@ -51,3 +51,9 @@ def backup_cloudinary(cfg: dict, path: str, log=print) -> str:
     cloudinary.config(cloud_name=c["cloud_name"], api_key=c["api_key"], api_secret=c["api_secret"], secure=True)
     r = cloudinary.uploader.upload_large(path, resource_type="video", folder="sportsclipper")
     return r["secure_url"]
+
+
+def set_thumbnail(cfg: dict, video_id: str, path: str) -> None:
+    from googleapiclient.http import MediaFileUpload
+    youtube_service(cfg).thumbnails().set(
+        videoId=video_id, media_body=MediaFileUpload(path, mimetype="image/jpeg")).execute()

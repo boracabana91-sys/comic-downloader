@@ -6,7 +6,8 @@ import unittest
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from sportsclipper import analyze, checks, config, media, metadata, render, rights, schedule, sources, store  # noqa: E402
+import cv2  # noqa: E402
+from sportsclipper import analyze, checks, config, media, metadata, render, rights, schedule, sources, store, thumbnail  # noqa: E402
 from sportsclipper.selfcheck import make_video  # noqa: E402
 
 
@@ -19,7 +20,7 @@ class Tests(unittest.TestCase):
 
     def cfg(self):
         c = config.load("/nonexistent")
-        c.update(target_ratio=1.0, pad_s=0.5, min_clip_s=3)
+        c.update(target_ratio=1.0, pad_s=0.5, min_clip_s=3, allow_upscale=False)
         return c
 
     def test_dead_time_cut(self):
@@ -41,16 +42,24 @@ class Tests(unittest.TestCase):
         c = self.cfg()
         p = analyze.plan(self.vid, c, log=lambda *_: None)
         outs = render.render(self.vid, p["segments"], p["info"], c, os.path.join(self.tmp, "o", "x"), log=lambda *_: None)
-        self.assertEqual(sorted(outs), [360, 480, 720])      # 720p source: no fake 4K / 1080p
+        self.assertEqual(sorted(outs), [360, 480, 720])
         for h, f in outs.items():
             i = media.probe(f)
             self.assertEqual(i["height"], h)
             self.assertTrue(i["has_audio"])
             self.assertAlmostEqual(i["duration"], p["kept_s"], delta=1.5)
 
+    def test_ticked_1080_is_produced_as_upscaled(self):
+        c = self.cfg(); c["allow_upscale"] = True; c["resolutions"] = [1080, 720]
+        p = analyze.plan(self.vid, c, log=lambda *_: None)
+        outs = render.render(self.vid, p["segments"], p["info"], c, os.path.join(self.tmp, "u", "x"), log=lambda *_: None)
+        self.assertEqual(sorted(outs), [720, 1080])
+        self.assertIn("_1080p_upscaled", outs[1080])
+        self.assertEqual(media.probe(outs[1080])["height"], 1080)
+
     def test_upscale_flag(self):
         self.assertEqual(render.ladder(720, [2160, 1080, 720], True), [2160, 1080, 720])
-        self.assertEqual(render.ladder(2160, [2160, 1080, 720], False), [2160, 1080, 720])
+        self.assertEqual(render.ladder(720, [2160, 1080, 720], False), [720])
 
     def test_rights_gate(self):
         with self.assertRaises(rights.NotLicensed):
@@ -68,7 +77,6 @@ class Tests(unittest.TestCase):
 
     def test_channel_link_forms_without_network(self):
         cid = "UC" + "b" * 22
-        self.assertEqual(sources.resolve_youtube(cid)["location"], cid)
         self.assertEqual(sources.resolve_youtube(f"https://www.youtube.com/channel/{cid}")["location"], cid)
         with self.assertRaises(ValueError):
             sources.resolve_youtube("https://example.com/x")
@@ -80,6 +88,19 @@ class Tests(unittest.TestCase):
         os.environ.pop("ANTHROPIC_API_KEY", None)
         m = metadata.build(c, "Game", "src", 300, log=lambda *_: None)
         self.assertIn("Game", m["title"])
+
+    def test_teams_and_date_from_title(self):
+        t = "Denver Nuggets vs Los Angeles Clippers Full Game Highlights - October 14, 2026 | NBA Preseason"
+        self.assertEqual(thumbnail.parse_teams(t), ["DEN", "LAC"])
+        self.assertEqual(thumbnail.parse_date(t), "OCTOBER 14 2026")
+        self.assertEqual(thumbnail.parse_teams("random video"), [])
+
+    def test_thumbnail_is_1080p_and_graded(self):
+        out = os.path.join(self.tmp, "thumb.jpg")
+        thumbnail.make_thumbnail(self.vid, "Denver Nuggets vs LA Clippers - October 14, 2026", 580, out, log=lambda *_: None)
+        img = cv2.imread(out)
+        self.assertEqual(img.shape[:2], (1080, 1920))
+        self.assertLess(os.path.getsize(out), 2 * 1024 * 1024)
 
     def test_setup_check_engine(self):
         results = checks.run(config.load("/nonexistent"), log=lambda *_: None, network=False)

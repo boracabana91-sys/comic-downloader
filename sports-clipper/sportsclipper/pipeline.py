@@ -1,4 +1,4 @@
-"""Scan -> rights check -> fetch -> analyze -> render -> (backup) -> upload."""
+"""Scan -> rights check -> fetch -> analyze -> render -> thumbnail -> (backup) -> upload."""
 from __future__ import annotations
 import os
 import random
@@ -17,24 +17,35 @@ class Pipeline:
         self.stop = stop or threading.Event()
         self.db = store.Store(os.path.join(config.HOME, "state.sqlite"))
 
-    # ---- one video -------------------------------------------------------
     def process(self, src: rights.Source, v: sources.Video, upload: bool = True) -> dict:
         cfg = self.cfg
-        rights.check(src)                                     # hard gate
+        rights.check(src)                                          # hard gate: nothing runs unless licensed
         self.db.set(src.name, v.id, v.title, "working")
         self.log(f"[{src.name}] {v.title}")
-        path = sources.fetch(v, cfg["work_dir"], max(cfg["resolutions"]) if cfg["allow_upscale"] else 1080)
+        path = sources.fetch(v, cfg["work_dir"], min(max(cfg["resolutions"]), 2160))
         info_in = media.probe(path)
         res = analyze.plan(path, cfg, self.log)
         slug = re.sub(r"[^\w-]+", "_", v.title)[:50]
         out_base = os.path.join(cfg["output_dir"], datetime.now().strftime("%Y%m%d"), slug, slug)
         outs = render.render(path, res["segments"], info_in, cfg, out_base, self.log)
         result = {"outputs": outs, "kept_s": res["kept_s"]}
+
+        thumb = None
+        if cfg["thumbnail"]["enabled"]:
+            try:
+                from . import thumbnail
+                pick = min(outs, key=lambda k: abs(k - 720))       # read the 720p render: fast and clear enough
+                thumb = thumbnail.make_thumbnail(outs[pick], v.title, res["kept_s"], out_base + "_thumb.jpg", self.log)
+                result["thumbnail"] = thumb
+            except Exception as e:
+                self.log(f"thumbnail skipped: {e}")
+
         if cfg["cloudinary"]["enabled"]:
             try:
                 result["cloudinary"] = uploader.backup_cloudinary(cfg, outs[max(outs)], self.log)
             except Exception as e:
                 self.log(f"Cloudinary backup failed: {e}")
+
         if upload and cfg["upload"]["enabled"]:
             h = cfg["upload_resolution"]
             fits = [k for k in outs if k <= h]
@@ -48,10 +59,15 @@ class Pipeline:
                 self.log(f"scheduled to go public at {due.astimezone().strftime('%H:%M')} (source + {lo}-{hi} min)")
             result["youtube_id"] = uploader.upload_youtube(cfg, best, meta, publish_at, self.log)
             self.log(f"uploaded: https://youtu.be/{result['youtube_id']}")
+            if thumb:
+                try:
+                    uploader.set_thumbnail(cfg, result["youtube_id"], thumb)
+                    self.log("thumbnail set on YouTube")
+                except Exception as e:
+                    self.log(f"thumbnail upload failed: {e}")
         self.db.set(src.name, v.id, v.title, "done", str(result.get("youtube_id", "")))
         return result
 
-    # ---- one scan --------------------------------------------------------
     def scan_once(self, upload: bool = True) -> int:
         n = 0
         for d in self.cfg["sources"]:
@@ -69,7 +85,7 @@ class Pipeline:
             except Exception as e:
                 self.log(f"[{src.name}] could not list videos: {e}"); continue
             first = not any(r[0] == src.name for r in self.db.rows(1000))
-            if first and src.kind != "folder":              # don't clip the whole back catalogue
+            if first and src.kind != "folder":                  # don't clip the whole back catalogue
                 for v in vids:
                     self.db.set(src.name, v.id, v.title, "baseline")
                 self.log(f"[{src.name}] first scan: {len(vids)} existing videos noted; only new uploads will be processed")
@@ -87,7 +103,6 @@ class Pipeline:
                     self.log(f"[{src.name}] FAILED {v.title}: {e}")
         return n
 
-    # ---- forever ---------------------------------------------------------
     def run_forever(self):
         last = None
         while not self.stop.is_set():
