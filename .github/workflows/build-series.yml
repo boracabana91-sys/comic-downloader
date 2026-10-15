@@ -1,0 +1,91 @@
+name: Build Comic Series Downloader
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "series*.py"
+      - "test_series*.py"
+      - "core.py"
+      - "cleaner.py"
+      - "covers.py"
+      - "SERIES_VERSION"
+      - ".github/workflows/build-series.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tools
+        run: python -m pip install --upgrade pip pyinstaller pillow certifi rapidocr_onnxruntime tkinterdnd2
+      - name: Self-test of the shared engine
+        run: python test_core.py
+      - name: Series test (finds chapters, downloads them one by one, skips finished ones)
+        run: python test_series.py
+      - name: Check the window code loads
+        run: python -c "import series_app"
+      - name: Open the window and try the Custom size boxes and the cover drop box
+        run: python test_series_window.py
+
+      - name: Build Windows app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          pyinstaller --onefile --windowed --osx-bundle-identifier com.boracabana.comicseriesdownloader --collect-data certifi --collect-all rapidocr_onnxruntime --collect-all onnxruntime --collect-all tkinterdnd2 --name ComicSeriesDownloader series_app.py
+          Move-Item dist/ComicSeriesDownloader.exe ComicSeriesDownloader-Windows.exe
+          Start-Process -FilePath ./ComicSeriesDownloader-Windows.exe -ArgumentList "--selftest","selftest.txt" -Wait
+          Write-Host "Built app https test: $(Get-Content selftest.txt)"
+          if ((Get-Content selftest.txt) -ne "OK") { exit 1 }
+
+      - name: Build Mac app
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --windowed --osx-bundle-identifier com.boracabana.comicseriesdownloader --collect-data certifi --collect-all rapidocr_onnxruntime --collect-all onnxruntime --collect-all tkinterdnd2 --name ComicSeriesDownloader series_app.py
+          dist/ComicSeriesDownloader.app/Contents/MacOS/ComicSeriesDownloader --selftest selftest.txt || true
+          echo "Built app https test: $(cat selftest.txt)"
+          grep -qx OK selftest.txt
+          ditto -c -k --sequesterRsrc --keepParent dist/ComicSeriesDownloader.app ComicSeriesDownloader-Mac.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ComicSeriesDownloader-${{ runner.os }}
+          path: |
+            ComicSeriesDownloader-Windows.exe
+            ComicSeriesDownloader-Mac.zip
+          if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+          merge-multiple: true
+      - uses: actions/checkout@v4
+        with:
+          path: src
+      - name: Publish downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="series-v$(tr -d '[:space:]' < src/SERIES_VERSION)"
+          # the same version number replaces the old release of that number
+          gh release delete "$V" --repo "${{ github.repository }}" --cleanup-tag --yes || true
+          gh release create "$V" files/* \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "Comic Series Downloader $V" \
+            --notes "Windows: download ComicSeriesDownloader-Windows.exe. Mac: download ComicSeriesDownloader-Mac.zip. This is a separate app from Comic Downloader; both can stay installed. Help: SERIES_README.md"

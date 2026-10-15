@@ -3,6 +3,12 @@ name: Build apps
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "series*.py"
+      - "test_series*.py"
+      - "SERIES_VERSION"
+      - "SERIES_README.md"
+      - ".github/workflows/build-series.yml"
   workflow_dispatch:
 
 permissions:
