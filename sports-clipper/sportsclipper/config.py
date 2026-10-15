@@ -22,6 +22,9 @@ DEFAULTS = {
     "min_clip_s": 6,
     "trim_start_s": 0,
     "clock_roi": [0.475, 0.828, 0.052, 0.050],  # x, y, w, h as fractions of the frame
+    "highlights": False,                  # tick in the window: cut only dead time, keep play in game order
+    "highlight_start_s": 60,              # highlights: cut the first minute (pre-game)
+    "preset": "fast",                     # x264 speed: fast is ~1.5x quicker than medium at the same CRF
     "encoder": "libx264",                 # auto | libx264 | h264_videotoolbox
     "upload": {"enabled": False, "privacy": "public", "category_id": "17",
                "client_secret": "", "token": os.path.join(HOME, "youtube_token.json")},

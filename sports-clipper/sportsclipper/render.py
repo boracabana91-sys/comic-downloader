@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import tempfile
 
+from . import progress
 from . import media
 
 CRF = {2160: 18, 1440: 19, 1080: 20, 720: 21, 480: 22, 360: 23}
@@ -63,21 +64,24 @@ def render(path: str, segments: list, info: dict, cfg: dict, out_base: str, log=
             if info["has_audio"]:
                 cmd += ["-map", f"[a{h}]"]
             if codec == "libx264":
-                cmd += ["-c:v", "libx264", "-preset", "medium", "-crf", str(CRF.get(h, 22)), "-profile:v", "high"]
+                cmd += ["-c:v", "libx264", "-preset", cfg.get("preset", "fast"), "-crf", str(CRF.get(h, 22)), "-profile:v", "high"]
             else:
                 cmd += ["-c:v", codec, "-b:v", BITRATE.get(h, "1M")]
             cmd += ["-c:a", "aac", "-b:a", AUDIO.get(h, "160k"), "-movflags", "+faststart", outs[h]]
         return cmd
 
     log(f"rendering {', '.join(f'{h}p' for h in hs)} with {enc} ...")
+    total = sum(b - a for a, b in segments)
+    names = ", ".join(f"{h}p" for h in hs)
+    on_pct = lambda p: progress.set(f"rendering {names}", p)
     try:
         try:
-            media.run(build(enc))
+            media.run_progress(build(enc), total, on_pct)
         except RuntimeError:
             if enc == "libx264":
                 raise
             log(f"{enc} not available, using the software encoder")
-            media.run(build("libx264"))
+            media.run_progress(build("libx264"), total, on_pct)
     finally:
         os.unlink(script)
     return outs

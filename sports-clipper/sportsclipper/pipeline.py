@@ -7,6 +7,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 
+from . import progress
 from . import analyze, config, media, metadata, render, rights, schedule, sources, store, uploader
 
 
@@ -23,6 +24,7 @@ class Pipeline:
         self.db.set(src.name, v.id, v.title, "working")
         self.log(f"[{src.name}] {v.title}")
         path = sources.fetch(v, cfg["work_dir"], min(max(cfg["resolutions"]), 2160))
+        progress.set("analysing the video", None)
         info_in = media.probe(path)
         res = analyze.plan(path, cfg, self.log)
         slug = re.sub(r"[^\w-]+", "_", v.title)[:50]
@@ -35,6 +37,7 @@ class Pipeline:
             try:
                 from . import thumbnail
                 pick = min(outs, key=lambda k: abs(k - 720))       # read the 720p render: fast and clear enough
+                progress.set("making the thumbnail", None)
                 thumb = thumbnail.make_thumbnail(outs[pick], v.title, res["kept_s"], out_base + "_thumb.jpg", self.log)
                 result["thumbnail"] = thumb
             except Exception as e:
@@ -57,6 +60,7 @@ class Pipeline:
             if due > datetime.now(timezone.utc) + timedelta(minutes=2):
                 publish_at = due.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
                 self.log(f"scheduled to go public at {due.astimezone().strftime('%H:%M')} (source + {lo}-{hi} min)")
+            progress.set("uploading to YouTube", None)
             result["youtube_id"] = uploader.upload_youtube(cfg, best, meta, publish_at, self.log)
             self.log(f"uploaded: https://youtu.be/{result['youtube_id']}")
             if thumb:

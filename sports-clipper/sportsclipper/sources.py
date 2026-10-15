@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from . import progress
 from .rights import Source
 
 VIDEO_EXT = (".mp4", ".mov", ".mkv", ".m4v", ".webm")
@@ -81,6 +82,12 @@ def fetch(v: Video, work_dir: str, max_height: int = 1080) -> str:
                 "ffmpeg_location": media.need("ffmpeg"),          # the app's bundled ffmpeg, no install needed
                 "format": (f"b[height<={max_height}][ext=mp4]/bv*[height<={max_height}]+ba/"
                            f"b[height<={max_height}]/b")}
+        def _hook(d):
+            tot = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+            if d.get("status") == "downloading" and tot:
+                progress.set("downloading the source", min(99, int(d.get("downloaded_bytes", 0) * 100 / tot)))
+        opts["progress_hooks"] = [_hook]
+        progress.set("downloading the source", 0)
         with yt_dlp.YoutubeDL(opts) as y:
             info = y.extract_info(v.url, download=True)
             return y.prepare_filename(info).rsplit(".", 1)[0] + ".mp4"

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 import queue
+import time
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -11,7 +12,7 @@ from datetime import datetime
 import subprocess
 import sys
 
-from . import checks, config, job, pipeline, results, rights, sources
+from . import checks, config, job, pipeline, progress, results, rights, sources
 
 RES = [2160, 1080, 720, 480, 360]
 
@@ -109,6 +110,11 @@ class App:
         ttk.Label(rr, text="   Keep about").pack(side="left")
         ttk.Spinbox(rr, from_=20, to=100, width=4, textvariable=self.ratio).pack(side="left", padx=4)
         ttk.Label(rr, text="% of the video").pack(side="left")
+        self.hl = tk.BooleanVar(value=bool(self.cfg.get("highlights", False)))
+        hlf = ttk.Frame(page); hlf.pack(fill="x", padx=14, pady=(2, 0))
+        ttk.Checkbutton(hlf, text="Highlights", variable=self.hl).pack(side="left")
+        ttk.Label(hlf, text="  cut only dead time (first minute, timeouts, free throws, post-game). Play stays in game order at normal speed.",
+                  foreground="#555").pack(side="left")
         ttk.Label(page, text="Sizes above the source are upscaled and marked 'upscaled': sharper than a plain stretch, but not real extra detail.",
                   foreground="#777").pack(anchor="w", padx=14)
 
@@ -135,7 +141,10 @@ class App:
         ttk.Button(bb, text="Test on a video file...", command=self.test_file).pack(side="left", padx=6)
         ttk.Button(bb, text="Save settings", command=self.save).pack(side="left", padx=6)
         ttk.Button(bb, text="Check setup", command=self.check_setup).pack(side="left", padx=6)
-        self.bar = ttk.Progressbar(page, mode="indeterminate"); self.bar.pack(fill="x", padx=14)
+        self.status_var = tk.StringVar(value="Idle - nothing running")
+        ttk.Label(page, textvariable=self.status_var, font=("Helvetica", 12, "bold")).pack(anchor="w", padx=14, pady=(6, 0))
+        self.bar = ttk.Progressbar(page, mode="indeterminate", maximum=100); self.bar.pack(fill="x", padx=14)
+        progress.listen(lambda text, pct: self.q.put(("__status__", text, pct)))
         self.logbox = tk.Text(page, height=12, wrap="word", state="disabled"); self.logbox.pack(fill="both", expand=True, padx=14, pady=8)
         # --- results: thumbnail and video outputs
         res = ttk.LabelFrame(page, text="Results: thumbnail and video outputs")
@@ -160,6 +169,19 @@ class App:
 
         self.refresh_tree()
         self.root.after(200, self.pump)
+        self.root.after(1000, self._status_loop)
+
+    def _status_loop(self):
+        self._refresh_status()
+        self.root.after(1000, self._status_loop)
+
+    def _refresh_status(self):
+        if not self.worker or not self.worker.is_alive() or not hasattr(self, "st"):
+            return
+        el = int(time.time() - self.job_t0)
+        text, pct = self.st
+        pc = f" - {pct}%" if pct is not None else ""
+        self.status_var.set(f"{text}{pc}   |   elapsed {el // 60}:{el % 60:02d}   |   last update {int(time.time() - self.st_t)}s ago")
 
     # ---- helpers
     def log(self, m): self.q.put(m)
@@ -173,6 +195,11 @@ class App:
                     self.s_link.set(""); self.s_lic.set(False)
                     self.log(f"added channel: {m[1]['name']} ({m[1]['location']})")
                     continue
+                if isinstance(m, tuple) and m[0] == "__status__":
+                    self.st, self.st_t = (m[1], m[2]), time.time()
+                    if m[2] is not None:
+                        self.bar.stop(); self.bar.config(mode="determinate", value=m[2])
+                    continue
                 if isinstance(m, tuple) and m[0] == "__videos__":
                     self.vid_tree.delete(*self.vid_tree.get_children()); self.vid_items = {}
                     for i, v in enumerate(m[1]):
@@ -180,7 +207,9 @@ class App:
                         self.vid_tree.insert("", "end", iid=str(i), values=(v.title, v.published.astimezone().strftime("%Y-%m-%d %H:%M")))
                     continue
                 if m == "\0done":
-                    self.bar.stop(); self.start_btn.config(state="normal"); self.stop_btn.config(state="disabled"); self.refresh_results(); continue
+                    self.bar.stop(); self.bar.config(mode="determinate", value=0)
+                    self.status_var.set("Finished - see Results below, or the log for details")
+                    self.start_btn.config(state="normal"); self.stop_btn.config(state="disabled"); self.refresh_results(); continue
                 self.logbox.config(state="normal"); self.logbox.insert("end", m + "\n"); self.logbox.see("end"); self.logbox.config(state="disabled")
         except queue.Empty:
             pass
@@ -277,6 +306,7 @@ class App:
         c["output_dir"] = self.out.get()
         c["resolutions"] = [h for h in RES if self.res[h].get()] or [1080]
         c["target_ratio"] = max(0.2, min(1.0, self.ratio.get() / 100))
+        c["highlights"] = self.hl.get()
         c["upload"]["enabled"] = self.up_on.get(); c["upload"]["client_secret"] = self.secret.get()
         c["ai"]["enabled"] = self.ai_on.get(); c["cloudinary"]["enabled"] = self.cl_on.get(); c["thumbnail"]["enabled"] = self.th_on.get()
         config.save(c)
@@ -285,7 +315,9 @@ class App:
     def _go(self, fn):
         if self.worker and self.worker.is_alive():
             return
-        self.save(); self.stop.clear(); self.bar.start(12)
+        self.save(); self.stop.clear()
+        self.bar.stop(); self.bar.config(mode="indeterminate"); self.bar.start(12)
+        self.job_t0 = time.time(); self.st = ("starting", None); self.st_t = time.time()
         self.start_btn.config(state="disabled"); self.stop_btn.config(state="normal")
         def job():
             try:

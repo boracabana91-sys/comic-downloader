@@ -13,6 +13,7 @@ import os
 import tempfile
 import numpy as np
 
+from . import progress
 from . import media
 
 CLOCK_FPS = 2
@@ -89,13 +90,22 @@ def _chunk(segs, motion, min_len, max_len):
 
 
 def plan(path: str, cfg: dict, log=print) -> dict:
+    progress.set("analysing the video")
     info = media.probe(path)
     secs = int(info["duration"])
     with tempfile.TemporaryDirectory() as tmp:
         clk, mot, aud = _extract(path, info, cfg["clock_roi"], tmp)
     secs = min(secs, len(clk) // CLOCK_FPS)
     live = live_mask(clk, secs, cfg["min_dead_s"])
-    live[: int(cfg.get("trim_start_s", 0))] = False
+    hl = bool(cfg.get("highlights"))
+    if hl:
+        # highlights: cut only dead time. Short gaps in the scoreboard read are kept as play.
+        for r in _runs(~live):
+            if r[1] - r[0] <= 8 and r[0] > 0 and r[1] < secs:
+                live[r[0]:r[1]] = True
+        live[: int(cfg.get("highlight_start_s", 60))] = False      # first minute: pre-game
+    else:
+        live[: int(cfg.get("trim_start_s", 0))] = False
     pad = cfg["pad_s"]
     segs = [[max(0.0, a - pad), min(float(secs), b + pad)] for a, b in _runs(live)]
     merged: list = []
@@ -122,7 +132,7 @@ def plan(path: str, cfg: dict, log=print) -> dict:
     total = info["duration"]
     target = cfg["target_ratio"] * total
     kept = list(range(len(segs)))
-    if target > 0 and after_dead > target:
+    if not hl and target > 0 and after_dead > target:
         order = sorted(kept, key=lambda i: interest(segs[i]))
         cur = after_chunked = sum(b - a for a, b in segs)
         for i in order:
@@ -135,6 +145,6 @@ def plan(path: str, cfg: dict, log=print) -> dict:
             cur -= length
     final = [segs[i] for i in sorted(kept)]
     kept_s = sum(b - a for a, b in final)
-    log(f"analysis: {total:.0f}s source -> live play {after_dead:.0f}s -> final {kept_s:.0f}s "
+    log(("highlights mode - " if hl else "") + f"analysis: {total:.0f}s source -> live play {after_dead:.0f}s -> final {kept_s:.0f}s "
         f"({kept_s / total:.0%}) in {len(final)} clips")
     return {"info": info, "segments": final, "kept_s": kept_s, "source_s": total, "after_dead_s": after_dead}

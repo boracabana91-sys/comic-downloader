@@ -4,16 +4,19 @@ import json
 import os
 import re
 
+from . import progress
 from . import analyze, media, render, thumbnail
 
 
 def clip_file(path: str, cfg: dict, title: str, log=print) -> dict:
+    progress.set("analysing the video", None)
     info = media.probe(path)
     plan = analyze.plan(path, cfg, log)
     slug = re.sub(r"[^\w-]+", "_", title)[:50] or "clip"
     folder = os.path.join(cfg["output_dir"], "manual", slug)
     outs = render.render(path, plan["segments"], info, cfg, os.path.join(folder, slug), log)
     thumb = None
+    progress.set("making the thumbnail", None)
     if cfg["thumbnail"]["enabled"]:
         try:
             pick = min(outs, key=lambda k: abs(k - 720))

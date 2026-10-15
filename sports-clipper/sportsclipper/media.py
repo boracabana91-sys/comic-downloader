@@ -35,3 +35,24 @@ def run(cmd: list, log=None) -> None:
     p = subprocess.run(cmd, capture_output=True, text=True)
     if p.returncode != 0:
         raise RuntimeError("ffmpeg failed: " + (p.stderr or "")[-600:])
+
+
+def run_progress(cmd: list, total_s: float, on_pct) -> None:
+    """Run ffmpeg and call on_pct(0..99) as it goes, using ffmpeg's machine-readable progress."""
+    full = [cmd[0], "-progress", "pipe:1", "-nostats"] + cmd[1:]
+    p = subprocess.Popen(full, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    last = -1
+    for line in p.stdout:
+        if line.startswith("out_time_us="):
+            try:
+                us = int(line.split("=", 1)[1])
+            except ValueError:
+                continue
+            pct = min(99, int(us / 1e6 / max(total_s, 1.0) * 100))
+            if pct != last:
+                last = pct
+                on_pct(pct)
+    err = p.stderr.read()
+    if p.wait() != 0:
+        raise RuntimeError("ffmpeg failed: " + (err or "")[-600:])
+    on_pct(100)

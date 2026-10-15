@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+
 OUT = (1920, 1080)
 W, H = OUT
 YELLOW = (250, 214, 20)       # RGB, the reference's gold-yellow
