@@ -20,6 +20,12 @@ Comic Downloader = one chapter link. **Comic Series Downloader = a page that lis
 - **Stop** any time. Press Download again and finished chapters are skipped. Come back later when new chapters appear and use **Only new ones**.
 - If you change gadget, EPUB, pages per folder, cover or promo words, finished chapters are made again for the new settings. "Make finished chapters again" forces it.
 
+## Chapter number on the cover
+When you choose a cover picture, each chapter gets its own copy with the chapter number (like #52) in the upper right. It becomes page 1 of that chapter's files and the chapter folder's thumbnail. Untick "Put the chapter number on each chapter's cover" to use the plain cover.
+
+## Window size
+Drag the window edges to resize it. The Download buttons and the log stay at the bottom. The program remembers the size and position you left it at.
+
 ## Mac "blocked app" fix
 Terminal: type `xattr -cr ` (with a space), drag the app into the window, press Enter.
 

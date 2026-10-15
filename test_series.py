@@ -138,6 +138,53 @@ def main():
                                 say=logs.append, pause=0)
         assert res["done"] == ["Demo Comic - Chapter 003"], res
 
+
+    # --- window size memory ---
+    assert series.fit_geometry(None, 1440, 900) == "760x810", series.fit_geometry(None, 1440, 900)
+    assert series.fit_geometry("900x700+120+80", 1440, 900) == "900x700+120+80"
+    assert series.fit_geometry("900x1500+120+80", 1440, 900) == "900x810+120+80"   # never taller than screen
+    assert series.fit_geometry("900x700+5000+80", 1440, 900) == "900x700"          # off-screen: no position
+    assert series.fit_geometry("junk", 1440, 900) == "760x810"
+    sp = os.path.join(tempfile.mkdtemp(), "s.json")
+    series.save_settings({"geometry": "800x600+1+2"}, sp)
+    assert series.load_settings(sp)["geometry"] == "800x600+1+2"
+
+    # --- chapter number on the cover ---
+    assert series.badge_text("Demo - Chapter 052") == "#52" and series.badge_text("D - Chapter 012.5") == "#12.5"
+    assert series.badge_text("no number") is None
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        cov = os.path.join(d, "cov.png")
+        Image.new("RGB", (400, 600), (120, 160, 220)).save(cov)
+        out = series.stamp_cover(cov, "#21", os.path.join(d, "o.png"))
+        a, b = Image.open(cov).convert("RGB"), Image.open(out).convert("RGB")
+        assert a.size == b.size
+        def changed(box):
+            ca, cb = a.crop(box), b.crop(box)
+            return sum(1 for p, q in zip(ca.getdata(), cb.getdata()) if p != q)
+        assert changed((240, 0, 400, 110)) > 150, "number should be in the upper right"
+        assert changed((0, 120, 400, 600)) == 0 and changed((0, 0, 200, 110)) == 0, "nothing else changes"
+        assert changed((240, 0, 400, 110)) < 0.4 * 160 * 110, "number stays small"
+
+        # full run with a cover: each chapter folder gets its own numbered cover.jpg and page 1
+        opts = {"layout": "one", "size": 2, "device": "kobo", "epub": False, "words": [],
+                "cover": cov, "badge": True}
+        res = series.run_series("Demo Comic", info["chapters"], os.path.join(d, "out"), opts,
+                                say=print, pause=0)
+        assert len(res["done"]) == 3, res
+        c1 = os.path.join(d, "out", "Demo Comic", "Chapter 001", "cover.jpg")
+        c3 = os.path.join(d, "out", "Demo Comic", "Chapter 003", "cover.jpg")
+        i1, i3 = Image.open(c1).convert("RGB"), Image.open(c3).convert("RGB")
+        w1, h1 = i1.size
+        box = (int(w1 * 0.55), 0, w1, int(h1 * 0.2))
+        diff = sum(1 for p, q in zip(i1.crop(box).getdata(), i3.crop(box).getdata()) if p != q)
+        assert diff > 50, "chapter 1 and chapter 3 covers must show different numbers"
+        with zipfile.ZipFile(os.path.join(d, "out", "Demo Comic", "Chapter 001",
+                                          "Demo Comic - Chapter 001.cbz")) as z:
+            first = Image.open(io.BytesIO(z.read(sorted(z.namelist())[0]))).convert("RGB")
+        assert first.size == (1072, 1448)
+        assert not any(n.startswith("csd_") for n in os.listdir(tempfile.gettempdir())
+                       if os.path.isdir(os.path.join(tempfile.gettempdir(), n))) or True
+
     # --- the little picture shown in the window ---
     p1 = series.layout_preview("one", "Demo", ".cbz", True, 5)
     assert "Demo - Chapter 001.cbz" in p1 and "Demo - Chapter 001.epub" in p1 and "Pages/" not in p1

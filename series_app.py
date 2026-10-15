@@ -20,11 +20,17 @@ if sys.stderr is None:
 
 
 class SeriesApp:
-    def __init__(self, root, dnd=False):
+    def __init__(self, root, dnd=False, settings_path=None):
         self.root = root
+        self.settings_path = settings_path
         root.title("Comic Series Downloader")
-        root.geometry("760x1010")
-        root.minsize(680, 860)
+        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
+        saved = series.load_settings(settings_path).get("geometry")
+        root.geometry(series.fit_geometry(saved, sw, sh))   # the size you left it at last time
+        root.minsize(700, 560)
+        self._save_job = None
+        root.protocol("WM_DELETE_WINDOW", self.on_close)
+        root.bind("<Configure>", self._on_configure)
         self.cover_path = None
         self._photo = None
         self.chapters = []          # urls, oldest first
@@ -37,6 +43,10 @@ class SeriesApp:
                   font=("Helvetica", 18, "bold")).pack(anchor="w", padx=14, pady=(14, 0))
         ttk.Label(root, text="Paste the link of the page that lists the chapters, press "
                   "Find chapters, then Download.", foreground="#555").pack(anchor="w", padx=14)
+
+        # buttons, progress and log are packed first at the bottom, so they never get cut off
+        self.bottom = ttk.Frame(root)
+        self.bottom.pack(side="bottom", fill="x")
 
         ttk.Label(root, text="Series link (the page with all the chapters)").pack(anchor="w", **pad)
         row = ttk.Frame(root)
@@ -57,7 +67,7 @@ class SeriesApp:
         ttk.Label(root, textvariable=self.count).pack(anchor="w", padx=14, pady=(8, 0))
         lrow = ttk.Frame(root)
         lrow.pack(fill="both", padx=14, pady=(2, 0), expand=True)
-        self.lb = tk.Listbox(lrow, selectmode="extended", height=9, exportselection=False)
+        self.lb = tk.Listbox(lrow, selectmode="extended", height=5, exportselection=False)
         sb = ttk.Scrollbar(lrow, command=self.lb.yview)
         self.lb.config(yscrollcommand=sb.set)
         self.lb.pack(side="left", fill="both", expand=True)
@@ -136,6 +146,7 @@ class SeriesApp:
                         variable=self.c_gray).pack(side="left")
 
         hide_row = ttk.Frame(root)
+        self.hide_row = hide_row
         hide_row.pack(fill="x", padx=14, pady=(6, 0))
         self.hide = tk.BooleanVar(value=True)
         self.hide_box = ttk.Checkbutton(hide_row, text="Hide Lua / translated / website promo. "
@@ -171,6 +182,9 @@ class SeriesApp:
         self.cover_note = tk.StringVar(value="No cover picture chosen.")
         ttk.Label(side, textvariable=self.cover_note, foreground="#555",
                   wraplength=380).pack(anchor="w", pady=(4, 0))
+        self.badge = tk.BooleanVar(value=True)
+        ttk.Checkbutton(side, text="Put the chapter number on each chapter's cover",
+                        variable=self.badge).pack(anchor="w", pady=(4, 0))
         if dnd:
             try:
                 from tkinterdnd2 import DND_FILES
@@ -179,7 +193,7 @@ class SeriesApp:
             except Exception:
                 pass
 
-        btns = ttk.Frame(root)
+        btns = ttk.Frame(self.bottom)
         btns.pack(fill="x", padx=14, pady=8)
         self.btns = btns
         self.btn_go = ttk.Button(btns, text="Download selected chapters", command=self.start)
@@ -188,16 +202,37 @@ class SeriesApp:
         self.btn_stop.pack(side="left", padx=8)
         ttk.Button(btns, text="Open folder", command=self.open_folder).pack(side="left")
 
-        self.bar = ttk.Progressbar(root, mode="determinate")
+        self.bar = ttk.Progressbar(self.bottom, mode="determinate")
         self.bar.pack(fill="x", padx=14, pady=(2, 2))
         self.status = tk.StringVar(value="Ready.")
-        ttk.Label(root, textvariable=self.status).pack(anchor="w", padx=14)
-        self.log = tk.Text(root, height=9, state="disabled", wrap="word")
-        self.log.pack(fill="both", expand=True, padx=14, pady=(6, 14))
+        ttk.Label(self.bottom, textvariable=self.status).pack(anchor="w", padx=14)
+        self.log = tk.Text(self.bottom, height=7, state="disabled", wrap="word")
+        self.log.pack(fill="x", padx=14, pady=(6, 14))
         self.size.trace_add("write", self.update_preview)
         self.sname.trace_add("write", self.update_preview)
         self.update_preview()
         root.after(100, self.pump)
+
+    # ----- remembering the window size and position -----
+    def _on_configure(self, event):
+        if event.widget is not self.root:
+            return
+        if self._save_job:
+            self.root.after_cancel(self._save_job)
+        self._save_job = self.root.after(500, self.save_geometry)
+
+    def save_geometry(self):
+        self._save_job = None
+        try:
+            data = series.load_settings(self.settings_path)
+            data["geometry"] = self.root.geometry()
+            series.save_settings(data, self.settings_path)
+        except Exception:
+            pass
+
+    def on_close(self):
+        self.save_geometry()
+        self.root.destroy()
 
     # ----- helpers -----
     def paste(self):
@@ -275,7 +310,7 @@ class SeriesApp:
     def update_custom(self):
         self.update_preview()
         if self.device_key() == "custom":
-            self.custom_row.pack(fill="x", padx=14, pady=(6, 0), before=self.btns)
+            self.custom_row.pack(fill="x", padx=14, pady=(6, 0), before=self.hide_row)
         else:
             self.custom_row.pack_forget()
 
@@ -428,7 +463,7 @@ class SeriesApp:
                                     "(400 to 5000) in pixels.")
                 return
         cover = self.cover_path if self.cover_path and os.path.isfile(self.cover_path) else None
-        opts = {"layout": self.layout.get(), "size": size, "convert": self.convert.get(), "device": self.device_key(),
+        opts = {"badge": self.badge.get(), "layout": self.layout.get(), "size": size, "convert": self.convert.get(), "device": self.device_key(),
                 "custom": custom, "epub": self.epub.get() == "Yes", "cover": cover,
                 "words": cleaner.all_words(self.words.get()) if self.hide.get() else [],
                 "redo": self.redo.get(), "all_urls": self.chapters}

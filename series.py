@@ -9,6 +9,7 @@ import math
 import os
 import re
 import shutil
+import tempfile
 import time
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
@@ -234,7 +235,7 @@ def save_state(series_dir, state):
 def signature(opts):
     """What the finished files depend on. If it changes, the chapter is made again."""
     return json.dumps({
-        "layout": opts.get("layout", "one"), "device": opts.get("device"), "epub": bool(opts.get("epub")), "size": opts.get("size"),
+        "layout": opts.get("layout", "one"), "badge": bool(opts.get("badge")), "device": opts.get("device"), "epub": bool(opts.get("epub")), "size": opts.get("size"),
         "convert": bool(opts.get("convert")), "custom": opts.get("custom"),
         "cover": os.path.basename(opts["cover"]) if opts.get("cover") else None,
         "words": sorted(opts.get("words") or [])}, sort_keys=True)
@@ -255,6 +256,99 @@ def _inspect_with_retry(inspect, url, stop, tries=3):
             last = e
             time.sleep(1.5 * (k + 1))
     raise last
+
+
+
+# ----- window size memory (its own file, so the old Comic Downloader is not affected) -----
+SETTINGS_FILE = os.path.join(os.path.expanduser("~"), ".comic_series_downloader.json")
+_GEO = re.compile(r"^(\d+)x(\d+)(?:([+-]\d+)([+-]\d+))?$")
+
+
+def load_settings(path=None):
+    try:
+        with open(path or SETTINGS_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_settings(data, path=None):
+    try:
+        with open(path or SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+    except Exception:
+        pass  # remembering the size is only a nicety
+
+
+def fit_geometry(saved, screen_w, screen_h, default=(760, 900), minimum=(700, 560)):
+    """The window size/position to open with: the remembered one if it still fits this
+    screen, otherwise a size that fits (never taller than the screen)."""
+    max_h = max(minimum[1], screen_h - 90)
+    m = _GEO.match(saved or "")
+    if not m:
+        return f"{min(default[0], screen_w)}x{min(default[1], max_h)}"
+    w = min(max(int(m.group(1)), minimum[0]), screen_w)
+    h = min(max(int(m.group(2)), minimum[1]), max_h)
+    if m.group(3) is not None:
+        x, y = int(m.group(3)), int(m.group(4))
+        if -w + 120 < x < screen_w - 120 and 0 <= y < screen_h - 120:
+            return f"{w}x{h}{x:+d}{y:+d}"
+    return f"{w}x{h}"
+
+
+# ----- chapter number on the cover -----
+def badge_text(name):
+    """'Series - Chapter 052' -> '#52'  (None when the name has no chapter number)."""
+    m = re.search(r"Chapter\s+(\d+)(?:\.(\d+))?\s*$", name)
+    if not m:
+        return None
+    return f"#{int(m.group(1))}" + (f".{m.group(2)}" if m.group(2) else "")
+
+
+_FONTS = ("/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+          "/System/Library/Fonts/Supplemental/Arial Black.ttf",
+          "C:/Windows/Fonts/arialbd.ttf", "C:/Windows/Fonts/segoeuib.ttf",
+          "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+          "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf")
+
+
+def _badge_font(px):
+    from PIL import ImageFont
+    for f in _FONTS:
+        try:
+            return ImageFont.truetype(f, px)
+        except Exception:
+            continue
+    try:
+        return ImageFont.load_default(px)
+    except Exception:
+        return ImageFont.load_default()
+
+
+def stamp_cover(cover_path, text, out_path):
+    """The cover picture with the chapter number in the upper right corner: bold dark
+    numbers with a white edge, readable on any picture, about 7% of the cover's height."""
+    from PIL import Image, ImageDraw
+    im = covers.load_cover(cover_path).convert("RGB")
+    w, h = im.size
+    px = max(16, int(h * 0.07))
+    font = _badge_font(px)
+    d = ImageDraw.Draw(im)
+    edge = max(2, px // 7)
+    box = d.textbbox((0, 0), text, font=font, stroke_width=edge)
+    while box[2] - box[0] > w * 0.4 and px > 12:   # long numbers like #112.5 stay modest
+        px -= 2
+        font = _badge_font(px)
+        edge = max(2, px // 7)
+        box = d.textbbox((0, 0), text, font=font, stroke_width=edge)
+    margin = int(w * 0.05)
+    xy = (w - margin - (box[2] - box[0]) - box[0], margin - box[1])
+    d.text(xy, text, font=font, fill=(255, 255, 255), stroke_width=edge, stroke_fill=(255, 255, 255))
+    d.text(xy, text, font=font, fill=(25, 25, 60), stroke_width=max(1, px // 28),
+           stroke_fill=(25, 25, 60))
+    im.save(out_path, "PNG")
+    return out_path
 
 
 LAYOUTS = {"one": "Sample 1", "parts": "Sample 2"}
@@ -351,18 +445,29 @@ def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series
         except Exception as e:
             say(f"  Could not look for the promo words ({e}). Continuing without it.")
     cover = opts.get("cover")
-    device = opts.get("device", "images")
-    target = device if device != "images" else ("epub_only" if opts.get("epub") else None)
-    device_folder = None
-    if target:
-        _made, bad = core.build_device_files(work, name, total, size, target, progress, stop,
-                                             opts.get("custom"), cover,
-                                             epub=bool(opts.get("epub")))
-        device_folder = core.resolve_device(target, opts.get("custom"))["folder"]
-        if bad:
-            say(f"  {len(bad)} image(s) could not be used and were skipped.")
-    _finish_layout(work, name, total, size, series_dir, chapter_folder(name, series_title),
-                   layout, device_folder, cover)
+    tmp = tempfile.mkdtemp(prefix="csd_")
+    try:
+        if cover and opts.get("badge", True):
+            txt = badge_text(name)
+            if txt:
+                try:
+                    cover = stamp_cover(cover, txt, os.path.join(tmp, "cover.png"))
+                except Exception as e:
+                    say(f"  Could not put the chapter number on the cover ({e}).")
+        device = opts.get("device", "images")
+        target = device if device != "images" else ("epub_only" if opts.get("epub") else None)
+        device_folder = None
+        if target:
+            _made, bad = core.build_device_files(work, name, total, size, target, progress, stop,
+                                                 opts.get("custom"), cover,
+                                                 epub=bool(opts.get("epub")))
+            device_folder = core.resolve_device(target, opts.get("custom"))["folder"]
+            if bad:
+                say(f"  {len(bad)} image(s) could not be used and were skipped.")
+        _finish_layout(work, name, total, size, series_dir, chapter_folder(name, series_title),
+                       layout, device_folder, cover)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     return total
 
 
