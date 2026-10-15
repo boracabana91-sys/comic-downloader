@@ -20,38 +20,51 @@ class App:
     def __init__(self, root):
         self.root = root
         root.title("Sports Clipper")
-        root.geometry("900x980")
-        root.minsize(760, 760)
+        root.geometry("920x860")
+        root.minsize(640, 420)
         self.cfg = config.load()
         self.q = queue.Queue()
         self.stop = threading.Event()
         self.worker = None
         pad = {"padx": 14, "pady": 4}
 
-        ttk.Label(root, text="Sports Clipper", font=("Helvetica", 18, "bold")).pack(anchor="w", padx=14, pady=(14, 0))
-        ttk.Label(root, text="Watches your licensed sources, cuts out the dead time, makes every resolution, and posts.",
+        # everything below goes on one scrollable page: resize the window and nothing gets cut off
+        outer = ttk.Frame(root); outer.pack(fill="both", expand=True)
+        canvas = tk.Canvas(outer, highlightthickness=0)
+        sb = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        sb.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        page = ttk.Frame(canvas)
+        page_id = canvas.create_window((0, 0), window=page, anchor="nw")
+        page.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfigure(page_id, width=e.width))
+        canvas.configure(yscrollcommand=sb.set)
+        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(-1 if e.delta > 0 else 1, "units"))
+
+        ttk.Label(page, text="Sports Clipper", font=("Helvetica", 18, "bold")).pack(anchor="w", padx=14, pady=(14, 0))
+        ttk.Label(page, text="Watches your licensed sources, cuts out the dead time, makes every resolution, and posts.",
                   foreground="#555").pack(anchor="w", padx=14)
 
         # --- sources: paste a link, nothing else to fill in
-        ttk.Label(root, text="Add a channel - paste its YouTube link").pack(anchor="w", **pad)
-        form = ttk.Frame(root); form.pack(fill="x", padx=14)
+        ttk.Label(page, text="Add a channel - paste its YouTube link").pack(anchor="w", **pad)
+        form = ttk.Frame(page); form.pack(fill="x", padx=14)
         self.s_link = tk.StringVar()
         ttk.Entry(form, textvariable=self.s_link).pack(side="left", fill="x", expand=True)
         ttk.Button(form, text="Paste", command=self.paste_link).pack(side="left", padx=6)
         ttk.Button(form, text="Add channel", command=self.add_source).pack(side="left")
-        ttk.Label(root, text="Example: https://www.youtube.com/@ChannelName  - the name and channel ID are found automatically.",
+        ttk.Label(page, text="Example: https://www.youtube.com/@ChannelName  - the name and channel ID are found automatically.",
                   foreground="#777").pack(anchor="w", padx=14)
         self.s_lic = tk.BooleanVar(value=False)
-        ttk.Checkbutton(root, text="I own this channel or have permission / a license to use its videos",
+        ttk.Checkbutton(page, text="I own this channel or have permission / a license to use its videos",
                         variable=self.s_lic).pack(anchor="w", padx=14, pady=(4, 0))
-        self.tree = ttk.Treeview(root, columns=("name", "id", "lic"), show="headings", height=4)
+        self.tree = ttk.Treeview(page, columns=("name", "id", "lic"), show="headings", height=4)
         for c, t, w in (("name", "Channel", 330), ("id", "Channel ID", 300), ("lic", "Permission", 90)):
             self.tree.heading(c, text=t); self.tree.column(c, width=w)
         self.tree.pack(fill="x", padx=14, pady=4)
-        ttk.Button(root, text="Remove selected channel", command=self.remove_source).pack(anchor="w", padx=14)
+        ttk.Button(page, text="Remove selected channel", command=self.remove_source).pack(anchor="w", padx=14)
 
         # --- pick one video from a channel to reclip
-        vf = ttk.LabelFrame(root, text="Pick a video from the selected channel")
+        vf = ttk.LabelFrame(page, text="Pick a video from the selected channel")
         vf.pack(fill="x", padx=14, pady=4)
         vb = ttk.Frame(vf); vb.pack(fill="x", padx=6, pady=4)
         ttk.Button(vb, text="Scan selected channel", command=self.scan_channel).pack(side="left")
@@ -63,8 +76,8 @@ class App:
         self.vid_items = {}
 
         # --- schedule
-        ttk.Label(root, text="When to scan").pack(anchor="w", **pad)
-        sc = ttk.Frame(root); sc.pack(fill="x", padx=14)
+        ttk.Label(page, text="When to scan").pack(anchor="w", **pad)
+        sc = ttk.Frame(page); sc.pack(fill="x", padx=14)
         s = self.cfg["schedule"]
         self.mode = tk.StringVar(value=s["mode"]); self.hours = tk.DoubleVar(value=s["hours"])
         self.times = tk.StringVar(value=", ".join(s["times"]))
@@ -73,7 +86,7 @@ class App:
         ttk.Label(sc, text="hours     ").pack(side="left")
         ttk.Radiobutton(sc, text="At these times (HH:MM, comma separated):", value="times", variable=self.mode).pack(side="left")
         ttk.Entry(sc, textvariable=self.times, width=22).pack(side="left", padx=6)
-        dl = ttk.Frame(root); dl.pack(fill="x", padx=14, pady=4)
+        dl = ttk.Frame(page); dl.pack(fill="x", padx=14, pady=4)
         lo, hi = self.cfg["publish_delay_min"]
         self.dlo = tk.IntVar(value=lo); self.dhi = tk.IntVar(value=hi)
         ttk.Label(dl, text="Post").pack(side="left")
@@ -83,12 +96,12 @@ class App:
         ttk.Label(dl, text="minutes after the source was published").pack(side="left")
 
         # --- output
-        ttk.Label(root, text="Output").pack(anchor="w", **pad)
-        row = ttk.Frame(root); row.pack(fill="x", padx=14)
+        ttk.Label(page, text="Output").pack(anchor="w", **pad)
+        row = ttk.Frame(page); row.pack(fill="x", padx=14)
         self.out = tk.StringVar(value=self.cfg["output_dir"])
         ttk.Entry(row, textvariable=self.out).pack(side="left", fill="x", expand=True)
         ttk.Button(row, text="Choose folder", command=self.pick_out).pack(side="left", padx=(8, 0))
-        rr = ttk.Frame(root); rr.pack(fill="x", padx=14, pady=4)
+        rr = ttk.Frame(page); rr.pack(fill="x", padx=14, pady=4)
         self.res = {h: tk.BooleanVar(value=h in self.cfg["resolutions"]) for h in RES}
         for h in RES:
             ttk.Checkbutton(rr, text="4K" if h == 2160 else f"{h}p", variable=self.res[h]).pack(side="left", padx=(0, 10))
@@ -96,18 +109,18 @@ class App:
         ttk.Label(rr, text="   Keep about").pack(side="left")
         ttk.Spinbox(rr, from_=20, to=100, width=4, textvariable=self.ratio).pack(side="left", padx=4)
         ttk.Label(rr, text="% of the video").pack(side="left")
-        ttk.Label(root, text="Sizes above the source are upscaled and marked 'upscaled': sharper than a plain stretch, but not real extra detail.",
+        ttk.Label(page, text="Sizes above the source are upscaled and marked 'upscaled': sharper than a plain stretch, but not real extra detail.",
                   foreground="#777").pack(anchor="w", padx=14)
 
         # --- YouTube
-        ttk.Label(root, text="YouTube upload").pack(anchor="w", **pad)
-        yt = ttk.Frame(root); yt.pack(fill="x", padx=14)
+        ttk.Label(page, text="YouTube upload").pack(anchor="w", **pad)
+        yt = ttk.Frame(page); yt.pack(fill="x", padx=14)
         self.up_on = tk.BooleanVar(value=self.cfg["upload"]["enabled"])
         self.secret = tk.StringVar(value=self.cfg["upload"]["client_secret"])
         ttk.Checkbutton(yt, text="Upload to our channel. Google client_secret.json:", variable=self.up_on).pack(side="left")
         ttk.Entry(yt, textvariable=self.secret).pack(side="left", fill="x", expand=True, padx=6)
         ttk.Button(yt, text="Choose", command=self.pick_secret).pack(side="left")
-        ex = ttk.Frame(root); ex.pack(fill="x", padx=14, pady=4)
+        ex = ttk.Frame(page); ex.pack(fill="x", padx=14, pady=4)
         self.ai_on = tk.BooleanVar(value=self.cfg["ai"]["enabled"]); self.cl_on = tk.BooleanVar(value=self.cfg["cloudinary"]["enabled"])
         self.th_on = tk.BooleanVar(value=self.cfg["thumbnail"]["enabled"])
         ttk.Checkbutton(ex, text="Write titles with Claude Haiku 5.5 (key goes in config.json)", variable=self.ai_on).pack(side="left")
@@ -115,17 +128,17 @@ class App:
         ttk.Checkbutton(ex, text="Auto thumbnail", variable=self.th_on).pack(side="left", padx=14)
 
         # --- buttons
-        bb = ttk.Frame(root); bb.pack(fill="x", padx=14, pady=8)
+        bb = ttk.Frame(page); bb.pack(fill="x", padx=14, pady=8)
         self.start_btn = ttk.Button(bb, text="Start 24/7", command=self.start); self.start_btn.pack(side="left")
         self.stop_btn = ttk.Button(bb, text="Stop", command=self.stop_now, state="disabled"); self.stop_btn.pack(side="left", padx=6)
         ttk.Button(bb, text="Scan now", command=self.scan_now).pack(side="left", padx=6)
         ttk.Button(bb, text="Test on a video file...", command=self.test_file).pack(side="left", padx=6)
         ttk.Button(bb, text="Save settings", command=self.save).pack(side="left", padx=6)
         ttk.Button(bb, text="Check setup", command=self.check_setup).pack(side="left", padx=6)
-        self.bar = ttk.Progressbar(root, mode="indeterminate"); self.bar.pack(fill="x", padx=14)
-        self.logbox = tk.Text(root, height=8, wrap="word", state="disabled"); self.logbox.pack(fill="both", expand=True, padx=14, pady=8)
+        self.bar = ttk.Progressbar(page, mode="indeterminate"); self.bar.pack(fill="x", padx=14)
+        self.logbox = tk.Text(page, height=12, wrap="word", state="disabled"); self.logbox.pack(fill="both", expand=True, padx=14, pady=8)
         # --- results: thumbnail and video outputs
-        res = ttk.LabelFrame(root, text="Results: thumbnail and video outputs")
+        res = ttk.LabelFrame(page, text="Results: thumbnail and video outputs")
         res.pack(fill="both", expand=True, padx=14, pady=(0, 10))
         left = ttk.Frame(res); left.pack(side="left", fill="y", padx=6, pady=6)
         self.res_tree = ttk.Treeview(left, columns=("title", "sizes"), show="headings", height=7)

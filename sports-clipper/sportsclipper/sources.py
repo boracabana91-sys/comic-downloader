@@ -76,8 +76,11 @@ def fetch(v: Video, work_dir: str, max_height: int = 1080) -> str:
     if "youtube.com" in v.url or "youtu.be" in v.url:
         import yt_dlp
         tpl = os.path.join(work_dir, safe + ".%(ext)s")
+        from . import media
         opts = {"quiet": True, "outtmpl": tpl, "merge_output_format": "mp4",
-                "format": f"bv*[height<={max_height}]+ba/b[height<={max_height}]/b"}
+                "ffmpeg_location": media.need("ffmpeg"),          # the app's bundled ffmpeg, no install needed
+                "format": (f"b[height<={max_height}][ext=mp4]/bv*[height<={max_height}]+ba/"
+                           f"b[height<={max_height}]/b")}
         with yt_dlp.YoutubeDL(opts) as y:
             info = y.extract_info(v.url, download=True)
             return y.prepare_filename(info).rsplit(".", 1)[0] + ".mp4"
