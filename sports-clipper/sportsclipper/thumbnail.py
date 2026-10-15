@@ -1,11 +1,11 @@
-"""Automatic thumbnail, following the layout of the reference template:
-big stacked team names with a gold outline on the left, a date band, a duration badge bottom-right,
-and ONE player close-up on the right. Creative change from the template: grey smoke/haze is re-graded to ember red.
+"""Automatic thumbnail in the reference style.
 
-Method (no AI model, runs offline):
-  1. Sample the video every few seconds.
-  2. Keep frames with exactly one prominent face (solo), a close-up size, and a sharp image.
-  3. Crop 16:9 around that face, grade it, add the text.
+Reference look: full-colour action photo of a player, big yellow stacked team names with a black
+outline on the left, a dark date band, and a duration badge bottom-right. Only the font is changed
+(bold condensed). No colour grading or glow.
+
+Player choice: among solo close-ups (one prominent face), pick the frame with the most movement
+around the player and a sharp image, so the player is in an action moment, not standing still.
 """
 from __future__ import annotations
 import os
@@ -13,10 +13,14 @@ import re
 
 import cv2
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 OUT = (1920, 1080)
-YELLOW = (58, 226, 240)          # BGR gold-yellow from the template
-FONT = cv2.FONT_HERSHEY_DUPLEX
+W, H = OUT
+YELLOW = (250, 214, 20)       # RGB, the reference's gold-yellow
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 NBA = {
     "Atlanta Hawks": "ATL", "Boston Celtics": "BOS", "Brooklyn Nets": "BKN", "Charlotte Hornets": "CHA",
@@ -28,9 +32,17 @@ NBA = {
     "Phoenix Suns": "PHX", "Portland Trail Blazers": "POR", "Sacramento Kings": "SAC", "San Antonio Spurs": "SAS",
     "Toronto Raptors": "TOR", "Utah Jazz": "UTA", "Washington Wizards": "WAS",
 }
-MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December"
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+          "November", "December"]
+# First font found wins. Impact is on every Mac; the bundled font is the fallback.
+FONT_FILES = [
+    "/System/Library/Fonts/Supplemental/Impact.ttf",
+    "/Library/Fonts/Impact.ttf",
+    os.path.join(HERE, "fonts", "DejaVuSansCondensed-Bold.ttf"),
+]
 
 
+# ---------- title parsing -------------------------------------------------
 def parse_teams(title: str) -> list:
     found = []
     for name, abbr in NBA.items():
@@ -41,25 +53,27 @@ def parse_teams(title: str) -> list:
 
 
 def parse_date(title: str) -> str:
-    m = re.search(r"(" + MONTHS + r")\s+(\d{1,2}),?\s+(\d{4})", title)
+    m = re.search(r"(" + "|".join(MONTHS) + r")\s+(\d{1,2}),?\s+(\d{4})", title)
     return f"{m.group(1).upper()} {int(m.group(2))} {m.group(3)}" if m else ""
 
 
+# ---------- finding the play ----------------------------------------------
 def _face_detector():
     """Haar face detector. Needs OpenCV 4.x (requirements pin it; OpenCV 5 dropped these data files)."""
-    xml = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    return cv2.CascadeClassifier(xml)
+    return cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
 
-def best_closeup(path: str, step_s: float = 4.0):
-    """Returns (score, frame, face_box_in_frame_coords) or (-1, None, None)."""
+def closeups(path: str, n: int = 8, step_s: float = 4.0) -> list:
+    """Solo close-ups ranked by movement around the player and sharpness.
+    Returns [(score, frame, face_box_in_frame_coords)], best first."""
     cap = cv2.VideoCapture(path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
     cas = _face_detector()
-    best = (-1.0, None, None)
+    later = max(1, int(fps * 0.4))                          # second look, 0.4 s on, to measure movement
+    cands = []
     margin = int(fps * 5)
-    for i in range(margin, max(margin, n - margin), max(1, int(fps * step_s))):
+    for i in range(margin, max(margin, total - margin - later), max(1, int(fps * step_s))):
         cap.set(cv2.CAP_PROP_POS_FRAMES, i)
         ok, f = cap.read()
         if not ok:
@@ -73,117 +87,138 @@ def best_closeup(path: str, step_s: float = 4.0):
         faces = sorted(faces, key=lambda r: r[2] * r[3], reverse=True)
         main = faces[0]
         if len(faces) > 1 and main[2] * main[3] < 4 * faces[1][2] * faces[1][3]:
-            continue                                   # two big faces: not a solo shot
-        ratio = main[2] / 640                          # face width as a share of the frame
+            continue                                         # two big faces: not a solo shot
+        ratio = main[2] / 640
         if not 0.10 <= ratio <= 0.40 or g.mean() < 25:
             continue
+        cap.set(cv2.CAP_PROP_POS_FRAMES, i + later)
+        ok2, f2 = cap.read()
+        if not ok2:
+            continue
+        x, y, fw, fh = (int(v / k) for v in main)
+        h_, w_ = f.shape[:2]
+        x0, x1 = max(0, int(x - 1.5 * fw)), min(w_, int(x + 2.5 * fw))
+        y0, y1 = max(0, int(y - 0.5 * fh)), h_
+        a = cv2.cvtColor(f[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY).astype(np.float32)
+        b = cv2.cvtColor(f2[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY).astype(np.float32)
+        motion = float(np.abs(a - b).mean())                 # 0 = still, larger = more action
         sharp = cv2.Laplacian(g, cv2.CV_64F).var()
-        score = min(sharp, 600) / 600 * 0.6 + (1 - min(abs(ratio - 0.22) / 0.22, 1)) * 0.4
-        if score > best[0]:
-            best = (score, f.copy(), tuple(int(v / k) for v in main))
+        score = 0.35 * min(motion / 20, 1) + 0.50 * min(sharp / 500, 1) + 0.15 * (1 - min(abs(ratio - 0.24) / 0.24, 1))
+        cands.append((score, f.copy(), (x, y, fw, fh), motion))
     cap.release()
-    return best
+    cands.sort(key=lambda c: c[0], reverse=True)
+    return [(s, fr, fc) for s, fr, fc, _ in cands[:n]], cands[:1]
 
 
+def _center_frame(path: str):
+    cap = cv2.VideoCapture(path)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0) // 2)
+    ok, frame = cap.read()
+    cap.release()
+    return frame if ok else None
+
+
+# ---------- framing and photo ---------------------------------------------
 def crop_169(frame, face):
+    """16:9 crop that cuts off the broadcast scoreboard bar; player placed on the right for the text."""
     fh, fw = frame.shape[:2]
     cw = min(fw, fh * 16 / 9)
     ch = cw * 9 / 16
-    if ch > 0.78 * fh:                                # zoom in a little so the scoreboard bar is cut off
-        ch = 0.78 * fh
+    if ch > 0.72 * fh:
+        ch = 0.72 * fh
         cw = ch * 16 / 9
     if face is None:
         x0, y0 = (fw - cw) / 2, (fh - ch) / 2
     else:
         fx, fy, fwid, fhei = face
-        x0 = fx + fwid / 2 - 0.62 * cw                # player on the right, text space on the left
-        y0 = fy + fhei / 2 - 0.42 * ch
+        x0 = fx + fwid / 2 - 0.64 * cw
+        y0 = fy + fhei / 2 - 0.40 * ch
         x0 = min(max(0, x0), fw - cw)
-        y0 = min(max(0, y0), fh - ch)
-        if y0 + ch > 0.78 * fh:                       # keep the broadcast scoreboard bar out of the shot
-            y0 = max(0, 0.78 * fh - ch)
-    return frame[int(y0):int(y0 + ch), int(x0):int(x0 + cw)]
+        y0 = min(max(0, y0), 0.72 * fh - ch)           # stay above the scoreboard bar
+    x0, y0 = int(x0), int(y0)
+    return frame[y0:y0 + int(ch), x0:x0 + int(cw)], x0, y0
 
 
-def grade(img):
-    """Grey / hazy areas become ember red; skin and colour areas are left alone; light warm vignette."""
-    f = img.astype(np.float32) / 255.0
-    lum = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
-    sat = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)[..., 1].astype(np.float32) / 255.0
-    protect = np.clip((0.85 - lum) / 0.30, 0.0, 1.0)     # bright whites (jerseys, lights) stay white
-    m = (np.clip(1.0 - sat / 0.30, 0.0, 1.0) * protect * 0.65)[..., None]
-    L = (lum ** 0.8)[..., None]
-    ember = np.concatenate([0.12 * L, 0.32 * L, 1.0 * L], axis=2)     # BGR: ember red-orange
-    out = f * (1 - m) + ember * m
-    out[..., 2] = np.clip(out[..., 2] * 1.05, 0, 1)
-    out = np.clip((out - 0.5) * 1.12 + 0.5, 0, 1)
-    h, w = img.shape[:2]
-    yy, xx = np.mgrid[0:h, 0:w]
-    r2 = ((xx - w / 2) / (w / 2)) ** 2 + ((yy - h / 2) / (h / 2)) ** 2
-    vig = np.clip(1.15 - 0.30 * r2, 0.6, 1.0)[..., None]
-    return (np.clip(out * vig, 0, 1) * 255).astype(np.uint8)
+def photo_look(bgr):
+    """Keep the photo natural: a little contrast and colour, and darken the left side so the text reads."""
+    f = bgr.astype(np.float32) / 255.0
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV).astype(np.float32)
+    hsv[..., 1] = np.clip(hsv[..., 1] * 1.08, 0, 255)
+    f = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR).astype(np.float32) / 255.0
+    f = np.clip((f - 0.5) * 1.06 + 0.5, 0, 1)
+    xx = np.linspace(0, 1, f.shape[1], dtype=np.float32)[None, :]
+    shade = 1 - 0.45 * np.clip((0.55 - xx) / 0.55, 0, 1)
+    return (np.clip(f * shade[..., None], 0, 1) * 255).astype(np.uint8)
 
 
-def _text(img, s, org, scale, thick, color=YELLOW):
-    cv2.putText(img, s, org, FONT, scale, (0, 0, 0), thick + 10, cv2.LINE_AA)
-    cv2.putText(img, s, org, FONT, scale, color, thick, cv2.LINE_AA)
+# ---------- text (PIL, so the font can be swapped) -------------------------
+def _font(size: int):
+    for path in FONT_FILES:
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size)
+    return ImageFont.load_default()
 
 
-def _fit(s, max_w, base, thick):
-    (w, _), _ = cv2.getTextSize(s, FONT, base, thick)
-    return base * min(1.0, max_w / max(w, 1))
+def _fit_font(text: str, max_w: int, start: int):
+    size = start
+    while size > 20:
+        f = _font(size)
+        if f.getlength(text) <= max_w:
+            return f
+        size -= 4
+    return _font(20)
 
 
-def _dark_box(img, x0, y0, x1, y1, keep=0.28):
-    img[y0:y1, x0:x1] = (img[y0:y1, x0:x1].astype(np.float32) * keep).astype(np.uint8)
-
-
-def overlay(img, teams: list, date: str, duration_s: float):
-    H, W = img.shape[:2]
-    x, y = 60, 150
-    max_w = int(W * 0.40)
+def draw_text(rgb: np.ndarray, teams: list, date: str, duration_s: float) -> np.ndarray:
+    img = Image.fromarray(rgb).convert("RGBA")
+    d = ImageDraw.Draw(img)
+    x, y = 90, 70
     if len(teams) == 2:
-        big = min(_fit(teams[0], max_w, 4.5, 10), _fit(teams[1], max_w, 4.5, 10))
-        for line, sc, th in ((teams[0], big, 10), ("VS", big * 0.45, 6), (teams[1], big, 10)):
-            (tw, th_px), _ = cv2.getTextSize(line, FONT, sc, th)
-            _text(img, line, (x, y + th_px), sc, th)
-            y += th_px + 28
+        big = _fit_font(max(teams, key=len), int(W * 0.46), 400)
+        sw = max(6, big.size // 22)
+        small = _font(int(big.size * 0.42))
+        for text, f in ((teams[0], big), ("VS", small), (teams[1], big)):
+            d.text((x, y), text, font=f, fill=YELLOW, stroke_width=sw, stroke_fill=BLACK)
+            bbox = d.textbbox((x, y), text, font=f, stroke_width=sw)
+            y = bbox[3] - sw * 2 + 8
     if date:
-        sc = _fit(date, max_w, 1.5, 3)
-        (tw, th_px), base = cv2.getTextSize(date, FONT, sc, 3)
-        y0, y1 = y + 4, min(H - 1, y + th_px + base + 30)
-        _dark_box(img, max(0, x - 16), y0, min(W - 1, x + tw + 16), y1)
-        _text(img, date, (x, y + th_px + 14), sc, 3)
+        f = _fit_font(date, int(W * 0.40), 64)
+        x0, y0 = x - 14, y + 26
+        bbox = d.textbbox((x0 + 14, y0 + 8), date, font=f)
+        d.rectangle((x0, y0, bbox[2] + 16, bbox[3] + 14), fill=(0, 0, 0, 185))
+        d.text((x0 + 14, y0 + 8), date, font=f, fill=YELLOW)
     m, s = divmod(int(round(duration_s)), 60)
     hh, m = divmod(m, 60)
     dur = f"{hh}:{m:02d}:{s:02d}" if hh else f"{m}:{s:02d}"
-    (tw, th_px), base = cv2.getTextSize(dur, FONT, 1.4, 3)
+    f = _font(60)
+    bbox = d.textbbox((0, 0), dur, font=f)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
     x1, y1 = W - 40, H - 40
-    x0, y0 = x1 - tw - 40, y1 - th_px - base - 30
-    _dark_box(img, x0, y0, x1, y1, keep=0.22)
-    cv2.putText(img, dur, (x0 + 20, y1 - 18), FONT, 1.4, (255, 255, 255), 3, cv2.LINE_AA)
-    return img
+    d.rectangle((x1 - tw - 40, y1 - th - 34, x1, y1), fill=(0, 0, 0, 215))
+    d.text((x1 - tw - 20, y1 - th - 24), dur, font=f, fill=WHITE)
+    return np.asarray(img.convert("RGB"))
 
 
 def make_thumbnail(path: str, title: str, duration_s: float, out: str, log=print) -> str:
-    score, frame, face = best_closeup(path)
-    if frame is None:
-        cap = cv2.VideoCapture(path)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0) // 2)
-        ok, frame = cap.read()
-        cap.release()
-        if not ok:
-            raise RuntimeError("could not read a frame for the thumbnail")
-        log("no solo close-up found - the thumbnail uses a centre frame")
+    cands, best = closeups(path)
+    if cands:
+        score, frame, face = cands[0]
+        crop, _, _ = crop_169(frame, face)
+        log(f"thumbnail: solo close-up from a live moment (action score {score:.2f})")
     else:
-        log("thumbnail: solo close-up picked")
-    img = cv2.resize(crop_169(frame, face), OUT, interpolation=cv2.INTER_LANCZOS4)
-    blur = cv2.GaussianBlur(img, (0, 0), 3)
-    img = cv2.addWeighted(img, 1.35, blur, -0.35, 0)            # crisp after the upscale
-    img = grade(img)
-    overlay(img, parse_teams(title), parse_date(title), duration_s)
+        frame = _center_frame(path)
+        if frame is None:
+            raise RuntimeError("could not read a frame for the thumbnail")
+        crop, _, _ = crop_169(frame, None)
+        log("no solo close-up found - the thumbnail uses a centre frame")
+    base = cv2.resize(crop, OUT, interpolation=cv2.INTER_LANCZOS4)
+    soft = cv2.GaussianBlur(base, (0, 0), 2.2)                 # sharpen the upscale: clear edges and faces
+    base = cv2.addWeighted(base, 1.7, soft, -0.7, 0)
+    rgb = cv2.cvtColor(photo_look(base), cv2.COLOR_BGR2RGB)
+    rgb = draw_text(rgb, parse_teams(title), parse_date(title), duration_s)
+    img = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
-    for q in (92, 85, 75):                                       # YouTube thumbnails must be under 2 MB
+    for q in (92, 85, 75):                                   # YouTube thumbnails must stay under 2 MB
         cv2.imwrite(out, img, [cv2.IMWRITE_JPEG_QUALITY, q])
         if os.path.getsize(out) <= 2 * 1024 * 1024:
             break

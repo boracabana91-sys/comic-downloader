@@ -1,5 +1,6 @@
 """Sports Clipper window (same simple layout as Comic Downloader: sections top to bottom)."""
 from __future__ import annotations
+import os
 import queue
 import threading
 import tkinter as tk
@@ -16,7 +17,7 @@ class App:
     def __init__(self, root):
         self.root = root
         root.title("Sports Clipper")
-        root.geometry("820x900")
+        root.geometry("900x980")
         root.minsize(760, 760)
         self.cfg = config.load()
         self.q = queue.Queue()
@@ -209,15 +210,24 @@ class App:
         self.stop.set(); self.log("stopping after the current step ...")
 
     def test_file(self):
-        f = filedialog.askopenfilename(filetypes=[("Video", "*.mp4 *.mov *.mkv *.m4v *.webm")])
-        if not f: return
+        f = filedialog.askopenfilename(
+            title="Choose a video to test (click the file, then Open)",
+            initialdir=os.path.expanduser("~/Downloads"),
+            filetypes=[("Video", "*.mp4 *.mov *.mkv *.m4v *.webm"), ("All files", "*")])
+        if not f:
+            return
+        self.log(f"testing: {os.path.basename(f)}")
         def fn():
-            import os
-            cfg = config.load()
-            p = analyze.plan(f, cfg, self.log)
-            base = os.path.join(cfg["output_dir"], "manual", os.path.splitext(os.path.basename(f))[0])
-            outs = render.render(f, p["segments"], p["info"], cfg, base, self.log)
-            self.log("done:\n" + "\n".join(f"  {h}p  {o}" for h, o in sorted(outs.items(), reverse=True)))
+            try:
+                cfg = config.load()
+                p = analyze.plan(f, cfg, self.log)
+                base = os.path.join(cfg["output_dir"], "manual", os.path.splitext(os.path.basename(f))[0])
+                outs = render.render(f, p["segments"], p["info"], cfg, base, self.log)
+                self.log("done. Files:\n" + "\n".join(f"  {h}p  {o}" for h, o in sorted(outs.items(), reverse=True)))
+                self.log(f"Open this folder: {os.path.dirname(base)}")
+            except Exception as e:
+                self.log(f"TEST FAILED: {e}")
+                self.root.after(0, lambda: messagebox.showerror("Test failed", str(e)[:800]))
         self._go(fn)
 
 
