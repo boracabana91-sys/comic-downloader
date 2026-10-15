@@ -50,6 +50,18 @@ class App:
         self.tree.pack(fill="x", padx=14, pady=4)
         ttk.Button(root, text="Remove selected channel", command=self.remove_source).pack(anchor="w", padx=14)
 
+        # --- pick one video from a channel to reclip
+        vf = ttk.LabelFrame(root, text="Pick a video from the selected channel")
+        vf.pack(fill="x", padx=14, pady=4)
+        vb = ttk.Frame(vf); vb.pack(fill="x", padx=6, pady=4)
+        ttk.Button(vb, text="Scan selected channel", command=self.scan_channel).pack(side="left")
+        ttk.Button(vb, text="Reclip selected video", command=self.reclip_selected).pack(side="left", padx=6)
+        self.vid_tree = ttk.Treeview(vf, columns=("title", "date"), show="headings", height=5)
+        self.vid_tree.heading("title", text="Title"); self.vid_tree.column("title", width=560)
+        self.vid_tree.heading("date", text="Posted"); self.vid_tree.column("date", width=140)
+        self.vid_tree.pack(fill="x", padx=6, pady=(0, 6))
+        self.vid_items = {}
+
         # --- schedule
         ttk.Label(root, text="When to scan").pack(anchor="w", **pad)
         sc = ttk.Frame(root); sc.pack(fill="x", padx=14)
@@ -148,6 +160,12 @@ class App:
                     self.s_link.set(""); self.s_lic.set(False)
                     self.log(f"added channel: {m[1]['name']} ({m[1]['location']})")
                     continue
+                if isinstance(m, tuple) and m[0] == "__videos__":
+                    self.vid_tree.delete(*self.vid_tree.get_children()); self.vid_items = {}
+                    for i, v in enumerate(m[1]):
+                        self.vid_items[str(i)] = v
+                        self.vid_tree.insert("", "end", iid=str(i), values=(v.title, v.published.astimezone().strftime("%Y-%m-%d %H:%M")))
+                    continue
                 if m == "\0done":
                     self.bar.stop(); self.start_btn.config(state="normal"); self.stop_btn.config(state="disabled"); self.refresh_results(); continue
                 self.logbox.config(state="normal"); self.logbox.insert("end", m + "\n"); self.logbox.see("end"); self.logbox.config(state="disabled")
@@ -186,6 +204,46 @@ class App:
         for i in sorted((self.tree.index(x) for x in self.tree.selection()), reverse=True):
             del self.cfg["sources"][i]
         self.refresh_tree(); self.save()
+
+    def _channel_src(self):
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showinfo("Channel", "Click a channel in the list first.")
+            return None
+        return rights.Source.from_dict(self.cfg["sources"][self.tree.index(sel[0])])
+
+    def scan_channel(self):
+        src = self._channel_src()
+        if not src:
+            return
+        self.log(f"scanning {src.name} ...")
+        def job():
+            try:
+                vids = sources.list_videos(src, 25)
+                self.q.put(("__videos__", vids))
+                self.log(f"found {len(vids)} video(s) on {src.name} - click one, then Reclip selected video")
+            except Exception as e:
+                self.log(f"scan failed: {e}")
+        threading.Thread(target=job, daemon=True).start()
+
+    def reclip_selected(self):
+        sel = self.vid_tree.selection()
+        if not sel:
+            return messagebox.showinfo("Reclip", "Scan a channel and click a video first.")
+        src = self._channel_src()
+        if not src:
+            return
+        v = self.vid_items[sel[0]]
+        self.log(f"reclipping: {v.title}")
+        def fn():
+            try:
+                pipeline.Pipeline(config.load(), self.log, self.stop).process(src, v)
+                self.log("done: " + v.title)
+            except Exception as e:
+                msg = str(e)[:800]
+                self.log(f"RECLIP FAILED: {msg}")
+                self.root.after(0, lambda: messagebox.showerror("Reclip failed", msg))
+        self._go(fn)
 
     def check_setup(self):
         self._go(lambda: checks.run(config.load(), self.log))

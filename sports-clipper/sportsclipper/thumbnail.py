@@ -169,7 +169,24 @@ def _fit_font(text: str, max_w: int, start: int):
     return _font(20)
 
 
-def draw_text(rgb: np.ndarray, teams: list, date: str, duration_s: float) -> np.ndarray:
+def score_line(title: str) -> str:
+    """Final score from ESPN (stats.py), e.g. 'BOS 112 - 108 LAL'. Empty string if the game or feed is not found."""
+    teams, date = parse_teams(title), parse_date(title)
+    if len(teams) != 2 or not date:
+        return ""
+    try:
+        from datetime import datetime
+        from . import stats
+        ymd = datetime.strptime(date.title(), "%B %d %Y").strftime("%Y%m%d")
+        info = stats.game_info(ymd, teams)
+    except Exception:
+        return ""
+    if not info:
+        return ""
+    return f"{info.away} {info.away_score} - {info.home_score} {info.home}"
+
+
+def draw_text(rgb: np.ndarray, teams: list, date: str, duration_s: float, score: str = "") -> np.ndarray:
     img = Image.fromarray(rgb).convert("RGBA")
     d = ImageDraw.Draw(img)
     x, y = 90, 70
@@ -181,12 +198,13 @@ def draw_text(rgb: np.ndarray, teams: list, date: str, duration_s: float) -> np.
             d.text((x, y), text, font=f, fill=YELLOW, stroke_width=sw, stroke_fill=BLACK)
             bbox = d.textbbox((x, y), text, font=f, stroke_width=sw)
             y = bbox[3] - sw * 2 + 8
-    if date:
-        f = _fit_font(date, int(W * 0.40), 64)
+    band = "   |   ".join(p for p in (date, score) if p)
+    if band:
+        f = _fit_font(band, int(W * 0.62), 64)
         x0, y0 = x - 14, y + 26
-        bbox = d.textbbox((x0 + 14, y0 + 8), date, font=f)
+        bbox = d.textbbox((x0 + 14, y0 + 8), band, font=f)
         d.rectangle((x0, y0, bbox[2] + 16, bbox[3] + 14), fill=(0, 0, 0, 185))
-        d.text((x0 + 14, y0 + 8), date, font=f, fill=YELLOW)
+        d.text((x0 + 14, y0 + 8), band, font=f, fill=YELLOW)
     m, s = divmod(int(round(duration_s)), 60)
     hh, m = divmod(m, 60)
     dur = f"{hh}:{m:02d}:{s:02d}" if hh else f"{m}:{s:02d}"
@@ -199,7 +217,11 @@ def draw_text(rgb: np.ndarray, teams: list, date: str, duration_s: float) -> np.
     return np.asarray(img.convert("RGB"))
 
 
-def make_thumbnail(path: str, title: str, duration_s: float, out: str, log=print) -> str:
+def make_thumbnail(path: str, title: str, duration_s: float, out: str, log=print, score: str | None = None) -> str:
+    if score is None:
+        score = score_line(title)
+        if score:
+            log(f"thumbnail: final score {score}")
     cands, best = closeups(path)
     if cands:
         score, frame, face = cands[0]
@@ -215,7 +237,7 @@ def make_thumbnail(path: str, title: str, duration_s: float, out: str, log=print
     soft = cv2.GaussianBlur(base, (0, 0), 2.2)                 # sharpen the upscale: clear edges and faces
     base = cv2.addWeighted(base, 1.7, soft, -0.7, 0)
     rgb = cv2.cvtColor(photo_look(base), cv2.COLOR_BGR2RGB)
-    rgb = draw_text(rgb, parse_teams(title), parse_date(title), duration_s)
+    rgb = draw_text(rgb, parse_teams(title), parse_date(title), duration_s, score)
     img = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     for q in (92, 85, 75):                                   # YouTube thumbnails must stay under 2 MB
