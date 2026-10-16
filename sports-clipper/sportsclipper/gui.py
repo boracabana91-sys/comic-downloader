@@ -74,9 +74,13 @@ class App:
         ttk.Label(vb, text="  Search:").pack(side="left")
         self.vid_filter = tk.StringVar()
         self.vid_filter.trace_add("write", lambda *_: self.show_videos())
-        ttk.Entry(vb, textvariable=self.vid_filter, width=24).pack(side="left", padx=4)
+        self.vid_entry = ttk.Entry(vb, textvariable=self.vid_filter, width=30)
+        self.vid_entry.pack(side="left", padx=4)
+        self.vid_entry.bind("<Return>", lambda e: self.scan_channel())
         self.vid_count = tk.StringVar(value="")
         ttk.Label(vb, textvariable=self.vid_count, foreground="#555").pack(side="left", padx=6)
+        ttk.Label(vf, text="Tip: paste a playlist link in Search and press Enter (or Scan all videos) to scan just that playlist.",
+                  foreground="#777").pack(anchor="w", padx=8)
         tf = ttk.Frame(vf); tf.pack(fill="x", padx=6, pady=(0, 6))
         self.vid_tree = ttk.Treeview(tf, columns=("date",), show="tree headings", height=10)
         self.vid_tree.heading("#0", text="Title (open a folder: Videos, Live, Shorts, Playlists)")
@@ -270,18 +274,24 @@ class App:
         return rights.Source.from_dict(self.cfg["sources"][self.tree.index(sel[0])])
 
     def scan_channel(self):
-        src = self._channel_src()
-        if not src:
-            return
-        self.log(f"reading every video on {src.name} (this can take a minute on a big channel) ...")
+        link = self.vid_filter.get().strip()
+        if sources.playlist_id(link):                       # a playlist link in the search bar: scan just that playlist
+            src, what = None, "that playlist"
+            self.vid_filter.set("")
+        else:
+            src = self._channel_src()
+            if not src:
+                return
+            what = src.name
+        self.log(f"reading every video on {what} (this can take a minute on a big list) ...")
         self.vid_count.set("reading ...")
         self.scan_btn.config(state="disabled")
         def job():
             try:
-                vids = sources.list_all(src, self.log)
+                vids = sources.scan_playlist(link, self.log) if src is None else sources.list_all(src, self.log)
                 self.q.put(("__videos__", vids))
                 n = len({v.id for v in vids})
-                self.log(f"found {n} video(s) on {src.name} - open a folder, click one, then Reclip selected video")
+                self.log(f"found {n} video(s) on {what} - open a folder, click one, then Reclip selected video")
             except Exception as e:
                 self.log(f"scan failed: {e}")
                 self.q.put(("__videos__", []))
@@ -290,6 +300,8 @@ class App:
     def show_videos(self):
         """Fill the list from everything scanned, grouped like the channel, filtered by the search box."""
         q = self.vid_filter.get().strip().lower()
+        if sources.playlist_id(q):                           # a pasted link is not a title filter
+            q = ""
         self.vid_tree.delete(*self.vid_tree.get_children())
         self.vid_items = {}
         groups: dict = {}
@@ -313,10 +325,13 @@ class App:
         sel = self.vid_tree.selection()
         if not sel or sel[0] not in self.vid_items:
             return messagebox.showinfo("Reclip", "Scan all videos, open a folder and click a video first.")
-        src = self._channel_src()
-        if not src:
-            return
         v = self.vid_items[sel[0]]
+        d = sources.owner_source(v, self.cfg["sources"])
+        if not d:
+            return messagebox.showinfo(
+                "Reclip", "That video belongs to a channel that is not in your list with the permission box ticked.\n"
+                          "Add the channel first (paste its link, tick the box), then reclip it.")
+        src = rights.Source.from_dict(d)
         self.log(f"reclipping: {v.title}")
         def fn():
             try:
@@ -355,7 +370,8 @@ class App:
     # ---- actions
     def _go(self, fn):
         if self.worker and self.worker.is_alive():
-            return
+            self.log("a clip is already running - wait for it to finish (or press Stop)")
+            return messagebox.showinfo("Busy", "A clip is already running. Wait for it to finish, or press Stop.")
         self.save(); self.stop.clear()
         self.bar.stop(); self.bar.config(mode="indeterminate"); self.bar.start(12)
         self.job_t0 = time.time(); self.st = ("starting", None); self.st_t = time.time()

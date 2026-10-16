@@ -22,6 +22,8 @@ class Video:
     url: str = ""
     path: str = ""               # set for local files
     group: str = ""              # "Videos", "Live", "Shorts" or "Playlist: name" (set by list_all)
+    channel_id: str = ""         # the channel that owns the video, when the listing says
+    src_name: str = ""           # the source (channel) this video was listed from
     dated: bool = True           # False when the listing did not give a posting date
 
 
@@ -49,8 +51,45 @@ def parse_flat(info: dict, group: str = "") -> list:
         elif ud and re.fullmatch(r"\d{8}", str(ud)):
             pub, dated = datetime.strptime(str(ud), "%Y%m%d").replace(tzinfo=timezone.utc), True
         out.append(Video(e["id"], e.get("title") or e["id"], pub, url=f"https://www.youtube.com/watch?v={e['id']}",
-                         group=group, dated=dated))
+                         group=group, dated=dated, channel_id=str(e.get("channel_id") or "")))
     return out
+
+
+_PL = r"((?:PL|OL|UU|FL)[\w-]{10,})"
+
+
+def playlist_id(text: str) -> str:
+    """The playlist id in a pasted playlist link (or a bare playlist id); '' if the text is not one."""
+    s = (text or "").strip()
+    m = re.search(r"[?&]list=([\w-]+)", s) or re.fullmatch(_PL, s)
+    return m.group(1) if m else ""
+
+
+def scan_playlist(text: str, log=print) -> list:
+    """Every video in one playlist, from a pasted link. Lists only; nothing is downloaded."""
+    pid = playlist_id(text)
+    if not pid:
+        raise ValueError("That is not a YouTube playlist link.")
+    info = _flat(f"https://www.youtube.com/playlist?list={pid}") or {}
+    title = info.get("title") or pid
+    vids = parse_flat(info, f"Playlist: {title}")
+    log(f"playlist {title}: {len(vids)} videos")
+    return vids
+
+
+def owner_source(v: "Video", srcs: list):
+    """The source (a dict from config) that owns this video, or None. A video can only be reclipped under
+    the permission of the channel it belongs to: by its channel id when known, else by the channel it was listed from."""
+    if v.channel_id:
+        for d in srcs:
+            if d.get("kind") == "youtube" and _channel_id(d.get("location", "")) == v.channel_id:
+                return d
+        return None
+    if v.src_name:
+        for d in srcs:
+            if d.get("name") == v.src_name:
+                return d
+    return None
 
 
 def parse_playlists(info: dict) -> list:
@@ -82,6 +121,8 @@ def list_all(src: Source, log=print) -> list:
         name = src.name or "Playlist"
         vids = parse_flat(_flat(_playlist_url(loc)), f"Playlist: {name}")
         log(f"playlist {name}: {len(vids)} videos")
+        for v in vids:
+            v.src_name = src.name
         return vids
     cid = _channel_id(loc)
     base = f"https://www.youtube.com/channel/{cid}" if cid else loc.rstrip("/")
@@ -109,6 +150,8 @@ def list_all(src: Source, log=print) -> list:
             continue
         log(f"Playlist {title}: {len(vids)} videos")
         out += vids                                           # may repeat videos from Videos: each folder is complete
+    for v in out:
+        v.src_name = src.name
     return out
 
 
@@ -203,9 +246,8 @@ def resolve_youtube(text: str) -> dict:
     s = (text or "").strip()
     if not s:
         raise ValueError("Paste the channel link first.")
-    pl = re.search(r"[?&]list=([\w-]+)", s) or re.fullmatch(r"((?:PL|OL|UU|FL)[\w-]{10,})", s)
-    if pl:                                                    # a playlist link: scan that playlist directly
-        pid = pl.group(1) if pl.lastindex else s
+    pid = playlist_id(s)
+    if pid:                                                   # a playlist link: scan that playlist directly
         try:
             title = (_flat(f"https://www.youtube.com/playlist?list={pid}", playlistend=1) or {}).get("title") or pid
         except Exception:

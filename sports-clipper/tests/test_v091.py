@@ -91,5 +91,36 @@ class VersionShown(unittest.TestCase):
         self.assertEqual(sportsclipper.__version__, open(os.path.join(root, "VERSION")).read().strip())
 
 
+class PlaylistSearch(unittest.TestCase):
+    def test_playlist_id_forms(self):
+        self.assertEqual(sources.playlist_id("https://www.youtube.com/playlist?list=PLabcdefghijklmn"), "PLabcdefghijklmn")
+        self.assertEqual(sources.playlist_id("https://www.youtube.com/watch?v=aaaaaaaaaaa&list=PLabcdefghijklmn&index=2"), "PLabcdefghijklmn")
+        self.assertEqual(sources.playlist_id("PLabcdefghijklmn"), "PLabcdefghijklmn")
+        self.assertEqual(sources.playlist_id("DEN vs LAC"), "")
+        self.assertEqual(sources.playlist_id(""), "")
+
+    def test_scan_playlist_from_search_bar(self):
+        info = {"title": "Best of DEN", "entries": [{"id": "aaaaaaaaaaa", "title": "One", "channel_id": "UC" + "b" * 22}]}
+        with mock.patch.object(sources, "_flat", lambda url, **kw: info):
+            vids = sources.scan_playlist("https://www.youtube.com/playlist?list=PLabcdefghijklmn", log=lambda *_: None)
+        self.assertEqual([(v.id, v.group, v.channel_id) for v in vids], [("aaaaaaaaaaa", "Playlist: Best of DEN", "UC" + "b" * 22)])
+        with self.assertRaises(ValueError):
+            sources.scan_playlist("not a link")
+
+    def test_reclip_only_under_the_owning_channels_permission(self):
+        mine = {"name": "Mine", "kind": "youtube", "location": "UC" + "a" * 22, "licensed": True, "license_note": "x"}
+        other = {"name": "Other", "kind": "youtube", "location": "UC" + "b" * 22, "licensed": True, "license_note": "x"}
+        V = sources.Video
+        now = __import__("datetime").datetime.now()
+        # foreign video inside my playlist: owner found by its own channel id, not by the playlist's channel
+        self.assertEqual(sources.owner_source(V("a", "t", now, channel_id="UC" + "b" * 22, src_name="Mine"), [mine, other]), other)
+        # owner not in the list: blocked
+        self.assertIsNone(sources.owner_source(V("a", "t", now, channel_id="UC" + "c" * 22, src_name="Mine"), [mine, other]))
+        # no channel id: falls back to the channel it was listed from
+        self.assertEqual(sources.owner_source(V("a", "t", now, src_name="Mine"), [mine, other]), mine)
+        # pasted playlist, nothing known: blocked
+        self.assertIsNone(sources.owner_source(V("a", "t", now), [mine, other]))
+
+
 if __name__ == "__main__":
     unittest.main()
