@@ -1,28 +1,9 @@
-CHA  Kon Knueppel ...
-[0;93m2026-10-16 06:37:51.934385381 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+UTA  Lauri Markkanen ...
+[0;93m2026-10-16 06:41:33.119897355 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
 Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  3%|█▏                                    | 5.84M/179M [00:00<00:02, 58.4MB/s]  7%|██▋                                   | 12.6M/179M [00:00<00:02, 63.8MB/s] 11%|████▎                                 | 20.5M/179M [00:00<00:02, 70.7MB/s] 15%|█████▊                                | 27.6M/179M [00:00<00:02, 70.4MB/s] 19%|███████▎                              | 34.6M/179M [00:00<00:02, 68.7MB/s] 23%|████████▊                             | 41.6M/179M [00:00<00:01, 69.2MB/s] 27%|██████████▎                           | 48.6M/179M [00:00<00:01, 69.5MB/s] 31%|███████████▉                          | 56.1M/179M [00:00<00:01, 71.0MB/s] 35%|█████████████▍                        | 63.2M/179M [00:00<00:01, 70.5MB/s] 40%|███████████████                       | 70.9M/179M [00:01<00:01, 72.6MB/s] 44%|████████████████▌                     | 78.1M/179M [00:01<00:01, 72.6MB/s] 48%|██████████████████▏                   | 85.4M/179M [00:01<00:01, 72.0MB/s] 52%|███████████████████▊                  | 93.1M/179M [00:01<00:01, 73.6MB/s] 56%|█████████████████████▉                 | 100M/179M [00:01<00:01, 68.5MB/s] 60%|███████████████████████▌               | 108M/179M [00:01<00:01, 70.5MB/s] 65%|█████████████████████████▏             | 115M/179M [00:01<00:01, 62.5MB/s] 69%|██████████████████████████▊            | 123M/179M [00:01<00:00, 66.3MB/s] 73%|████████████████████████████▍          | 130M/179M [00:01<00:00, 67.5MB/s] 77%|█████████████████████████████▉         | 137M/179M [00:01<00:00, 66.1MB/s] 81%|███████████████████████████████▌       | 145M/179M [00:02<00:00, 68.9MB/s] 85%|█████████████████████████████████      | 152M/179M [00:02<00:00, 67.3MB/s] 89%|██████████████████████████████████▊    | 159M/179M [00:02<00:00, 69.7MB/s] 93%|████████████████████████████████████▍  | 167M/179M [00:02<00:00, 72.1MB/s] 98%|██████████████████████████████████████ | 174M/179M [00:02<00:00, 71.2MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 906GB/s]
-   File:Kon Knueppel.jpg  [CC0]  (+0 candidates)
-CHA  Brandon Miller ...
-   File:Brandon Miller Alabama (cropped).jpg  [CC BY 2.0]  (+0 candidates)
-GSW  Stephen Curry ...
-   File:Stephen Curry Shooting (cropped) (cropped).jpg  [CC BY-SA 4.0]  (+0 candidates)
-GSW  Draymond Green ...
-   File:Draymond Green against Washington (cropped).jpg  [CC BY-SA 2.0]  (+0 candidates)
-MIA  Giannis Antetokounmpo ...
-   File:Giannis Antetokounmpo (24845003687) (cropped).jpg  [CC BY-SA 2.0]  (+0 candidates)
-MIA  Bam Adebayo ...
-   Category:Bam Adebayo: 22 usable pictures
-   skipped File:20160330 MCDAAG T. J. Leaf reverse dunk.jpg: 2 bodies in the picture
-   skipped File:20160330 MCDAAG Bam Adebayo on rim after dunk (1).jpg: 2 bodies in the picture
-   File:20160330 MCDAAG Bam Adebayo final play of the game (dunk).jpg  [CC BY-SA 4.0]  (+7 candidates)
-ORL  Paolo Banchero ...
-   File:Paolo Banchero.png  [CC BY 3.0]  (+0 candidates)
-ORL  Franz Wagner ...
-   File:Franz Wagner free throw.jpg  [CC BY-SA 2.0]  (+0 candidates)
-TOR  Kawhi Leonard ...
-   File:1 kawhi leonard 2019 nba finals.jpg  [CC BY-SA 4.0]  (+0 candidates)
-TOR  Scottie Barnes ...
-   File:Scottie Barnes, Wizards vs Raptors on October 12, 2021.jpg  [CC BY-SA 2.0]  (+0 candidates)
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  4%|█▍                                    | 6.69M/179M [00:00<00:02, 66.9MB/s]  8%|███                                   | 14.2M/179M [00:00<00:02, 71.8MB/s] 12%|████▋                                 | 22.2M/179M [00:00<00:02, 75.3MB/s] 17%|██████▍                               | 30.1M/179M [00:00<00:01, 77.1MB/s] 22%|████████▏                             | 38.4M/179M [00:00<00:01, 79.1MB/s] 26%|█████████▊                            | 46.3M/179M [00:00<00:01, 77.0MB/s] 30%|███████████▍                          | 54.0M/179M [00:00<00:01, 75.0MB/s] 34%|█████████████                         | 61.6M/179M [00:00<00:01, 70.8MB/s] 39%|██████████████▊                       | 69.5M/179M [00:00<00:01, 73.5MB/s] 43%|████████████████▍                     | 77.0M/179M [00:01<00:01, 73.9MB/s] 47%|██████████████████                    | 84.7M/179M [00:01<00:01, 74.6MB/s] 52%|███████████████████▋                  | 92.7M/179M [00:01<00:01, 76.2MB/s] 56%|█████████████████████▉                 | 101M/179M [00:01<00:01, 77.0MB/s] 61%|███████████████████████▋               | 108M/179M [00:01<00:00, 77.6MB/s] 65%|█████████████████████████▍             | 117M/179M [00:01<00:00, 78.5MB/s] 70%|███████████████████████████▏           | 124M/179M [00:01<00:00, 78.9MB/s] 74%|████████████████████████████▉          | 133M/179M [00:01<00:00, 79.6MB/s] 79%|██████████████████████████████▋        | 141M/179M [00:01<00:00, 79.5MB/s] 83%|████████████████████████████████▍      | 149M/179M [00:01<00:00, 77.3MB/s] 87%|██████████████████████████████████     | 156M/179M [00:02<00:00, 76.9MB/s] 92%|███████████████████████████████████▉   | 164M/179M [00:02<00:00, 78.5MB/s] 97%|█████████████████████████████████████▋ | 173M/179M [00:02<00:00, 79.0MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 755GB/s]
+   File:Lauri Markkanen, Cavaliers vs Rockets on December 15, 2021 (cropped).jpg  [CC BY 2.0]  (+0 candidates)
+UTA  Keyonte George ...
+   File:Keyonte George Jan 14 2026.jpg  [CC BY-SA 4.0]  (+0 candidates)
 
 Done. Every player has a cutout.
