@@ -1,8 +1,1 @@
-1	File:2025 Washington Wizards Media Day 30.jpg	other
-2	File:CJ McCollum (51915243981) (cropped).jpg	unknown
-3	File:CJ McCollum (2022 All-Star Weekend).jpg	unknown
-4	File:CJ McCollum (51914272807).jpg	unknown
-5	File:2025 Washington Wizards Media Day 21.jpg	other
-6	File:2025 Washington Wizards Media Day 62.jpg	other
-7	File:2025 Washington Wizards Media Day 28.jpg	other
-8	File:2025 Washington Wizards Media Day 64.jpg	other
+1	File:CJ McCollum (51915243981) (cropped).jpg	unknown
