@@ -1,8 +1,1 @@
-1	File:Kevin Durant dunk.jpg	other
-2	File:Kevin Durant dunks USA basketball 2015 140801-F-AT963-843.JPG	unknown
-3	File:Kevin Durant, Olympic Games 2024.jpg	unknown
-4	File:Kevin Durant, Paris 2024.jpg	unknown
-5	File:Kevin Durant, Paris 2024 (cropped).jpg	unknown
-6	File:Kevin Durant and Frances Tiafoe (2023 DC Open) 01 (cropped).jpg	unknown
-7	File:KD Madrid 092015.jpg	unknown
-8	File:Kevin Durant (5).jpg	unknown
+1	File:Kevin Durant, Paris 2024.jpg	unknown
