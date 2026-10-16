@@ -1,0 +1,9 @@
+numpy
+pillow
+opencv-python-headless>=4.8,<4.13
+imageio-ffmpeg
+yt-dlp
+google-api-python-client
+google-auth-oauthlib
+cloudinary
+tkinterdnd2
