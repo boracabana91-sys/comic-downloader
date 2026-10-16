@@ -1,0 +1,25 @@
+CHA  Kon Knueppel ...
+[0;93m2026-10-16 13:17:28.408725415 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  4%|█▎                                    | 6.44M/179M [00:00<00:02, 64.4MB/s]  8%|██▉                                   | 14.1M/179M [00:00<00:02, 71.5MB/s] 12%|████▋                                 | 21.8M/179M [00:00<00:02, 73.8MB/s] 17%|██████▎                               | 29.6M/179M [00:00<00:01, 75.5MB/s] 21%|███████▉                              | 37.1M/179M [00:00<00:01, 74.1MB/s] 25%|█████████▍                            | 44.6M/179M [00:00<00:01, 74.4MB/s] 29%|███████████▏                          | 52.4M/179M [00:00<00:01, 73.7MB/s] 34%|████████████▊                         | 60.3M/179M [00:00<00:01, 75.1MB/s] 38%|██████████████▍                       | 67.8M/179M [00:00<00:01, 73.8MB/s] 42%|████████████████                      | 75.3M/179M [00:01<00:01, 74.2MB/s] 46%|█████████████████▋                    | 82.9M/179M [00:01<00:01, 74.8MB/s] 51%|███████████████████▏                  | 90.5M/179M [00:01<00:01, 75.0MB/s] 55%|████████████████████▉                 | 98.4M/179M [00:01<00:01, 76.3MB/s] 59%|███████████████████████▏               | 106M/179M [00:01<00:00, 76.2MB/s] 64%|████████████████████████▊              | 114M/179M [00:01<00:00, 77.0MB/s] 68%|██████████████████████████▌            | 122M/179M [00:01<00:00, 77.1MB/s] 72%|████████████████████████████▏          | 129M/179M [00:01<00:00, 76.7MB/s] 77%|█████████████████████████████▉         | 137M/179M [00:01<00:00, 76.0MB/s] 81%|███████████████████████████████▌       | 145M/179M [00:01<00:00, 74.4MB/s] 85%|█████████████████████████████████▏     | 152M/179M [00:02<00:00, 75.1MB/s] 89%|██████████████████████████████████▉    | 160M/179M [00:02<00:00, 75.4MB/s] 94%|████████████████████████████████████▌  | 168M/179M [00:02<00:00, 75.9MB/s] 98%|██████████████████████████████████████▎| 175M/179M [00:02<00:00, 76.3MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 868GB/s]
+   1 picture(s): File:Kon Knueppel.jpg
+CHA  Brandon Miller ...
+   1 picture(s): File:Brandon Miller Alabama.jpg
+GSW  Stephen Curry ...
+   3 picture(s): File:Stephen Curry shooting.jpg | File:Stephen Curry dribbling 2016 (cropped).jpg | File:Stephen Curry (Crop).jpg
+GSW  Draymond Green ...
+   3 picture(s): File:Draymond Green against Washington (cropped).jpg | File:Draymond Green (33053301711).jpg | File:Marcin Gortat vs. Draymond Green.jpg
+MIA  Giannis Antetokounmpo ...
+   1 picture(s): File:Giannis Antetokounmpo.jpg
+MIA  Bam Adebayo ...
+   3 picture(s): File:Bam Adebayo (cropped).jpg | File:20160330 MCDAAG Bam Adebayo defends the rim (1).jpg | File:20160330 MCDAAG Bam Adebayo plants for a dunk.jpg
+ORL  Paolo Banchero ...
+   1 picture(s): File:Paolo Banchero Playing Defense at O'Dea.jpg
+ORL  Franz Wagner ...
+   3 picture(s): File:Franz Wagner free throw.jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–099.jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–105.jpg
+TOR  Kawhi Leonard ...
+   2 picture(s): File:1 kawhi leonard 2019 nba finals.jpg | File:Kawhi Leonard vs Charlotte 2019.jpg
+TOR  Scottie Barnes ...
+   3 picture(s): File:WizardsRaptors 112 (51589980835) (cropped).jpg | File:WizardsRaptors 119 (51589980655).jpg | File:WizardsRaptors 95 (51589981345).jpg
+
+Done. Every player has a cutout.
