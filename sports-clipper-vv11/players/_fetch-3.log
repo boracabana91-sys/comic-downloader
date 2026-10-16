@@ -1,0 +1,65 @@
+CHA  Kon Knueppel ...
+   no category: 1 usable pictures
+[0;93m2026-10-16 06:20:15.291451065 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▎                                     | 1.42M/179M [00:00<00:12, 14.2MB/s]  6%|██▎                                   | 10.9M/179M [00:00<00:02, 61.5MB/s] 15%|█████▊                                 | 26.4M/179M [00:00<00:01, 104MB/s] 23%|█████████▏                             | 41.8M/179M [00:00<00:01, 124MB/s] 32%|████████████▍                          | 57.2M/179M [00:00<00:00, 135MB/s] 41%|███████████████▊                       | 72.4M/179M [00:00<00:00, 140MB/s] 49%|███████████████████                    | 87.4M/179M [00:00<00:00, 144MB/s] 58%|███████████████████████                 | 103M/179M [00:00<00:00, 147MB/s] 66%|██████████████████████████▎             | 118M/179M [00:00<00:00, 148MB/s] 74%|█████████████████████████████▋          | 133M/179M [00:01<00:00, 149MB/s] 83%|█████████████████████████████████▏      | 148M/179M [00:01<00:00, 150MB/s] 91%|████████████████████████████████████▌   | 163M/179M [00:01<00:00, 151MB/s]100%|███████████████████████████████████████▉| 179M/179M [00:01<00:00, 151MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|███████████████████████████████████████| 179M/179M [00:00<00:00, 1.49TB/s]
+   File:Kon Knueppel.jpg  [CC0]  (+0 candidates)
+CHA  Brandon Miller ...
+   Category:Brandon Miller (basketball, born 2002): 2 usable pictures
+   File:Brandon Miller Alabama.jpg  [CC BY 2.0]  (+1 candidates)
+GSW  Stephen Curry ...
+   Category:Stephen Curry: 9 usable pictures
+   skipped File:Booker and Curry, Paris 2024 Olympic Games.jpg: 2 bodies in the picture
+   skipped File:Curry and James, Team USA, Olympic Games 2024.jpg: 3 bodies in the picture
+   skipped File:Joel Embiid, Olympic Games 2024.jpg: too wide for one player standing
+   skipped File:Indianapolis' second annual Juneteenth celebration, 2019-06-22 at Riverside Park P062219AZS (48140617421).jpg: 2 bodies in the picture
+   File:Stephen Curry, Olympic Games 2024.jpg  [CC BY-SA 4.0]  (+4 candidates)
+GSW  Draymond Green ...
+   Category:Draymond Green: 34 usable pictures
+   skipped File:Draymond Green attempts free throw in MSU game.jpg: player too small in the photo (20px, 1% of the frame)
+   skipped File:Marcin Gortat vs. Draymond Green.jpg: 2 bodies in the picture
+   skipped File:V20230117LJ-0685 (52864856576).jpg: 3 bodies in the picture
+   skipped File:Draymond Green (51913843817).jpg: too wide for one player standing
+   skipped File:Draymond Green (51913844897).jpg: 3 bodies in the picture
+   skipped File:Draymond Green (51915429415).jpg: 2 bodies in the picture
+   skipped File:Draymond Green (51916127251).jpg: 4 bodies in the picture
+   skipped File:Draymond Green against Washington.jpg: 2 bodies in the picture
+   skipped File:Draymond Green (33053301711).jpg: 2 bodies in the picture
+   File:Draymond Green (51913848277) (cropped).jpg  [CC BY 2.0]  (+5 candidates)
+MIA  Giannis Antetokounmpo ...
+   Category:Giannis Antetokounmpo: 5 usable pictures
+   skipped File:Giannis Antetokounmpo Free Throw 2026 Denver.jpg: 4 bodies in the picture
+   skipped File:Giannis Antetokounmpo vs Golden State Warriors 2025.jpg: 3 bodies in the picture
+   skipped File:Wisconsin National Guard presents Wortham Award 131109-Z-EJ222-044.jpg: 3 bodies in the picture
+   File:Thanasis and Giannis Antetokounmpo at Sepolia, Greece.jpg  [CC BY 2.0]  (+1 candidates)
+MIA  Bam Adebayo ...
+   Category:Bam Adebayo: 19 usable pictures
+   skipped File:20160330 MCDAAG T. J. Leaf reverse dunk.jpg: 2 bodies in the picture
+   skipped File:20160330 MCDAAG Bam Adebayo on rim after dunk (1).jpg: 2 bodies in the picture
+   File:20160330 MCDAAG Bam Adebayo final play of the game (dunk).jpg  [CC BY-SA 4.0]  (+5 candidates)
+ORL  Paolo Banchero ...
+   Category:Paolo Banchero: 13 usable pictures
+   skipped File:Paolo Banchero Dunk.jpg: 2 bodies in the picture
+   skipped File:Paolo Banchero Dunking in High School.jpg: 2 bodies in the picture
+   skipped File:Paolo Banchero Dunk 2020.jpg: 2 bodies in the picture
+   skipped File:Paolo Banchero Playing High School Basketball.jpg: 2 bodies in the picture
+   File:Paolo Banchero Dunking in High School on Roosevelt.jpg  [CC BY-SA 4.0]  (+5 candidates)
+ORL  Franz Wagner ...
+   Category:Franz Wagner (basketball): 25 usable pictures
+   skipped File:Franz Wagner layup.jpg: 3 bodies in the picture
+   File:Franz Wagner free throw.jpg  [CC BY-SA 2.0]  (+5 candidates)
+TOR  Kawhi Leonard ...
+   Category:Kawhi Leonard: 32 usable pictures
+   skipped File:Kawhi Leonard Dunk cropped.jpg: 3 bodies in the picture
+   skipped File:Kawhi Leonard San Diego State Dunk (cropped).jpg: 2 bodies in the picture
+   skipped File:Kawhi Leonard Dunk (33179280005).jpg: 2 bodies in the picture
+   File:Kawhi Leonard San Diego State Dunk.jpg  [CC BY 2.0]  (+5 candidates)
+TOR  Scottie Barnes ...
+   Category:Scottie Barnes: 24 usable pictures
+   skipped File:Scottie Barnes (51914206072).jpg: 2 bodies in the picture
+   skipped File:WizardsRaptors (51589081976).jpg: 2 bodies in the picture
+   skipped File:WizardsRaptors 112 (51589980835).jpg: 2 bodies in the picture
+   skipped File:WizardsRaptors 119 (51589980655).jpg: 2 bodies in the picture
+   File:Scottie Barnes, Wizards vs Raptors on October 12, 2021.jpg  [CC BY-SA 2.0]  (+5 candidates)
+
+Done. Every player has a cutout.
