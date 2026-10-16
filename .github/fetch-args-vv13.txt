@@ -1,3 +1,4 @@
-# vv13 round 3: only the players whose pictures were still weak. More pictures are tried (120), and a photo with
-# a neighbouring opponent is now accepted after the neighbour is cut away.
---redo --cands 14 --tries 120 --only "CHI:Matas Buzelis,DAL:Kyrie Irving,GSW:Stephen Curry,MIA:Bam Adebayo,MIA:Giannis Antetokounmpo,MIL:Myles Turner,MIL:Tyler Herro,ORL:Paolo Banchero"
+# vv13 round 4: two last picks made by eye (Curry in the Team USA top; Bam in the Miami jersey, bigger frame).
+--redo --only "GSW:Stephen Curry,MIA:Bam Adebayo"
+--file "GSW:Stephen Curry=File:Stephen Curry, Olympic Games 2024.jpg"
+--file "MIA:Bam Adebayo=File:Bam Adebayo (cropped).jpg"
