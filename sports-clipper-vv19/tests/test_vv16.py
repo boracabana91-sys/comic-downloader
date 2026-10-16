@@ -19,7 +19,8 @@ class CloseUps(unittest.TestCase):
         self.d = tempfile.mkdtemp()
         add(self.d, "MIA", "Bam Adebayo", ("cutout.png", "cutout2.png", "head1.png", "head2.png"))
         fol = os.path.join(self.d, roster.folder_name("MIA", "Bam Adebayo"))
-        open(os.path.join(fol, "old.txt"), "w").write("2")
+        with open(os.path.join(fol, "old.txt"), "w") as f:
+            f.write("2")
 
     def test_close_ups_come_after_the_photos_and_are_flagged(self):
         o = roster.options("MIA", self.d)[0]

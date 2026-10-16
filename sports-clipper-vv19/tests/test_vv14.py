@@ -233,7 +233,7 @@ class Window(unittest.TestCase):
                     mock.patch.object(roster, "bundled_dir", lambda: os.path.join(r, "none")), \
                     mock.patch.object(config, "save", lambda c, *a, **k: saved.update(c)):
                 app = gui.App(root)
-                self.assertFalse(app.tip.get())
+                self.assertTrue(app.tip.get())                                   # vv19: ticked by default
                 app.pv_title.set("DEN vs LAC"); app.pv_update()
                 self.assertEqual(str(app.pv_photo_cbs[0].cget("state")), "readonly")      # 3 photos: you can choose
                 self.assertEqual(str(app.pv_photo_cbs[1].cget("state")), "disabled")      # 1 photo: nothing to choose
@@ -242,8 +242,8 @@ class Window(unittest.TestCase):
                 self.assertEqual(app.cfg["photo_choice"]["Nikola Jokic"], 2)
                 app.pv_combos[0].current(1); app.pv_pick(0)                              # switch to Murray: his own 2 photos
                 self.assertEqual(len(app.pv_photo_cbs[0].cget("values")), 2)
-                app.tip.set(True); app.save()
-                self.assertTrue(saved["start_at_tipoff"])
+                app.tip.set(False); app.save()
+                self.assertFalse(saved["start_at_tipoff"])               # unticking is remembered
                 self.assertEqual(saved["photo_choice"]["Nikola Jokic"], 2)
         root.destroy()
 

@@ -15,8 +15,9 @@ class OldTeam(unittest.TestCase):
         self.d = tempfile.mkdtemp()
         add(self.d, "MIA", "Giannis Antetokounmpo", ("cutout.png",))
         add(self.d, "MIA", "Bam Adebayo", ("cutout.png", "cutout2.png", "cutout3.png"))
-        open(os.path.join(self.d, roster.folder_name("MIA", "Giannis Antetokounmpo"), "old.txt"), "w").write("1")
-        open(os.path.join(self.d, roster.folder_name("MIA", "Bam Adebayo"), "old.txt"), "w").write("2 3")
+        for who, marks in (("Giannis Antetokounmpo", "1"), ("Bam Adebayo", "2 3")):
+            with open(os.path.join(self.d, roster.folder_name("MIA", who), "old.txt"), "w") as f:
+                f.write(marks)
 
     def test_old_first_photo_is_not_the_default(self):
         names = [o["name"] for o in roster.options("MIA", self.d)]
