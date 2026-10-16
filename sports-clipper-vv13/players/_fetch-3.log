@@ -1,53 +1,9 @@
 GSW  Stephen Curry ...
-   Category:Stephen Curry: 9 usable pictures
-[0;93m2026-10-16 09:48:00.135205358 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+[0;93m2026-10-16 09:52:21.115861441 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
 Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▎                                     | 1.73M/179M [00:00<00:10, 17.3MB/s]  7%|██▋                                   | 12.4M/179M [00:00<00:02, 70.1MB/s] 15%|█████▋                                 | 26.1M/179M [00:00<00:01, 101MB/s] 23%|████████▉                              | 40.7M/179M [00:00<00:01, 118MB/s] 31%|████████████                           | 55.0M/179M [00:00<00:00, 127MB/s] 39%|███████████████                        | 68.9M/179M [00:00<00:00, 131MB/s] 46%|██████████████████▏                    | 83.0M/179M [00:00<00:00, 135MB/s] 55%|█████████████████████▎                 | 97.4M/179M [00:00<00:00, 137MB/s] 62%|████████████████████████▉               | 112M/179M [00:00<00:00, 139MB/s] 70%|████████████████████████████            | 125M/179M [00:01<00:00, 139MB/s] 78%|███████████████████████████████▏        | 139M/179M [00:01<00:00, 137MB/s] 86%|██████████████████████████████████▎     | 153M/179M [00:01<00:00, 138MB/s] 94%|█████████████████████████████████████▍  | 167M/179M [00:01<00:00, 139MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|███████████████████████████████████████| 179M/179M [00:00<00:00, 1.11TB/s]
-   skipped File:Ayesha Curry (cropped).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Stephen Curry wearing an shirt and hat for "Underrated".jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Booker and Curry, Paris 2024 Olympic Games.jpg: 2 bodies in the picture
-   skipped File:Curry and James, Team USA, Olympic Games 2024.jpg: 3 bodies in the picture
-   skipped File:Joel Embiid, Olympic Games 2024.jpg: too wide for one player standing
-   skipped File:Indianapolis' second annual Juneteenth celebration, 2019-06-22 at Riverside Park P062219AZS (48140617421).jpg: 2 bodies in the picture
-   File:Stephen Curry Shooting (cropped) (cropped).jpg  [CC BY-SA 4.0]  [GSW jersey]  (+2 candidates)
-MIA  Giannis Antetokounmpo ...
-   Category:Giannis Antetokounmpo: 6 usable pictures
-   skipped File:Giannis Antetokounmpo Free Throw 2026 Denver.jpg: 4 bodies in the picture
-   skipped File:Thanasis and Giannis Antetokounmpo at Sepolia, Greece.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo vs Golden State Warriors 2025.jpg: 3 bodies in the picture
-   skipped File:Giannis Antetokounmpo (24845003687) (cropped).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Wisconsin National Guard presents Wortham Award 131109-Z-EJ222-044.jpg: 3 bodies in the picture
-   File:Giannis Antetokounmpo.jpg  [CC BY-SA 2.0]  [OLD TEAM? the photo names another NBA team, not MIA]  (+0 candidates)
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▍                                     | 2.03M/179M [00:00<00:08, 20.2MB/s]  4%|█▌                                    | 7.34M/179M [00:00<00:04, 39.5MB/s] 10%|███▉                                  | 18.2M/179M [00:00<00:02, 71.2MB/s] 18%|███████▏                               | 32.8M/179M [00:00<00:01, 101MB/s] 27%|██████████▍                            | 47.8M/179M [00:00<00:01, 119MB/s] 35%|█████████████▌                         | 62.0M/179M [00:00<00:00, 126MB/s] 42%|████████████████▎                      | 74.6M/179M [00:00<00:00, 112MB/s] 50%|███████████████████▍                   | 89.0M/179M [00:00<00:00, 121MB/s] 57%|██████████████████████▋                 | 101M/179M [00:00<00:00, 107MB/s] 63%|████████████████████████▌              | 112M/179M [00:01<00:00, 99.3MB/s] 69%|██████████████████████████▊            | 123M/179M [00:01<00:00, 93.5MB/s] 77%|██████████████████████████████▋         | 137M/179M [00:01<00:00, 106MB/s] 83%|████████████████████████████████▎      | 148M/179M [00:01<00:00, 97.4MB/s] 89%|██████████████████████████████████▌    | 158M/179M [00:01<00:00, 92.2MB/s] 97%|██████████████████████████████████████▋ | 173M/179M [00:01<00:00, 106MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|███████████████████████████████████████| 179M/179M [00:00<00:00, 1.46TB/s]
+   File:Stephen Curry, Olympic Games 2024.jpg  [CC BY-SA 4.0]
 MIA  Bam Adebayo ...
-   Category:Bam Adebayo: 22 usable pictures
-   skipped File:Bam Adebayo at Miami Heat Family Festival in March 2023.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Adebayo Hachimura (cropped).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20160330 MCDAAG Bam Adebayo final play of the game (dunk).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Wizards Davis Bertans deep.jpg: 6 bodies in the picture
-   skipped File:20160330 MCDAAG T. J. Leaf reverse dunk.jpg: 2 bodies in the picture
-   skipped File:20160330 MCDAAG Bam Adebayo on rim after dunk (2).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20160330 MCDAAG Bam Adebayo on rim after dunk (1).jpg: 2 bodies in the picture
-   skipped File:20160330 MCDAAG Zach Collins on the glass.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20160330 MCDAAG Jarrett Allen opening jump ball over Bam Adebayo (1).JPG: cut off at the side of the photo (arm or hand missing)
-   skipped File:20160330 MCDAAG Bam Adebayo in the paint.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20160330 MCDAAG Bam Adebayo defends the rim (2).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20160330 MCDAAG Terrance Ferguson watches rim.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20160330 MCDAAG Bam Adebayo on defense.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20160330 MCDAAG T. J. Leaf at the rim.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20160330 MCDAAG Bam Adebayo with the ball.jpg: head cut off at the top of the photo
-   skipped File:Bam-Adebayo.jpg: cut off at the side of the photo (arm or hand missing)
-   File:Bam Adebayo.jpg  [CC BY-SA 2.0]  [MIA jersey]  (+5 candidates)
-ORL  Paolo Banchero ...
-   Category:Paolo Banchero: 13 usable pictures
-   skipped File:Paolo Banchero Dunk.jpg: 2 bodies in the picture
-   skipped File:Paolo Banchero Dunking in High School.jpg: 2 bodies in the picture
-   skipped File:Paolo Banchero Dunk 2020.jpg: 2 bodies in the picture
-   skipped File:Paolo Banchero Playing High School Basketball.jpg: 2 bodies in the picture
-   skipped File:Paolo Banchero on Defense in High School.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Paolo Banchero.png: cut off at the side of the photo (arm or hand missing)
-   skipped File:Paolo Banchero Playing Basketball at O'Dea.jpg: 2 bodies in the picture
-   skipped File:Paolo Banchero Playing Basketball.jpg: 4 bodies in the picture
-   skipped File:Paolo Banchero Playing Defense for O’Dea High School.jpg: 3 bodies in the picture
-   File:Paolo Banchero Dunking in High School on Roosevelt.jpg  [CC BY-SA 4.0]  (+3 candidates)
+   File:Bam Adebayo (cropped).jpg  [CC BY-SA 2.0]  [MIA jersey]
 
 Done. Every player has a cutout.
