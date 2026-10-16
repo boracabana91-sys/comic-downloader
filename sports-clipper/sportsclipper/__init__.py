@@ -1,2 +1,2 @@
 """Sports Clipper - cuts dead time out of sports videos from sources you are licensed to use."""
-__version__ = "0.1.0"
+__version__ = "0.9.2"

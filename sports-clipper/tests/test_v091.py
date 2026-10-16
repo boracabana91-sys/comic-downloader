@@ -84,5 +84,12 @@ class V091(unittest.TestCase):
             self.assertEqual(media.probe(v)["codec"], "h264")
 
 
+class VersionShown(unittest.TestCase):
+    def test_package_version_matches_release_file(self):
+        import sportsclipper
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.assertEqual(sportsclipper.__version__, open(os.path.join(root, "VERSION")).read().strip())
+
+
 if __name__ == "__main__":
     unittest.main()

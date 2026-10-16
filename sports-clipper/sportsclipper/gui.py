@@ -12,7 +12,7 @@ from datetime import datetime
 import subprocess
 import sys
 
-from . import checks, config, job, pipeline, progress, results, rights, sources
+from . import __version__, checks, config, job, pipeline, progress, results, rights, sources
 
 RES = [2160, 1080, 720, 480, 360]
 
@@ -20,7 +20,7 @@ RES = [2160, 1080, 720, 480, 360]
 class App:
     def __init__(self, root):
         self.root = root
-        root.title("Sports Clipper")
+        root.title(f"Sports Clipper {__version__}")
         root.geometry("920x860")
         root.minsize(640, 420)
         self.cfg = config.load()
@@ -42,7 +42,7 @@ class App:
         canvas.configure(yscrollcommand=sb.set)
         canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(-1 if e.delta > 0 else 1, "units"))
 
-        ttk.Label(page, text="Sports Clipper", font=("Helvetica", 18, "bold")).pack(anchor="w", padx=14, pady=(14, 0))
+        ttk.Label(page, text=f"Sports Clipper  v{__version__}", font=("Helvetica", 18, "bold")).pack(anchor="w", padx=14, pady=(14, 0))
         ttk.Label(page, text="Watches your licensed sources, cuts out the dead time, makes every resolution, and posts.",
                   foreground="#555").pack(anchor="w", padx=14)
 
@@ -180,6 +180,7 @@ class App:
         self.refresh_results()
 
         self.refresh_tree()
+        self.log(f"Sports Clipper v{__version__} ready")
         self.root.after(200, self.pump)
         self.root.after(1000, self._status_loop)
 
