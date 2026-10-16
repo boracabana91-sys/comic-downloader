@@ -1,23 +1,2 @@
-BKN  Michael Porter Jr. ...
-[0;93m2026-10-16 09:41:17.795597331 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  3%|█                                     | 4.86M/179M [00:00<00:03, 48.6MB/s]  6%|██▍                                   | 11.4M/179M [00:00<00:02, 58.5MB/s] 11%|████▏                                 | 19.4M/179M [00:00<00:02, 68.3MB/s] 15%|█████▋                                | 26.5M/179M [00:00<00:02, 69.4MB/s] 19%|███████▎                              | 34.1M/179M [00:00<00:02, 71.8MB/s] 23%|████████▉                             | 42.0M/179M [00:00<00:01, 74.1MB/s] 28%|██████████▌                           | 49.7M/179M [00:00<00:01, 75.0MB/s] 32%|████████████▏                         | 57.2M/179M [00:00<00:01, 75.1MB/s] 36%|█████████████▊                        | 64.7M/179M [00:00<00:01, 75.1MB/s] 41%|███████████████▍                      | 72.8M/179M [00:01<00:01, 76.8MB/s] 45%|█████████████████                     | 80.5M/179M [00:01<00:01, 76.4MB/s] 49%|██████████████████▋                   | 88.1M/179M [00:01<00:01, 74.9MB/s] 54%|████████████████████▎                 | 95.7M/179M [00:01<00:01, 75.2MB/s] 58%|██████████████████████▌                | 104M/179M [00:01<00:00, 76.5MB/s] 62%|████████████████████████▎              | 111M/179M [00:01<00:00, 76.0MB/s] 67%|█████████████████████████▉             | 119M/179M [00:01<00:00, 75.0MB/s] 71%|███████████████████████████▋           | 127M/179M [00:01<00:00, 75.5MB/s] 76%|█████████████████████████████▍         | 135M/179M [00:01<00:00, 78.0MB/s] 80%|███████████████████████████████▏       | 143M/179M [00:01<00:00, 78.6MB/s] 84%|████████████████████████████████▉      | 151M/179M [00:02<00:00, 78.2MB/s] 89%|██████████████████████████████████▋    | 159M/179M [00:02<00:00, 78.2MB/s] 93%|████████████████████████████████████▎  | 167M/179M [00:02<00:00, 78.6MB/s] 98%|██████████████████████████████████████ | 174M/179M [00:02<00:00, 77.5MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 871GB/s]
-   File:20170329 MCDAAG Michael Porter Jr. free throw.jpg  [CC BY-SA 4.0]  (+0 candidates)
-BKN  Julius Randle ...
-   File:Julius Randle with Lakers.jpg  [CC BY-SA 2.0]  [OLD TEAM? the photo names another NBA team, not BKN]  (+0 candidates)
-DET  Cade Cunningham ...
-   File:1 cade cunningham 2024.jpg  [CC BY-SA 4.0]  [DET jersey]  (+0 candidates)
-DET  Jalen Duren ...
-   File:Jalen Duren Free Throw 01252026 (cropped).jpg  [CC BY 4.0]  [DET jersey]  (+0 candidates)
-MEM  Cameron Boozer ...
-   File:Boozer – Clemson – February 14 2026 (cropped).png  [CC BY 4.0]  (+0 candidates)
-MEM  Zach Edey ...
-   File:Zach Edey 2 (cropped).jpg  [CC BY-SA 2.0]  (+0 candidates)
-OKC  Shai Gilgeous-Alexander ...
-   File:Shai Gilgeous-Alexander - Thunder vs. Wizards.png  [CC BY-SA 2.0]  [OKC jersey]  (+0 candidates)
-OKC  Jalen Williams ...
-   File:Jalen Williams OKCThunder 2025 NBA Cup (cropped) (cropped).jpg  [CC BY 4.0]  (+0 candidates)
-SAS  Victor Wembanyama ...
-   File:Victor Wembanyama San Antonio Spurs 2025 NBA Cup.jpg  [CC BY 4.0]  [SAS jersey]  (+0 candidates)
 
 Done. Every player has a cutout.
