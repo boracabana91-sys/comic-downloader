@@ -64,6 +64,7 @@ class FitPager:
         self.bg_samples = []    # colours of the gaps between panels = the strip's own background
         self.pages = []
         self.n = start_no
+        self.hold = None        # a normal-sized picture waiting to see if the next one continues it
 
     # ----- saving -----
     def _save(self, im):
@@ -176,24 +177,55 @@ class FitPager:
             self._scene(self.buf.crop((0, 0, self.buf.width, cut)))
             self.buf = self.buf.crop((0, cut, self.buf.width, self.buf.height))
 
+    def _commit_hold(self):
+        if self.hold is not None:
+            h, self.hold = self.hold, None
+            self._save(core._fit_single(h, self.w, self.h))
+
     def flush(self):
+        self._commit_hold()
         self._split(True)
         self._pack(True)
 
-    def add(self, src):
-        with Image.open(src) as opened:   # closed right away so Windows can delete files later
-            opened.load()
-            im = core._page_to_rgb_or_gray(opened, self.gray)
-        if im.height / im.width <= core.STRIP:   # a normal page: whole page on one screen
-            self.flush()
-            self._save(core._fit_single(im, self.w, self.h))
-            return
+    def _to_strip(self, im):
         if im.width != self.cw:
             nh = max(1, round(im.height * self.cw / im.width))
             im = im.resize((self.cw, nh), Image.LANCZOS)
         self.buf = im if self.buf is None else core._vjoin(self.buf, im)
         self._split(False)
 
+    @staticmethod
+    def _busy(im, top):
+        std = core._rows(im.crop((0, 0, im.width, 3)) if top else
+                         im.crop((0, im.height - 3, im.width, im.height)))
+        return bool(std.max() >= core.QUIET)
+
+    def add(self, src):
+        with Image.open(src) as opened:   # closed right away so Windows can delete files later
+            opened.load()
+            im = core._page_to_rgb_or_gray(opened, self.gray)
+        tall = im.height / im.width > core.STRIP
+        # A picture whose top edge cuts through art, right after one whose bottom edge cut
+        # through art, is the next slice of one long strip (the site serves strips in slices):
+        # join them so whole scenes can be kept together instead of cut at the slice edges.
+        cont = False
+        if self._busy(im, True):
+            if self.hold is not None and self._busy(self.hold, False):
+                cont = True
+            elif self.buf is not None and self.buf.width == self.cw and self._busy(self.buf, False):
+                cont = True
+        if cont:
+            if self.hold is not None:
+                h, self.hold = self.hold, None
+                self._to_strip(h)
+            self._to_strip(im)
+            return
+        if tall:
+            self._commit_hold()
+            self._to_strip(im)
+            return
+        self.flush()
+        self.hold = im   # a normal page, unless the next picture turns out to continue it
 
 def build_files_fit(out_root, title, total, size, device_key, progress=None, stop=None,
                     custom=None, cover=None, epub=False):

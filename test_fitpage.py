@@ -69,6 +69,25 @@ def main():
         # the background is the strip's own (white here), not black bars
         assert pages[0].getpixel((3, 3))[0] > 240
 
+        # slices that are NOT tall (aspect < 1.6), cut through panels: must still be joined
+        s2 = strip([500, 650, 420, 700, 600, 480], gap=90)
+        sl = 1000
+        n = 0
+        for y in range(0, s2.height, sl):
+            s2.crop((0, y, 800, min(s2.height, y + sl))).save(os.path.join(d, f"s{n:03d}.png"))
+            n += 1
+        o2 = os.path.join(d, "out2")
+        os.makedirs(o2)
+        r = fitpage.FitPager(o2, W, H, False)
+        for i in range(n):
+            r.add(os.path.join(d, f"s{i:03d}.png"))
+        r.flush()
+        pg2 = [Image.open(x).convert("RGB") for x in r.pages]
+        w2 = {i: [k for k, pg in enumerate(pg2) if has(pg, c)] for i, c in enumerate(COLORS[:6])}
+        print("slices: pages", len(pg2), w2)
+        for i in range(6):
+            assert len(w2[i]) == 1, f"panel {i} cut across pages: {w2}"
+
         # normal (book-shaped) page still fitted whole
         Image.new("RGB", (900, 1300), (10, 10, 10)).save(os.path.join(d, "book.png"))
         q = fitpage.FitPager(out, W, H, True)
