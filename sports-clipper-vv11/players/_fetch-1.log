@@ -1,37 +1,0 @@
-BOS  Jayson Tatum ...
-[0;93m2026-10-16 06:30:04.218877376 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  4%|█▎                                    | 6.26M/179M [00:00<00:02, 62.6MB/s]  8%|██▉                                   | 13.8M/179M [00:00<00:02, 70.2MB/s] 12%|████▍                                 | 21.1M/179M [00:00<00:02, 71.3MB/s] 16%|█████▉                                | 28.2M/179M [00:00<00:02, 69.5MB/s] 20%|███████▌                              | 35.5M/179M [00:00<00:02, 70.9MB/s] 24%|█████████▏                            | 43.1M/179M [00:00<00:01, 72.4MB/s] 28%|██████████▋                           | 50.4M/179M [00:00<00:01, 72.7MB/s] 32%|████████████▎                         | 57.7M/179M [00:00<00:01, 72.0MB/s] 36%|█████████████▊                        | 64.9M/179M [00:00<00:01, 71.9MB/s] 41%|███████████████▍                      | 72.4M/179M [00:01<00:01, 73.0MB/s] 45%|████████████████▉                     | 79.8M/179M [00:01<00:01, 73.1MB/s] 49%|██████████████████▌                   | 87.1M/179M [00:01<00:01, 73.1MB/s] 53%|████████████████████                  | 94.4M/179M [00:01<00:01, 72.1MB/s] 57%|██████████████████████▎                | 102M/179M [00:01<00:01, 73.9MB/s] 61%|███████████████████████▉               | 110M/179M [00:01<00:00, 74.6MB/s] 66%|█████████████████████████▋             | 118M/179M [00:01<00:00, 75.4MB/s] 70%|███████████████████████████▎           | 125M/179M [00:01<00:00, 75.3MB/s] 74%|████████████████████████████▉          | 133M/179M [00:01<00:00, 75.8MB/s] 79%|██████████████████████████████▋        | 140M/179M [00:01<00:00, 74.8MB/s] 83%|████████████████████████████████▎      | 148M/179M [00:02<00:00, 72.7MB/s] 87%|█████████████████████████████████▉     | 156M/179M [00:02<00:00, 74.3MB/s] 92%|███████████████████████████████████▋   | 163M/179M [00:02<00:00, 75.4MB/s] 96%|█████████████████████████████████████▍ | 171M/179M [00:02<00:00, 76.5MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 872GB/s]
-   File:Celtics at Wizards 2024-12-044 (cropped).jpg  [CC BY-SA 4.0]  (+0 candidates)
-BOS  Derrick White ...
-   File:Celtics at Wizards 2024-12-036 (White).jpg  [CC BY-SA 4.0]  (+0 candidates)
-DEN  Nikola Jokic ...
-   Category:Nikola Jokić: 39 usable pictures
-   skipped File:Nikola Jokic free throw.jpg: 3 bodies in the picture
-   skipped File:20250423 233450 - יוקיץ הראשון בהיסטוריה בארבע קטגוריות.jpg: 23 bodies in the picture
-   skipped File:Luka Doncic and Nikola Jokic (51916468564).jpg: 2 bodies in the picture
-   skipped File:Nikola Jokic (51914995756).jpg: player too small in the photo (994px, 35% of the frame)
-   skipped File:Nikola Jokic (51914996291).jpg: 4 bodies in the picture
-   File:Nikola Jokic Jump Shot.jpg  [CC BY-SA 2.0]  (+7 candidates)
-DEN  Jamal Murray ...
-   File:Jamal Murray free throw (cropped).jpg  [CC BY-SA 2.0]  (+0 candidates)
-LAL  Luka Doncic ...
-   Category:Luka Dončić: 1 usable pictures
-   File:Luka Doncic (51914951721) (cropped1).jpg  [CC BY 2.0]  (+0 candidates)
-LAL  Austin Reaves ...
-   File:Austin Reaves drives.jpg  [CC BY 2.0]  (+0 candidates)
-NYK  Jalen Brunson ...
-   File:Jalen Brunson (cropped).jpg  [CC BY 2.0]  (+0 candidates)
-NYK  Karl-Anthony Towns ...
-   Category:Karl-Anthony Towns: 55 usable pictures
-   skipped File:20140402 MCDAAG James Blackmon free throw.JPG: 3 bodies in the picture
-   skipped File:James Harden dunk vs Dominican Republic 2012 120712-F-AQ406-467.jpg: 2 bodies in the picture
-   skipped File:20140402 MCDAAG Emmanuel Mudiay reverse layup.JPG: 2 bodies in the picture
-   skipped File:Karl-Anthony Towns (51914308877).jpg: 2 bodies in the picture
-   skipped File:Karl-Anthony Towns (51914675261).jpg: player too small in the photo (966px, 34% of the frame)
-   skipped File:Karl-Anthony Towns (51914778381).jpg: 2 bodies in the picture
-   File:20140402 MCDAAG Jahlil Okafor game-winning dunk (1).JPG  [CC BY-SA 3.0]  (+7 candidates)
-SAC  Domantas Sabonis ...
-   File:Detroit Pistons vs Indiana Pacers, October 23, 2019 P102319AZS (49088210626).jpg  [Public domain]  (+0 candidates)
-
-Done. Every player has a cutout.

@@ -59,7 +59,7 @@ def score(title: str, w: int, h: int, player: str, year: int = 0, need_name: boo
     t = roster.ascii_name(title).lower()
     if (need_name and surname(player) not in t) or any(b in t for b in BAD) or not t.endswith((".jpg", ".jpeg", ".png")):
         return -1
-    if w < 1000:
+    if w < 700:
         return -1
     s = sum(v for k, v in ACTION if k in t)
     s += 1.5 if h >= w * 0.9 else 0          # portrait or square frames give a bigger cutout
@@ -133,7 +133,7 @@ def _collect(out: dict, data: dict, player: str, in_category: bool) -> None:
         if not ii or not licence_ok(ii.get("extmetadata", {})):
             continue
         t = roster.ascii_name(p["title"]).lower()
-        if any(b in t for b in BAD) or not t.endswith((".jpg", ".jpeg", ".png")) or ii.get("width", 0) < 1000:
+        if any(b in t for b in BAD) or not t.endswith((".jpg", ".jpeg", ".png")) or ii.get("width", 0) < 700:
             continue
         if not in_category and surname(player) not in t:
             continue

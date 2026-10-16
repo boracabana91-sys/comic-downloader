@@ -1,26 +1,0 @@
-CLE  Donovan Mitchell ...
-[0;93m2026-10-16 06:30:07.206314080 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  6%|██▏                                    | 10.2M/179M [00:00<00:01, 102MB/s] 14%|█████▍                                 | 24.9M/179M [00:00<00:01, 128MB/s] 23%|████████▊                              | 40.3M/179M [00:00<00:00, 140MB/s] 32%|████████████▎                          | 56.5M/179M [00:00<00:00, 149MB/s] 40%|███████████████▌                       | 71.5M/179M [00:00<00:00, 149MB/s] 49%|███████████████████                    | 87.2M/179M [00:00<00:00, 152MB/s] 57%|██████████████████████▉                 | 102M/179M [00:00<00:00, 146MB/s] 66%|██████████████████████████▌             | 119M/179M [00:00<00:00, 151MB/s] 75%|█████████████████████████████▉          | 134M/179M [00:00<00:00, 152MB/s] 83%|█████████████████████████████████▍      | 149M/179M [00:01<00:00, 151MB/s] 92%|████████████████████████████████████▊   | 165M/179M [00:01<00:00, 152MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|███████████████████████████████████████| 179M/179M [00:00<00:00, 1.50TB/s]
-   File:Donovan Mitchell Cavs Playoffs (cropped).jpg  [CC BY 2.0]  (+0 candidates)
-CLE  James Harden ...
-   File:James Harden (51830898977).jpg  [CC BY 2.0]  (+0 candidates)
-IND  Tyrese Haliburton ...
-   File:1 tyrese haliburton 2025.jpg  [CC BY-SA 4.0]  (+0 candidates)
-IND  Ivica Zubac ...
-   File:Ivica Zubac (cropped).jpg  [CC BY-SA 2.0]  (+0 candidates)
-MIN  Anthony Edwards ...
-   File:Anthony Edwards Kentavious Caldwell-Pope (51734745028) (cropped) (cropped).jpg  [CC BY-SA 2.0]  (+0 candidates)
-MIN  LaMelo Ball ...
-   File:LaMelo Ball (cropped).jpg  [CC BY 2.0]  (+0 candidates)
-PHX  Devin Booker ...
-   File:Devin Booker, Olympic Games 2024.jpg  [CC BY-SA 4.0]  (+0 candidates)
-PHX  Mark Williams ...
-   Category:Mark Williams (basketball): 1 usable pictures
-   File:Mark Williams.png  [CC BY 3.0]  (+0 candidates)
-WAS  Anthony Davis ...
-   File:Evan Mobley and Anthony Davis (cropped).jpg  [CC BY 2.0]  (+0 candidates)
-WAS  Trae Young ...
-   File:20170329 MCDAAG Trae Young dribbling upcourt.jpg  [CC BY-SA 4.0]  (+0 candidates)
-
-Done. Every player has a cutout.
