@@ -1,4 +1,17 @@
+[cutout.png]
 File:Draymond Green against Washington (cropped).jpg
 Author: Keith Allison from Hanover, MD, USA
 Licence: CC BY-SA 2.0
 https://commons.wikimedia.org/wiki/File:Draymond_Green_against_Washington_(cropped).jpg
+
+[cutout2.png]
+File:Draymond Green 2022.jpg
+Author: Erik Drost
+Licence: CC BY 2.0
+https://commons.wikimedia.org/wiki/File:Draymond_Green_2022.jpg
+
+[cutout3.png]
+File:Draymond Green (51913848277).jpg
+Author: Erik Drost
+Licence: CC BY 2.0
+https://commons.wikimedia.org/wiki/File:Draymond_Green_(51913848277).jpg
