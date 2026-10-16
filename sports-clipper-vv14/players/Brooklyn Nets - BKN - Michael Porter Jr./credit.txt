@@ -1,4 +1,17 @@
+[cutout.png]
 File:20170329 MCDAAG Michael Porter Jr. free throw.jpg
 Author: TonyTheTiger
 Licence: CC BY-SA 4.0
 https://commons.wikimedia.org/wiki/File:20170329_MCDAAG_Michael_Porter_Jr._free_throw.jpg
+
+[cutout2.png]
+File:20170329 MCDAAG Michael Porter Jr. watches basket.jpg
+Author: TonyTheTiger
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:20170329_MCDAAG_Michael_Porter_Jr._watches_basket.jpg
+
+[cutout3.png]
+File:20170329 MCDAAG Michael Porter Jr. defends the rim.jpg
+Author: TonyTheTiger
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:20170329_MCDAAG_Michael_Porter_Jr._defends_the_rim.jpg
