@@ -48,6 +48,30 @@ class SeriesApp:
         self.bottom = ttk.Frame(root)
         self.bottom.pack(side="bottom", fill="x")
 
+        # everything in the middle scrolls, so a short window never hides any option
+        win = root
+        try:
+            bgc = ttk.Style().lookup("TFrame", "background") or None
+        except Exception:
+            bgc = None
+        canvas = tk.Canvas(win, highlightthickness=0, borderwidth=0, **({"bg": bgc} if bgc else {}))
+        vsb = ttk.Scrollbar(win, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        main = ttk.Frame(canvas)
+        win_id = canvas.create_window((0, 0), window=main, anchor="nw")
+        main.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfigure(win_id, width=e.width))
+
+        def wheel(e):
+            if isinstance(e.widget, (tk.Listbox, tk.Text)):
+                return   # those scroll themselves
+            canvas.yview_scroll(-1 if e.delta > 0 else 1, "units")
+        win.bind_all("<MouseWheel>", wheel)
+        self.canvas = canvas
+        root = main
+
         ttk.Label(root, text="Series link (the page with all the chapters)").pack(anchor="w", **pad)
         row = ttk.Frame(root)
         row.pack(fill="x", padx=14)
@@ -67,7 +91,7 @@ class SeriesApp:
         ttk.Label(root, textvariable=self.count).pack(anchor="w", padx=14, pady=(8, 0))
         lrow = ttk.Frame(root)
         lrow.pack(fill="both", padx=14, pady=(2, 0), expand=True)
-        self.lb = tk.Listbox(lrow, selectmode="extended", height=5, exportselection=False)
+        self.lb = tk.Listbox(lrow, selectmode="extended", height=8, exportselection=False)
         sb = ttk.Scrollbar(lrow, command=self.lb.yview)
         self.lb.config(yscrollcommand=sb.set)
         self.lb.pack(side="left", fill="both", expand=True)

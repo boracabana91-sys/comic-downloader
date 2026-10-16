@@ -200,6 +200,35 @@ def main():
         res = series.run_series("Demo Comic", info["chapters"], d, dict(o, fit="old"), say=print, pause=0)
         assert len(res["done"]) == 3 and not res["skipped"], res
 
+    # --- a website that refuses the first pages for a moment: they are retried, slower ---
+    import time as _t
+    _sl = _t.sleep
+    _t.sleep = lambda s: None
+    try:
+        calls = {"n": 0}
+        real = core.fetch
+
+        def flaky(url, referer=None, timeout=30):
+            if url.endswith("/2.png") and calls["n"] < 5:
+                calls["n"] += 1
+                raise IOError("HTTP Error 429: Too Many Requests")
+            return real(url, referer, timeout)
+        core.fetch = flaky
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+            o = {"layout": "one", "size": 2, "device": "images", "epub": False, "words": [], "cover": None, "fit": "old"}
+            res = series.run_series("Demo Comic", info["chapters"][:1], d, o, say=print, pause=0)
+            assert len(res["done"]) == 1 and not res["failed"], res
+        core.fetch = lambda *a, **k: (_ for _ in ()).throw(IOError("HTTP Error 403: Forbidden"))
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+            logs2 = []
+            res = series.run_series("Demo Comic", info["chapters"][:1], d, o, say=logs2.append, pause=0,
+                                    inspect=lambda u: {"images": [base + "/img/c1/1.png"] * 3, "title": "x"})
+            assert res["failed"] and "403" in res["failed"][0][1], res
+        core.fetch = real
+    finally:
+        _t.sleep = _sl
+        core.fetch = real
+
     # --- the little picture shown in the window ---
     p1 = series.layout_preview("one", "Demo", ".cbz", True, 5)
     assert "Demo - Chapter 001.cbz" in p1 and "Demo - Chapter 001.epub" in p1 and "Pages/" not in p1

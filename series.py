@@ -418,6 +418,24 @@ def _finish_layout(work_root, name, total, size, series_dir, folder, layout, dev
     return final
 
 
+def _download_with_retry(imgs, name, work, url, progress, stop, size, convert, say):
+    """Websites sometimes refuse a burst of downloads for a moment. Missing pages are asked for
+    again, slower each time (4, then 2, then 1 at a time, with a wait). Pages already saved are kept."""
+    failed = []
+    for rnd, (workers, wait) in enumerate(((4, 0), (2, 5), (1, 12), (1, 25))):
+        if rnd:
+            say(f"  {len(failed)} page(s) did not download. Waiting {wait} seconds, then trying again...")
+            for _ in range(wait):
+                if stop.is_set():
+                    raise core.Stopped()
+                time.sleep(1)
+        failed = core.download_images(imgs, name, work, url, progress, stop, size, convert,
+                                      workers=workers)
+        if not failed:
+            return []
+    return failed
+
+
 def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series_title=""):
     """Everything for one chapter. Returns the number of pages. Raises on any problem."""
     info = _inspect_with_retry(inspect, url, stop)
@@ -429,10 +447,15 @@ def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series
     total = len(imgs)
     size = total if layout == "one" else max(1, opts["size"])   # Sample 1: the whole chapter is one part
     work = os.path.join(series_dir, ".work")                    # hidden work area, tidied afterwards
-    failed = core.download_images(imgs, name, work, url, progress, stop, size,
-                                  opts.get("convert", False))
+    failed = _download_with_retry(imgs, name, work, url, progress, stop, size,
+                                  opts.get("convert", False), say)
     if failed:
-        raise ChapterFailed(f"pages {failed} did not download")
+        why = ""
+        try:
+            core.fetch(imgs[failed[0] - 1], referer=url, timeout=20)
+        except Exception as e:
+            why = f" ({e})"
+        raise ChapterFailed(f"pages {failed} did not download{why}")
     words = opts.get("words")
     if words:
         try:

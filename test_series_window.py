@@ -36,6 +36,10 @@ assert series.load_settings(_sp)["geometry"].startswith("820x640"), series.load_
 root.update()
 assert a.btn_go.winfo_ismapped() and a.log.winfo_ismapped()  # buttons and log stay visible
 assert a.badge.get() is True
+assert a.canvas.bbox('all') is not None  # the middle part scrolls
+root.geometry('760x420')
+root.update()
+assert a.btn_go.winfo_ismapped()  # even a short window keeps the buttons
 assert a.fit.get() == "new"
 a.fit.set("old")
 a.remember_fit()
