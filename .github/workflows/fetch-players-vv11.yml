@@ -8,6 +8,9 @@ on:
     paths: [".github/fetch-args-vv11.txt", ".github/workflows/fetch-players-vv11.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -26,6 +29,16 @@ jobs:
           eval python tools/get_players.py --out ../players_out $ARGS 2>&1 | tee ../fetch.log
       - name: Contact sheet
         run: python sports-clipper-vv11/tools/contact_sheet.py players_out contact.jpg
+      - name: Commit the pictures to the branch
+        run: |
+          mkdir -p sports-clipper-vv11/players
+          cp -R players_out/. sports-clipper-vv11/players/
+          cp contact.jpg sports-clipper-vv11/players/_contact.jpg
+          cp fetch.log sports-clipper-vv11/players/_fetch.log
+          git config user.name "players-bot"; git config user.email "players-bot@users.noreply.github.com"
+          git add sports-clipper-vv11/players
+          git commit -m "vv11: player pictures (cloud fetch)" || echo "nothing new"
+          git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"
       - uses: actions/upload-artifact@v4
         with:
           name: players-vv11

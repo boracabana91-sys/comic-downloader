@@ -1,2 +1,3 @@
 # Extra arguments for tools/get_players.py, one line. Changing this file makes the cloud fetch run again.
 # Examples:  --team DEN,LAC --redo        --file "DEN:Nikola Jokic=File:Name.jpg"
+--redo
