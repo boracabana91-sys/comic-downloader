@@ -36,5 +36,9 @@ assert series.load_settings(_sp)["geometry"].startswith("820x640"), series.load_
 root.update()
 assert a.btn_go.winfo_ismapped() and a.log.winfo_ismapped()  # buttons and log stay visible
 assert a.badge.get() is True
+assert a.fit.get() == "new"
+a.fit.set("old")
+a.remember_fit()
+assert series.load_settings(_sp)["fit"] == "old"
 root.destroy()
 print("series window OK")

@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "series*.py"
+      - "fitpage.py"
+      - "test_fitpage.py"
       - "test_series*.py"
       - "core.py"
       - "cleaner.py"
@@ -34,6 +36,8 @@ jobs:
         run: python test_core.py
       - name: Series test (finds chapters, downloads them one by one, skips finished ones)
         run: python test_series.py
+      - name: Snug-fit page test (whole scenes, not zoomed)
+        run: python test_fitpage.py
       - name: Check the window code loads
         run: python -c "import series_app"
       - name: Open the window and try the Custom size boxes and the cover drop box

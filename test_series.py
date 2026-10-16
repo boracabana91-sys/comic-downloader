@@ -93,7 +93,8 @@ def main():
     # --- Sample 1: one folder per chapter, one .cbz and one .epub each. Chapter 2 is broken
     #     at first; the others must still finish.
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
-        opts = {"layout": "one", "size": 2, "device": "kobo", "epub": True, "words": [], "cover": None}
+        opts = {"layout": "one", "size": 2, "device": "kobo", "epub": True, "words": [], "cover": None,
+                "fit": "old"}
         logs = []
         res = series.run_series("Demo Comic", info["chapters"], d, opts, say=logs.append, pause=0)
         assert len(res["done"]) == 2 and len(res["failed"]) == 1, res
@@ -184,6 +185,20 @@ def main():
         assert first.size == (1072, 1448)
         assert not any(n.startswith("csd_") for n in os.listdir(tempfile.gettempdir())
                        if os.path.isdir(os.path.join(tempfile.gettempdir(), n))) or True
+
+    # --- new snug fit makes the same files, and switching fit makes chapters again ---
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        o = {"layout": "one", "size": 2, "device": "kobo", "epub": True, "words": [], "cover": None,
+             "fit": "new"}
+        res = series.run_series("Demo Comic", info["chapters"], d, o, say=print, pause=0)
+        assert len(res["done"]) == 3, res
+        ch = os.path.join(d, "Demo Comic", "Chapter 001")
+        assert sorted(os.listdir(ch)) == ["001.png", "002.png", "003.png",
+                                          "Demo Comic - Chapter 001.cbz", "Demo Comic - Chapter 001.epub"]
+        with zipfile.ZipFile(os.path.join(ch, "Demo Comic - Chapter 001.cbz")) as z:
+            assert len(z.namelist()) == 3
+        res = series.run_series("Demo Comic", info["chapters"], d, dict(o, fit="old"), say=print, pause=0)
+        assert len(res["done"]) == 3 and not res["skipped"], res
 
     # --- the little picture shown in the window ---
     p1 = series.layout_preview("one", "Demo", ".cbz", True, 5)

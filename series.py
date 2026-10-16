@@ -235,7 +235,7 @@ def save_state(series_dir, state):
 def signature(opts):
     """What the finished files depend on. If it changes, the chapter is made again."""
     return json.dumps({
-        "layout": opts.get("layout", "one"), "badge": bool(opts.get("badge")), "device": opts.get("device"), "epub": bool(opts.get("epub")), "size": opts.get("size"),
+        "layout": opts.get("layout", "one"), "badge": bool(opts.get("badge")), "fit": opts.get("fit", "new"), "device": opts.get("device"), "epub": bool(opts.get("epub")), "size": opts.get("size"),
         "convert": bool(opts.get("convert")), "custom": opts.get("custom"),
         "cover": os.path.basename(opts["cover"]) if opts.get("cover") else None,
         "words": sorted(opts.get("words") or [])}, sort_keys=True)
@@ -458,9 +458,12 @@ def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series
         target = device if device != "images" else ("epub_only" if opts.get("epub") else None)
         device_folder = None
         if target:
-            _made, bad = core.build_device_files(work, name, total, size, target, progress, stop,
-                                                 opts.get("custom"), cover,
-                                                 epub=bool(opts.get("epub")))
+            build = core.build_device_files
+            if opts.get("fit", "new") == "new":
+                import fitpage            # TEST: snug fit, whole scenes per screen
+                build = fitpage.build_files_fit
+            _made, bad = build(work, name, total, size, target, progress, stop,
+                               opts.get("custom"), cover, epub=bool(opts.get("epub")))
             device_folder = core.resolve_device(target, opts.get("custom"))["folder"]
             if bad:
                 say(f"  {len(bad)} image(s) could not be used and were skipped.")

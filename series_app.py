@@ -124,6 +124,14 @@ class SeriesApp:
                         variable=self.layout, command=self.update_preview).pack(side="left", padx=(8, 0))
         ttk.Radiobutton(lay, text="Sample 2: files in parts of N pages", value="parts",
                         variable=self.layout, command=self.update_preview).pack(side="left", padx=(8, 0))
+        fitrow = ttk.Frame(root)
+        fitrow.pack(fill="x", padx=14, pady=(6, 0))
+        ttk.Label(fitrow, text="Page fit:").pack(side="left")
+        self.fit = tk.StringVar(value=series.load_settings(settings_path).get("fit", "new"))
+        ttk.Radiobutton(fitrow, text="New snug fit (test): whole scenes, not zoomed", value="new",
+                        variable=self.fit, command=self.remember_fit).pack(side="left", padx=(8, 0))
+        ttk.Radiobutton(fitrow, text="Previous (v4)", value="old",
+                        variable=self.fit, command=self.remember_fit).pack(side="left", padx=(8, 0))
         self.preview = tk.Label(root, justify="left", anchor="w", font=("Menlo", 11),
                                 relief="groove", borderwidth=1, padx=8, pady=4)
         self.preview.pack(fill="x", padx=14, pady=(4, 0))
@@ -229,6 +237,11 @@ class SeriesApp:
             series.save_settings(data, self.settings_path)
         except Exception:
             pass
+
+    def remember_fit(self):
+        data = series.load_settings(self.settings_path)
+        data["fit"] = self.fit.get()
+        series.save_settings(data, self.settings_path)
 
     def on_close(self):
         self.save_geometry()
@@ -463,7 +476,7 @@ class SeriesApp:
                                     "(400 to 5000) in pixels.")
                 return
         cover = self.cover_path if self.cover_path and os.path.isfile(self.cover_path) else None
-        opts = {"badge": self.badge.get(), "layout": self.layout.get(), "size": size, "convert": self.convert.get(), "device": self.device_key(),
+        opts = {"fit": self.fit.get(), "badge": self.badge.get(), "layout": self.layout.get(), "size": size, "convert": self.convert.get(), "device": self.device_key(),
                 "custom": custom, "epub": self.epub.get() == "Yes", "cover": cover,
                 "words": cleaner.all_words(self.words.get()) if self.hide.get() else [],
                 "redo": self.redo.get(), "all_urls": self.chapters}

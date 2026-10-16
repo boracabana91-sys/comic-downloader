@@ -23,6 +23,12 @@ Comic Downloader = one chapter link. **Comic Series Downloader = a page that lis
 ## Chapter number on the cover
 When you choose a cover picture, each chapter gets its own copy with the chapter number (like #52) in the upper right. It becomes page 1 of that chapter's files and the chapter folder's thumbnail. Untick "Put the chapter number on each chapter's cover" to use the plain cover.
 
+## Page fit (TEST in series-v5-test)
+- **New snug fit (test):** like Kindle Comic Converter books. Each screen shows whole scenes, shrunk to fit with a thin frame in the strip's own background colour. Nothing is zoomed in, and a scene is never cut in half. Only a single scene taller than about two screens is split, at its quietest row, so it stays readable.
+- **Previous (v4):** exactly the pages from series-v4.
+The program remembers your choice. Switching makes finished chapters again the next time you download them.
+To go fully back: Releases → **series-v4** → download that app again. The GitHub tag `series-v4-stable` marks the code.
+
 ## Window size
 Drag the window edges to resize it. The Download buttons and the log stay at the bottom. The program remembers the size and position you left it at.
 

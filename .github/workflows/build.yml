@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths-ignore:
       - "series*.py"
+      - "fitpage.py"
+      - "test_fitpage.py"
       - "test_series*.py"
       - "SERIES_VERSION"
       - "SERIES_README.md"
