@@ -1,7 +1,1 @@
-1	File:Evan Mobley and Anthony Davis (cropped).jpg	unknown
-2	File:Anthony Davis, Olympic Games 2024.jpg	unknown
-3	File:LeBron James, Anthony Davis and, Donovan Mitchell.jpg	unknown
-4	File:Max Strus - 53367373797.jpg	other
-5	File:Anthony Davis - 53368614509.jpg	other
-6	File:Max Strus.jpg	other
-7	File:Anthony Davis pre-game (cropped).jpg	other
+1	File:Anthony Davis, Olympic Games 2024.jpg	unknown
