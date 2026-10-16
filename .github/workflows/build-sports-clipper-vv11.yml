@@ -31,7 +31,7 @@ jobs:
           rc=$?
           cat ../test-out.txt
           if [ $rc -ne 0 ]; then
-            MSG="$(grep -v '^$' ../test-out.txt | tail -40 | cut -c1-300 | sed ':a;N;$!ba;s/\n/%0A/g')"
+            MSG="$(grep -v '^$' ../test-out.txt | tail -40 | cut -c1-300 | awk '{printf "%s%%0A", $0}')"
             echo "::error title=self-tests failed::${MSG}"
           fi
           exit $rc
