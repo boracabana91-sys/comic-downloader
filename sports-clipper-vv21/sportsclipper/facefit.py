@@ -16,10 +16,10 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL = os.path.join(HERE, "models", "face_detection_yunet_2023mar.onnx")
 
-FACE_SHARE = 0.60        # face (YuNet box) width as a share of the panel width
+FACE_SHARE = 0.50        # face (YuNet box) width as a share of the panel width
 EYE_LINE = 0.37          # the eyes sit this far down the panel
 MIN_FACE_PX = 110        # smaller than this in the source would be blown up too much
-MAX_YAW = 0.42           # |nose offset from the eye midpoint| / eye distance
+MAX_YAW = 0.34           # |nose offset from the eye midpoint| / eye distance
 MAX_ROLL = 14.0          # degrees of head tilt we level out; more than this is rejected
 PITCH_RANGE = (0.55, 1.35)   # (eyes -> nose) / (nose -> mouth): outside = looking up / down
 

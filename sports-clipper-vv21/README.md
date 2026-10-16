@@ -25,7 +25,15 @@ Nothing else to install - ffmpeg is built into the app, and no password is neede
 
 **AI titles (Claude Haiku 5.5, optional):** this is the default. Without a key the app uses plain titles. To use it, open `~/SportsClipper/config.json` and put your Anthropic API key in `"api_key"` under `"ai"`, then Save settings. The key is separate from a Claude chat subscription.
 
-## vv20: scan only what you highlight, reclip the newest 3, auto wake-up (new in this version)
+## vv21: close-up thumbnails, three AI writers, commentator lines (new in this version)
+- **Thumbnail:** two big faces (left and right), a dark centre column with gold stripes, the headline in a black box (FLASHY / GREAT / FULL GAME follows the title), a round team badge above and below (colour + letters, no trademarked logos) and the length bottom right.
+- **Proportioned faces:** the app finds each face (a small face-finder model is built in), levels the eyes, sizes both faces to the same share of their panel and puts the eyes on the same line. A photo is not used when the player looks sideways, up or down, the head is tilted, the face is small or blurry, or it is cut by the edge. The next good photo of that player is used instead and the activity log says so. Your chosen photo is kept whenever it passes.
+- **More front-facing close-ups:** a cloud search added up to 3 front-facing close-ups per player (Wikimedia Commons, free licences, credits in `players/CREDITS.txt`). Close-ups with an old team's jersey are offered in the Photo drop-down but are never the default.
+- **Three AI writers** (set the key in `config.json`): one for the SEO title and FLASHY/GREAT choice, one for reach tags and hashtags (NBA fans, basketball nerds), one for the two teams' die-hard fans. Title: `Denver Nuggets VS Miami Heat - FLASHY HIGHLIGHTS - October 17, 2026`.
+- **Description:** your fair-use paragraph first, then 2-3 lines a commentator said about great plays (from the video's captions, only real lines, never invented), then a short subscribe line and hashtags. No captions on the video = no commentator lines.
+- Layout drop-down / tick: the older full-body layout is still available.
+
+## vv20: scan only what you highlight, reclip the newest 3, auto wake-up
 - **Highlight channels:** click (Cmd-click for several) in the channel list. Only highlighted channels are scanned, by Scan now and by Start 24/7. Nothing highlighted = nothing scanned.
 - **Scan now** no longer starts work: it lists the newest 3 unprocessed videos of the highlighted channels, in **green**, already selected.
 - **Reclip all highlighted** runs every selected video in the list one after another (reclip once, render the sizes, upload, thumbnail). A channel without the permission box ticked is skipped. Start 24/7 takes the newest 3 per scan on its own.

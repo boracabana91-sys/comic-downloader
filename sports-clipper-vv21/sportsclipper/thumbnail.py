@@ -292,63 +292,115 @@ def head_picture(png: str) -> str:
     return os.path.join(fol, heads[0]) if heads else png
 
 
-def _face_fill(png: str, w: int, h: int) -> Image.Image:
-    """The player as a big close-up: a head picture is used whole; a full-body cut-out is cropped to head and shoulders."""
-    im = Image.open(png).convert("RGBA")
-    box = im.getchannel("A").point(lambda a: 255 if a > 16 else 0).getbbox()
-    if box:
-        im = im.crop(box)
-    if not os.path.basename(png).lower().startswith("head") and im.height > 1.15 * im.width:
-        im = im.crop((0, 0, im.width, int(im.width * 0.95)))             # top of a full-body picture
-    k = min(h / im.height, w / im.width)
-    return im.resize((max(1, int(im.width * k)), max(1, int(im.height * k))), Image.LANCZOS)
+LAST_NOTES: list = []        # what the last close-up thumbnail decided about each photo (shown in the activity log)
 
 
-def closeup_thumbnail(teams: list, stars: list, word: str = "FULL GAME", style: str | None = None) -> np.ndarray:
-    """vv21: two big faces left and right, a dark centre column with gold stripes, the stacked headline in the
-    middle and the two team names above and below it. No team logos (they are trademarks and not bundled)."""
-    from . import roster
+def choose_face(png: str):
+    """The picture to use for a player: his chosen photo (or its close-up) if the face is large, level and looking at
+    the camera; otherwise his best other photo that is. Photos with an old team's jersey are only used when the
+    chosen one is old too. Returns (path, analysis, note)."""
+    from . import facefit, roster
+    fol = os.path.dirname(png)
+    old = {n + 1 for n in roster._old_in(fol)}
+    chosen_old = roster._num(os.path.basename(png)) in old
+    try:
+        every = sorted(os.path.join(fol, f) for f in os.listdir(fol) if f.lower().endswith(".png"))
+    except OSError:
+        every = [png]
+    pool = [p for p in every if chosen_old or roster._num(os.path.basename(p)) not in old]
+    first = [head_picture(png), png]
+    for cand in first:
+        info = facefit.analyse(cand)
+        if info["ok"]:
+            return cand, info, ""
+    why = facefit.analyse(png)["why"]
+    best, info = facefit.pick([p for p in pool if p not in first])
+    if best and info.get("ok"):
+        return best, info, f"{os.path.basename(png)} skipped ({why}); used {os.path.basename(best)}"
+    pic = max(first + [best or png], key=lambda c: facefit.analyse(c).get("face_px", 0))
+    return pic, facefit.analyse(pic), f"no front-facing photo for {os.path.basename(os.path.dirname(png))} ({why}); used the closest"
+
+
+def _badge(d, cx, cy, r, acr, color, style):
+    """A round team badge (no trademarked logo): team colour, white ring, the three letters."""
+    d.ellipse((cx - r - 7, cy - r - 7, cx + r + 7, cy + r + 7), fill=(255, 255, 255, 255))
+    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=tuple(int(c * 0.78) for c in color) + (255,))
+    d.ellipse((cx - r + 14, cy - r + 14, cx + r - 14, cy + r - 14), outline=(255, 255, 255, 255), width=5)
+    f = _fit_font(acr, int(r * 1.35), int(r * 0.95), style)
+    d.text((cx, cy + 3), acr, font=f, fill=WHITE, stroke_width=3, stroke_fill=(0, 0, 0, 255), anchor="mm")
+
+
+def closeup_thumbnail(teams: list, stars: list, word: str = "FULL GAME", style: str | None = None,
+                      duration_s: float = 0) -> np.ndarray:
+    """vv21: two equally proportioned faces (levelled, same size, eyes on the same line), team-colour sides, a dark centre
+    column with gold double stripes, the headline in a black box, a team badge above and below, the length bottom right."""
+    from . import facefit, roster
+    style = style if style not in (None, "Impact") else "Anton"
     colors = [roster.team_color(t) for t in teams]
+    LAST_NOTES.clear()
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+    cl, cr = int(0.335 * W), int(0.665 * W)
     img = np.zeros((H, W, 3), np.float32)
     for i, col in enumerate(colors):
-        cx = (0.20 if i == 0 else 0.80) * W
-        d = np.clip(np.sqrt(((xx - cx) / (0.55 * W)) ** 2 + ((yy - 0.45 * H) / (0.9 * H)) ** 2), 0, 1)
-        for c in range(3):
-            side = (xx < W / 2) if i == 0 else (xx >= W / 2)
-            img[..., c] += np.where(side, (0.25 + 0.75 * (1 - d)) * col[c] * 0.95, 0)
+        left = i == 0
+        cx = 0.5 * cl if left else W - 0.5 * (W - cr)
+        dist = np.clip(np.sqrt(((xx - cx) / (0.62 * cl)) ** 2 + ((yy - 0.40 * H) / (0.95 * H)) ** 2), 0, 1)
+        side = (xx < W / 2) if left else (xx >= W / 2)
+        glow = (0.22 + 0.78 * (1 - dist) ** 1.2)[..., None] * np.array(col, np.float32)[None, None, :] * 0.92
+        img += np.where(side[..., None], glow, 0)
     canvas = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).convert("RGBA")
     d = ImageDraw.Draw(canvas)
+    pw = cl + 40                                                         # the faces run a little under the centre column
     for i, (png, _) in enumerate(stars):
-        face = _face_fill(head_picture(png), int(0.50 * W), int(1.04 * H))
-        cx = (0.17 if i == 0 else 0.83) * W
-        x = int(cx - face.width / 2)
-        y = int(min(0.05 * H, H - face.height + 0.02 * H)) if face.height >= 0.9 * H else int(H - face.height + 0.02 * H)
-        a = face.getchannel("A")                                          # soft dark shadow so the face lifts off the colour
-        sh = Image.new("RGBA", face.size, (0, 0, 0, 0)); sh.putalpha(a.filter(ImageFilter.GaussianBlur(26)).point(lambda v: int(v * 0.55)))
-        canvas.alpha_composite(sh, (max(0, x + 10), max(0, y + 8))) if x + 10 >= 0 and y + 8 >= 0 else None
-        canvas.alpha_composite(face.crop((max(0, -x), max(0, -y), min(face.width, W - x), face.height)),
-                               (max(0, x), max(0, y)))
-    # centre column
-    cl, cr = int(0.335 * W), int(0.665 * W)
-    d.rectangle((cl, 0, cr, H), fill=(8, 10, 16, 235))
+        pic, info, note = choose_face(png)
+        if note:
+            LAST_NOTES.append(note)
+        face = facefit.fit(pic, pw, H, info)
+        x = -20 if i == 0 else W - pw + 20
+        a = face.getchannel("A")
+        sh = Image.new("RGBA", face.size, (0, 0, 0, 0)); sh.putalpha(a.filter(ImageFilter.GaussianBlur(24)).point(lambda v: int(v * 0.5)))
+        canvas.alpha_composite(sh, (x + (10 if i == 0 else -10), 8)) if x + 10 >= 0 else None
+        canvas.alpha_composite(face.crop((max(0, -x), 0, min(pw, W - x), H)), (max(0, x), 0))
+    # centre column: dark, tinted by each team's colour at its own end
+    col = Image.new("RGBA", (cr - cl, H), (0, 0, 0, 0))
+    cd = ImageDraw.Draw(col)
+    for yy_ in range(H):
+        t = yy_ / (H - 1)
+        c = [int(8 + (colors[0][k] * (1 - t) + colors[1][k] * t) * 0.20 * (1 - 0.7 * abs(t - 0.5) * 2 ** 0)) for k in range(3)]
+        cd.line([(0, yy_), (cr - cl, yy_)], fill=tuple(c) + (250,))
+    canvas.alpha_composite(col, (cl, 0))
+    d = ImageDraw.Draw(canvas)
     for x0 in (cl - 34, cl - 8, cr + 8, cr + 34):
         d.rectangle((x0 - 9, 0, x0 + 9, H), fill=YELLOW + (255,))
     mid = (cl + cr) // 2
-    inner = cr - cl - 60
-    f1 = _fit_font(word, inner, 230, style)
-    f2 = _fit_font("HIGHLIGHTS", inner, 170, style)
-    b1 = d.textbbox((mid, 0.43 * H), word, font=f1, anchor="ms")
-    top = b1[1]
-    d.rectangle((cl + 10, top - 24, cr - 10, 0.43 * H + 24), fill=(0, 0, 0, 255))
-    d.text((mid, 0.43 * H), word, font=f1, fill=WHITE, anchor="ms")
-    b2 = d.textbbox((mid, 0.62 * H), "HIGHLIGHTS", font=f2, anchor="ms")
-    d.rectangle((cl + 10, 0.43 * H + 24, cr - 10, b2[3] + 20), fill=(0, 0, 0, 255))
-    d.text((mid, 0.62 * H), "HIGHLIGHTS", font=f2, fill=WHITE, anchor="ms")
-    for t, y in zip(teams, (0.13 * H, 0.89 * H)):
-        full = roster.TEAMS[t][0].upper()
-        ft = _fit_font(full, inner, 74, style)
-        d.text((mid, y), full, font=ft, fill=YELLOW, stroke_width=4, stroke_fill=BLACK, anchor="mm")
+    inner = cr - cl - 70
+    f1 = _fit_font(word, inner, 330, style)
+    f2 = _fit_font("HIGHLIGHTS", inner, 330, style)
+    f1 = _font(min(f1.size, f2.size + 20), style) if f1.size > f2.size + 20 else f1
+    y1, y2 = 0.405 * H, 0.60 * H
+    bx1 = d.textbbox((mid, y1), word, font=f1, anchor="ms")
+    bx2 = d.textbbox((mid, y2), "HIGHLIGHTS", font=f2, anchor="ms")
+    d.rectangle((cl - 4, bx1[1] - 22, cr + 4, bx2[3] + 22), fill=(0, 0, 0, 255))
+    d.text((mid, y1), word, font=f1, fill=WHITE, anchor="ms")
+    d.text((mid, y2), "HIGHLIGHTS", font=f2, fill=WHITE, anchor="ms")
+    r = int(0.078 * H)
+    top_box, bot_box = bx1[1] - 22, bx2[3] + 22
+    cy1, cy2 = r + 22, H - r - 22
+    _badge(d, mid, cy1, r, teams[0], colors[0], style)
+    _badge(d, mid, cy2, r, teams[1], colors[1], style)
+    for t, y in zip(teams, ((cy1 + r + top_box) / 2 + 4, (cy2 - r + bot_box) / 2 - 4)):
+        nick = roster.TEAMS[t][1].upper()
+        d.text((mid, y), nick, font=_fit_font(nick, inner, 46, style), fill=WHITE, stroke_width=3, stroke_fill=(0, 0, 0, 255), anchor="mm")
+    if duration_s:
+        m, s_ = divmod(int(round(duration_s)), 60)
+        hh, m = divmod(m, 60)
+        dur = f"{hh}:{m:02d}:{s_:02d}" if hh else f"{m}:{s_:02d}"
+        f = _font(56)
+        bb = d.textbbox((0, 0), dur, font=f)
+        tw, th = bb[2] - bb[0], bb[3] - bb[1]
+        x1, y1_ = W - 36, H - 36
+        d.rounded_rectangle((x1 - tw - 40, y1_ - th - 34, x1, y1_), radius=10, fill=(0, 0, 0, 215))
+        d.text((x1 - tw - 20, y1_ - th - 24), dur, font=f, fill=WHITE)
     return np.asarray(canvas.convert("RGB"))
 
 
@@ -406,7 +458,7 @@ def versus_thumbnail(teams: list, stars: list, date: str, duration_s: float, sty
     vv21: LAYOUT "closeup" (default) = two big head-and-neck close-ups with the stacked headline in the middle."""
     from . import roster
     if LAYOUT == "closeup":
-        return closeup_thumbnail(teams, stars, word, style)
+        return closeup_thumbnail(teams, stars, word, style, duration_s)
     colors = [roster.team_color(t) for t in teams]
     canvas = _backdrop(colors)
     bottom = H - BAND_H + 14
