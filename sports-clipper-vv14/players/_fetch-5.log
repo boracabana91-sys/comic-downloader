@@ -1,0 +1,25 @@
+CLE  Donovan Mitchell ...
+[0;93m2026-10-16 13:17:29.426334053 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▍                                     | 1.80M/179M [00:00<00:09, 17.7MB/s]  5%|█▉                                    | 9.16M/179M [00:00<00:03, 50.4MB/s] 10%|███▋                                  | 17.6M/179M [00:00<00:02, 65.8MB/s] 15%|█████▌                                | 26.1M/179M [00:00<00:02, 73.6MB/s] 19%|███████▎                              | 34.4M/179M [00:00<00:01, 76.9MB/s] 24%|█████████                             | 42.9M/179M [00:00<00:01, 79.6MB/s] 29%|██████████▉                           | 51.4M/179M [00:00<00:01, 81.5MB/s] 34%|████████████▋                         | 59.9M/179M [00:00<00:01, 82.5MB/s] 38%|██████████████▌                       | 68.4M/179M [00:00<00:01, 83.2MB/s] 43%|████████████████▎                     | 76.8M/179M [00:01<00:01, 83.5MB/s] 48%|██████████████████▏                   | 85.4M/179M [00:01<00:01, 84.2MB/s] 53%|████████████████████                  | 94.0M/179M [00:01<00:00, 85.0MB/s] 57%|██████████████████████▍                | 103M/179M [00:01<00:00, 85.3MB/s] 62%|████████████████████████▎              | 111M/179M [00:01<00:00, 85.6MB/s] 67%|██████████████████████████▏            | 120M/179M [00:01<00:00, 85.5MB/s] 72%|████████████████████████████           | 128M/179M [00:01<00:00, 85.6MB/s] 77%|█████████████████████████████▉         | 137M/179M [00:01<00:00, 86.3MB/s] 82%|███████████████████████████████▊       | 146M/179M [00:01<00:00, 86.1MB/s] 87%|█████████████████████████████████▋     | 155M/179M [00:01<00:00, 86.3MB/s] 91%|███████████████████████████████████▋   | 163M/179M [00:02<00:00, 85.8MB/s] 96%|█████████████████████████████████████▌ | 172M/179M [00:02<00:00, 86.0MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 903GB/s]
+   3 picture(s): File:Donovan Mitchell Cavs Playoffs (cropped).jpg | File:Donovan Mitchell cavs 2023 (cropped).jpg | File:Donovan Mitchell '22.jpg
+CLE  Evan Mobley ...
+   3 picture(s): File:Evan Mobley (51832109159).jpg | File:Evan Mobley - 52591032378.jpg | File:Evan Mobley (51687642321).jpg
+IND  Tyrese Haliburton ...
+   2 picture(s): File:1 tyrese haliburton 2025.jpg | File:Tyrese Haliburton.jpg
+IND  Pascal Siakam ...
+   2 picture(s): File:1 pascal siakam 2025.jpg | File:Pascal Siakam, Mike Scott (38776063370).jpg
+MIN  Anthony Edwards ...
+   3 picture(s): File:Anthony Edwards Kentavious Caldwell-Pope (51734745028) (cropped) (cropped).jpg | File:Anthony Edwards Georgia.jpg | File:Anthony Edwards.jpg
+MIN  LaMelo Ball ...
+   3 picture(s): File:LaMelo Ball (cropped).jpg | File:LaMelo Ball (51914959337).jpg | File:LaMelo Ball Drew League 2.jpg
+PHX  Devin Booker ...
+   1 picture(s): File:Devin Booker, Olympic Games 2024.jpg
+PHX  Dillon Brooks ...
+   3 picture(s): File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–091.jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–092.jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–033.jpg
+WAS  Anthony Davis ...
+   3 picture(s): File:Anthony Davis, Olympic Games 2024.jpg | File:Evan Mobley and Anthony Davis (cropped).jpg | File:Anthony Davis (38464014214).jpg
+WAS  Trae Young ...
+   3 picture(s): File:Trae Young (51916215049) (cropped).jpg | File:20170329 MCDAAG Trae Young dribbling.jpg | File:Trae Young (2022 All-Star Weekend) (cropped 2).jpg
+
+Done. Every player has a cutout.
