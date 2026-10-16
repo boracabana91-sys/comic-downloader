@@ -1,4 +1,17 @@
+[cutout.png]
 File:Anthony Davis, Olympic Games 2024.jpg
 Author: Clément Bardot
 Licence: CC BY-SA 4.0
 https://commons.wikimedia.org/wiki/File:Anthony_Davis,_Olympic_Games_2024.jpg
+
+[cutout2.png]
+File:Anthony Davis (25306400548).jpg
+Author: Keith Allison from Hanover, MD, USA
+Licence: CC BY-SA 2.0
+https://commons.wikimedia.org/wiki/File:Anthony_Davis_(25306400548).jpg
+
+[cutout3.png]
+File:Anthony Davis Hornets.jpg
+Author: Keith Allison
+Licence: CC BY-SA 2.0
+https://commons.wikimedia.org/wiki/File:Anthony_Davis_Hornets.jpg
