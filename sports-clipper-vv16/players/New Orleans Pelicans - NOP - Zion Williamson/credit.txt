@@ -15,3 +15,5 @@ File:Zion Williamson Duke (cropped).jpg
 Author: Keenan Hairston from Raleigh
 Licence: CC BY-SA 2.0
 https://commons.wikimedia.org/wiki/File:Zion_Williamson_Duke_(cropped).jpg
+
+(head3.png is a close-up cropped from this picture)

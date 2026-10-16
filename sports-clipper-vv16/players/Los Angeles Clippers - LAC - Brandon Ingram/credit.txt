@@ -4,14 +4,18 @@ Author: Erik Drost
 Licence: CC BY 2.0
 https://commons.wikimedia.org/wiki/File:Brandon_Ingram_2020_(cropped).jpg
 
+(head1.png is a close-up cropped from this picture)
 [cutout2.png]
 File:MCDAAG closed practice Brandon Ingram (cropped).JPG
 Author: TonyTheTiger
 Licence: CC BY-SA 4.0
 https://commons.wikimedia.org/wiki/File:MCDAAG_closed_practice_Brandon_Ingram_(cropped).JPG
 
+(head2.png is a close-up cropped from this picture)
 [cutout3.png]
 File:20150401 MCDAAG Brandon Ingram (1).JPG
 Author: TonyTheTiger
 Licence: CC BY-SA 4.0
 https://commons.wikimedia.org/wiki/File:20150401_MCDAAG_Brandon_Ingram_(1).JPG
+
+(head3.png is a close-up cropped from this picture)
