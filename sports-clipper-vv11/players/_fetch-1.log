@@ -1,0 +1,36 @@
+BOS  Jayson Tatum ...
+   Category:Jayson Tatum: 59 usable pictures
+[0;93m2026-10-16 06:15:12.597547665 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  4%|█▍                                    | 6.61M/179M [00:00<00:02, 66.1MB/s]  8%|███                                   | 14.2M/179M [00:00<00:02, 71.7MB/s] 12%|████▌                                 | 21.7M/179M [00:00<00:02, 73.3MB/s] 16%|██████▎                               | 29.4M/179M [00:00<00:01, 74.7MB/s] 21%|███████▉                              | 37.0M/179M [00:00<00:01, 75.4MB/s] 25%|█████████▌                            | 44.9M/179M [00:00<00:01, 76.4MB/s] 29%|███████████▏                          | 52.5M/179M [00:00<00:01, 75.9MB/s] 34%|████████████▊                         | 60.4M/179M [00:00<00:01, 76.6MB/s] 38%|██████████████▍                       | 68.0M/179M [00:00<00:01, 72.8MB/s] 42%|████████████████                      | 75.3M/179M [00:01<00:01, 71.9MB/s] 47%|█████████████████▋                    | 83.3M/179M [00:01<00:01, 74.2MB/s] 51%|███████████████████▍                  | 91.4M/179M [00:01<00:01, 76.1MB/s] 56%|█████████████████████▏                | 99.3M/179M [00:01<00:01, 77.2MB/s] 60%|███████████████████████▍               | 107M/179M [00:01<00:00, 77.8MB/s] 64%|█████████████████████████              | 115M/179M [00:01<00:00, 77.5MB/s] 69%|██████████████████████████▊            | 123M/179M [00:01<00:00, 78.1MB/s] 73%|████████████████████████████▌          | 131M/179M [00:01<00:00, 78.5MB/s] 78%|██████████████████████████████▎        | 139M/179M [00:01<00:00, 77.9MB/s] 82%|████████████████████████████████       | 147M/179M [00:01<00:00, 78.3MB/s] 87%|█████████████████████████████████▋     | 155M/179M [00:02<00:00, 78.3MB/s] 91%|███████████████████████████████████▍   | 162M/179M [00:02<00:00, 78.7MB/s] 95%|█████████████████████████████████████▏ | 170M/179M [00:02<00:00, 78.8MB/s]100%|██████████████████████████████████████▉| 178M/179M [00:02<00:00, 78.7MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|███████████████████████████████████████| 179M/179M [00:00<00:00, 1.15TB/s]
+   skipped File:20160330 MCDAAG Jayson Tatum dunking (1).jpg: 3 bodies in the picture
+   skipped File:20160330 MCDAAG Tony Bradley Jr. layup.jpg: 2 bodies in the picture
+   File:20160330 MCDAAG Marques Bolden dunking against Jayson Tatum.jpg  [CC BY-SA 4.0]
+BOS  Derrick White ...
+   Category:Derrick White: 4 usable pictures
+   File:Celtics at Wizards 2024-12-036 (White).jpg  [CC BY-SA 4.0]
+DEN  Nikola Jokic ...
+   Category:Nikola Jokić: 38 usable pictures
+   File:Nikola Jokic Jump Shot.jpg  [CC BY-SA 2.0]
+DEN  Jamal Murray ...
+   Category:Jamal Murray: 3 usable pictures
+   skipped File:Jamal Murray free throw.jpg: 3 bodies in the picture
+   File:Wilson Chandler (40938219892).jpg  [CC BY-SA 2.0]
+LAL  Luka Doncic ...
+   Category:Luka Dončić: 2 usable pictures
+   File:DoncicVsWizards01May2021.jpg  [CC BY-SA 4.0]
+LAL  Austin Reaves ...
+   Category:Austin Reaves: 11 usable pictures
+   File:Austin Reaves drives.jpg  [CC BY 2.0]
+NYK  Jalen Brunson ...
+   Category:Jalen Brunson: 77 usable pictures
+   skipped File:20150401 MCDAAG Dwayne Bacon on the lane during a free throw.JPG: 2 bodies in the picture
+   File:20150401 MCDAAG Jaylen Brown dunk 2 (2).JPG  [CC BY-SA 4.0]
+NYK  Karl-Anthony Towns ...
+   Category:Karl-Anthony Towns: 54 usable pictures
+   File:20140402 MCDAAG Jahlil Okafor game-winning dunk (1).JPG  [CC BY-SA 3.0]
+SAC  Domantas Sabonis ...
+   Category:Domantas Sabonis: 15 usable pictures
+   File:Domantas Sabonis (32768447291).jpg  [CC BY-SA 2.0]
+
+Done. Every player has a cutout.
