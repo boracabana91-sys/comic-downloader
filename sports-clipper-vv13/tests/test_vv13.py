@@ -295,6 +295,17 @@ class PictureFetcher(unittest.TestCase):
         self.assertTrue(self.gp.judge(self._img([(300, 150, 600, 1200)]))[0])   # legs cut by the bottom edge are fine
         self.assertTrue(self.gp.judge(self._img([(0, 150, 300, 1150)]), strict_edge=False)[0])   # last-resort pass
 
+    def test_tidy_removes_specks_and_opponents(self):
+        im = self._img([(300, 150, 600, 1150), (320, 20, 340, 40), (700, 600, 830, 1000)])      # player, a floating speck, a smaller opponent
+        self.assertFalse(self.gp.judge(im)[0])                                  # two bodies: rejected as is
+        t = self.gp.tidy(im, drop_big=True)
+        self.assertTrue(self.gp.judge(t)[0])
+        import numpy as np
+        a = np.asarray(t.getchannel("A"))
+        self.assertEqual(int(a[30, 330]), 0); self.assertEqual(int(a[800, 760]), 0); self.assertGreater(int(a[600, 450]), 200)
+        t2 = self.gp.tidy(im)                                                   # without drop_big the opponent stays, the speck goes
+        self.assertEqual(int(np.asarray(t2.getchannel("A"))[30, 330]), 0); self.assertGreater(int(np.asarray(t2.getchannel("A"))[800, 760]), 200)
+
     def test_team_status(self):
         f = self.gp.team_status
         self.assertEqual(f("HOU", "File:Kevin Durant Houston Rockets 2025.jpg Category:Houston Rockets players"), "current")

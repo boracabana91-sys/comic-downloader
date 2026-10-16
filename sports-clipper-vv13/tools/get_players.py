@@ -235,6 +235,39 @@ def file_info(title: str, session) -> tuple:
 _session_cache = {}
 
 
+def tidy(cut, drop_big: bool = False):
+    """Clean a cut-out: keep the main body, plus small bits touching its neighbourhood (ball, hands); drop floating specks.
+    drop_big=True also drops another whole body (an opponent) when the main player is at least 2.2x bigger than it."""
+    import cv2
+    import numpy as np
+    alpha = np.asarray(cut.getchannel("A"))
+    mask = (alpha > 128).astype(np.uint8)
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    if n < 3:
+        return cut
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    big = int(areas.argmax()) + 1
+    x, y, w, h, area = stats[big]
+    ex, ey = 0.12 * w, 0.12 * h
+    keep = np.zeros(n, bool); keep[0] = False; keep[big] = True
+    for i in range(1, n):
+        if i == big:
+            continue
+        xi, yi, wi, hi, ai = stats[i]
+        near = xi >= x - ex and yi >= y - ey and xi + wi <= x + w + ex and yi + hi <= y + h + ey
+        if ai < 0.04 * area:
+            keep[i] = near
+        elif drop_big and area >= 2.2 * ai:
+            keep[i] = False
+        else:
+            keep[i] = True
+    a2 = np.where(keep[lab], alpha, 0).astype(np.uint8)
+    from PIL import Image
+    out = cut.copy()
+    out.putalpha(Image.fromarray(a2))
+    return out
+
+
 def judge(cut, strict_edge: bool = True):
     """(ok, quality, why). A good cut-out is ONE player who fills the picture: not a group, not a tiny figure."""
     import cv2
@@ -271,7 +304,7 @@ def judge(cut, strict_edge: bool = True):
     return True, fill + min(area / (w * h), 0.7), "ok"
 
 
-def cut_out(src_path: str, out_png: str, check: bool = True, strict_edge: bool = True) -> float:
+def cut_out(src_path: str, out_png: str, check: bool = True, strict_edge: bool = True, trim: bool = False) -> float:
     try:
         from rembg import new_session, remove
     except ImportError:
@@ -281,6 +314,7 @@ def cut_out(src_path: str, out_png: str, check: bool = True, strict_edge: bool =
         _session_cache["s"] = new_session("isnet-general-use")
     im = Image.open(src_path).convert("RGB")
     cut = remove(im, session=_session_cache["s"], alpha_matting=False, post_process_mask=True)
+    cut = tidy(cut, drop_big=trim)
     if check:
         ok, quality, why = judge(cut, strict_edge)
         if not ok:
@@ -329,9 +363,12 @@ def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tri
     kept, best = 0, None
     cdir = os.path.join(out_root, "_cands", roster.folder_name(acr, player))
     note = ""
-    for strict in (True, False):                         # 2nd pass only if nothing clean was found: arms may be cut, flagged
-        if best is not None or (strict is False and forced):
+    for strict, trim in ((True, False), (True, True), (False, True)):    # later passes only if nothing clean was found
+        if best is not None or ((strict, trim) != (True, False) and forced):
             break
+        if trim and strict:
+            note = "  [an opponent next to him was removed from the photo]"
+            print("   no photo with just one player - trying again and removing a neighbouring player", flush=True)
         if not strict:
             note = "  [EDGE-CUT: no clean photo found, arm/hand may be missing]"
             print("   no photo with the whole player in it - trying the ones cut at the edge", flush=True)
@@ -344,7 +381,7 @@ def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tri
                 with open(src, "wb") as f:
                     f.write(r.content)
                 target = png if (not cands or best is None) else os.path.join(fol, "_try.png")
-                cut_out(src, target, check=not forced, strict_edge=strict)
+                cut_out(src, target, check=not forced, strict_edge=strict, trim=trim)
                 if cands:
                     os.makedirs(cdir, exist_ok=True)
                     from PIL import Image
@@ -398,6 +435,8 @@ def main() -> None:
     ap.add_argument("--team", help="acronyms, comma separated (default: all 30)")
     ap.add_argument("--redo", action="store_true")
     ap.add_argument("--cands", type=int, default=0, help="also keep this many candidate cut-outs per player (_cands/) to choose by eye")
+    ap.add_argument("--tries", type=int, default=12, help="how many pictures to try per player (more = slower, finds more)")
+    ap.add_argument("--only", help='"DEN:Nikola Jokic,LAC:Darius Garland": just these players')
     ap.add_argument("--shard", help='"i/n": only every n-th team, starting at i (to run several fetches side by side)')
     ap.add_argument("--credits-only", action="store_true", help="just rewrite CREDITS.txt")
     ap.add_argument("--file", action="append", help='"DEN:Nikola Jokic=File:Name.jpg"')
@@ -422,9 +461,11 @@ def main() -> None:
     for acr in teams:
         for player, _alias in roster.PLAYERS[acr]:
             key = f"{acr}:{player}"
+            if a.only and key not in {x.strip() for x in a.only.split(",")}:
+                continue
             print(f"{acr}  {player} ...", flush=True)
             try:
-                msg = do_player(acr, player, a.out, a.redo, session, forced.get(key), photos.get(key), cands=a.cands, prefer=prefer.get(key))
+                msg = do_player(acr, player, a.out, a.redo, session, forced.get(key), photos.get(key), cands=a.cands, prefer=prefer.get(key), tries=a.tries)
             except Exception as e:                       # noqa: BLE001
                 msg = f"FAILED: {e}"
             print("   " + msg, flush=True)
