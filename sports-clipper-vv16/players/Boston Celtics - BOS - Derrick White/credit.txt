@@ -4,6 +4,7 @@ Author: Hameltion
 Licence: CC BY-SA 4.0
 https://commons.wikimedia.org/wiki/File:Celtics_at_Wizards_2024-12-036_(White).jpg
 
+(head1.png is a close-up cropped from this picture)
 [cutout2.png]
 File:Derrick White 2023.png
 Author: Boston Celtics

@@ -4,6 +4,7 @@ Author: All-Pro Reels
 Licence: CC BY-SA 2.0
 https://commons.wikimedia.org/wiki/File:Nikola_Jokic_free_throw_(cropped).jpg
 
+(head1.png is a close-up cropped from this picture)
 [cutout2.png]
 File:Nikola Jokic (51915414414).jpg
 Author: Erik Drost
@@ -15,3 +16,5 @@ File:Nikola Jokic (51914984866).jpg
 Author: Erik Drost
 Licence: CC BY 2.0
 https://commons.wikimedia.org/wiki/File:Nikola_Jokic_(51914984866).jpg
+
+(head3.png is a close-up cropped from this picture)
