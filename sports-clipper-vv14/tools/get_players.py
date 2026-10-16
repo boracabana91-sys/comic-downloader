@@ -395,7 +395,7 @@ def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tri
             _, t, ii = file_info(title, session)
             try:
                 _download(session, ii, src)
-                cut_out(src, os.path.join(fol, _slot(k)), check=False)
+                cut_out(src, os.path.join(fol, _slot(k)), check=False, trim=True)   # a hand-picked photo: also cut away a small neighbour
             finally:
                 if os.path.exists(src):
                     os.remove(src)
