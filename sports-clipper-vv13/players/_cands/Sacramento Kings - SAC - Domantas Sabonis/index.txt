@@ -1,8 +1,1 @@
-1	File:Detroit Pistons vs Indiana Pacers, October 23, 2019 P102319AZS (49088210626).jpg	other
-2	File:Domantas Sabonis by Augustas Didzgalvis (cropped).jpg	unknown
-3	File:Domantas Sabonis by Augustas Didzgalvis.jpg	unknown
-4	File:Domantas Sabonis.JPG	unknown
-5	File:Game between Lithuania and Brazil men's national basketball teams at the 2016 Summer Olympics (2).jpg	unknown
-6	File:Domantas Sabonis (32768447291).jpg	other
-7	File:Detroit Pistons vs Indiana Pacers, October 23, 2019 P102319AZS (49088211311).jpg	other
-8	File:Detroit Pistons vs Indiana Pacers, October 23, 2019 P102319AZS (49088211626).jpg	other
+1	File:Domantas Sabonis by Augustas Didzgalvis.jpg	unknown
