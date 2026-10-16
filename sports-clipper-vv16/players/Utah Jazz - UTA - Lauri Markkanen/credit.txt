@@ -4,6 +4,7 @@ Author: Erik Drost
 Licence: CC BY 2.0
 https://commons.wikimedia.org/wiki/File:Lauri_Markkanen,_Cavaliers_vs_Rockets_on_December_15,_2021_(cropped).jpg
 
+(head1.png is a close-up cropped from this picture)
 [cutout2.png]
 File:EuroBasket 2017 Greece vs Finland 67.jpg
 Author: Tuomas Vitikainen
