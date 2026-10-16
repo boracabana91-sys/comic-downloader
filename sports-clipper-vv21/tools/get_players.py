@@ -531,6 +531,104 @@ def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tri
     return f"{len(got)} photo(s): " + " | ".join(got) if got else "NO PICTURE FOUND"
 
 
+def _face_cut(src_path: str, out_png: str):
+    """vv21: cut the background out of a portrait-sized photo and crop head, neck and shoulders around the face.
+    Returns the facefit analysis of the result (None when the photo does not give a clean, front-facing close-up)."""
+    import cv2
+    import numpy as np
+    from PIL import Image
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+    from sportsclipper import facefit
+    raw = facefit.analyse(src_path)
+    if not raw["ok"] or raw["face_px"] < 200 or abs(raw["yaw"]) > 0.30 or abs(raw["roll"]) > 10:
+        return None, raw["why"] if not raw["ok"] else "face too small, turned or tilted for a close-up"
+    try:
+        from rembg import new_session, remove
+    except ImportError:
+        sys.exit("rembg is missing: pip install 'rembg[cpu]'")
+    if "s" not in _session_cache:
+        _session_cache["s"] = new_session("isnet-general-use")
+    cut = remove(Image.open(src_path).convert("RGB"), session=_session_cache["s"], post_process_mask=True).convert("RGBA")
+    fx, fy, fw, fh = raw["box"]
+    a = np.asarray(cut.getchannel("A"))
+    n, lab, _, _ = cv2.connectedComponentsWithStats((a > 128).astype(np.uint8), connectivity=8)
+    cx, cy = int(min(max(fx + fw / 2, 0), a.shape[1] - 1)), int(min(max(fy + fh * 0.6, 0), a.shape[0] - 1))
+    if lab[cy, cx] == 0:
+        return None, "background removal lost the face"
+    keep = (lab == lab[cy, cx])                                    # only the player in the middle, not neighbours
+    arr = np.asarray(cut).copy()
+    arr[..., 3] = np.where(keep, arr[..., 3], 0)
+    cut = Image.fromarray(arr, "RGBA")
+    box = (int(max(0, fx - 0.95 * fw)), int(max(0, fy - 0.9 * fh)), int(min(cut.width, fx + fw + 0.95 * fw)),
+           int(min(cut.height, fy + fh + 1.0 * fh)))
+    out = cut.crop(box)
+    al = np.asarray(out.getchannel("A")).astype(np.float32)
+    nb = max(1, int(out.height * 0.12))
+    fade = np.ones_like(al); fade[-nb:, :] = np.linspace(1, 0, nb)[:, None]
+    out.putalpha(Image.fromarray((al * fade).astype(np.uint8)))
+    b = out.getchannel("A").point(lambda v: 255 if v > 20 else 0).getbbox()
+    if not b:
+        return None, "nothing left"
+    out = out.crop(b)
+    if out.height > MAX_H:
+        out = out.resize((max(1, round(out.width * MAX_H / out.height)), MAX_H), Image.LANCZOS)
+    out.save(out_png, optimize=True)
+    info = facefit.analyse(out_png)
+    if not info["ok"]:
+        os.remove(out_png)
+        return None, "after the cut: " + info["why"]
+    return info, "ok"
+
+
+def do_faces(acr, player, out_root, session, want=3, tries=70) -> str:
+    """vv21: add front-facing close-ups (head1/2/3.png style, numbered after the photos already there) found by a
+    deep search. A photo is only used when the face is large, level and looking at the camera."""
+    fol = os.path.join(out_root, roster.folder_name(acr, player))
+    os.makedirs(fol, exist_ok=True)
+    nums = [int(m.group(2) or 1) for f in os.listdir(fol) for m in [re.fullmatch(r"(cutout|head)(\d*)\.png", f)] if m]
+    used = set()
+    cp = os.path.join(fol, "credit.txt")
+    if os.path.exists(cp):
+        used = {_same_photo(m.group(1)) for m in re.finditer(r"^(File:.+)$", open(cp, encoding="utf-8").read(), re.M)}
+    nxt = max(nums + [0]) + 1
+    hits = search(player, session, acr, deep=True)
+    src = os.path.join(fol, "_source.jpg")
+    got, old_nums, credits = [], [], []
+    for sc, title, ii, st in hits[:tries]:
+        if len(got) >= want:
+            break
+        if _same_photo(title) in used or ii.get("width", 0) < 900:
+            continue
+        target = os.path.join(fol, f"head{nxt}.png")
+        try:
+            _download(session, ii, src)
+            info, why = _face_cut(src, target)
+        except Exception as e:                            # noqa: BLE001
+            print(f"   skipped {title}: {e}", flush=True)
+            continue
+        finally:
+            if os.path.exists(src):
+                os.remove(src)
+        if info is None:
+            print(f"   not a close-up {title}: {why}", flush=True)
+            continue
+        used.add(_same_photo(title))
+        credits.append(f"[head{nxt}.png]\n" + _credit(title, ii) + "(front-facing close-up cut from this picture)")
+        if st == "other":
+            old_nums.append(nxt)
+        got.append(f"head{nxt}.png {title}" + ("  [OLD TEAM?]" if st == "other" else f"  [{st}]") + f" face {int(info['face_px'])}px")
+        nxt += 1
+    if credits:
+        with open(cp, "a", encoding="utf-8") as f:
+            f.write("\n" + "\n".join(credits))
+    if old_nums:
+        op = os.path.join(fol, "old.txt")
+        prev = open(op, encoding="utf-8").read().split() if os.path.exists(op) else []
+        with open(op, "w", encoding="utf-8") as f:
+            f.write(" ".join(prev + [str(n) for n in old_nums]))
+    return f"{len(got)} new close-up(s): " + " | ".join(got) if got else "no new front-facing close-up found"
+
+
 def write_credits(out_root: str) -> None:
     lines = ["Player pictures: Wikimedia Commons, free licences. Credit these when a licence asks for it.\n"]
     for name in sorted(os.listdir(out_root)):
@@ -560,6 +658,7 @@ def main() -> None:
     ap.add_argument("--deep", action="store_true", help="also run many extra text searches (national team, tournaments, other seasons)")
     ap.add_argument("--only", help='"DEN:Nikola Jokic,LAC:Darius Garland": just these players')
     ap.add_argument("--shard", help='"i/n": only every n-th team, starting at i (to run several fetches side by side)')
+    ap.add_argument("--faces", type=int, default=0, help="vv21: add this many front-facing close-ups per player (deep search, judged by face)")
     ap.add_argument("--credits-only", action="store_true", help="just rewrite CREDITS.txt")
     ap.add_argument("--file", action="append", help='"DEN:Nikola Jokic=File:Name.jpg"')
     ap.add_argument("--prefer", action="append", help='"DEN:Nikola Jokic=File:Name.jpg": try this picture first, but judge it like the rest')
@@ -587,6 +686,10 @@ def main() -> None:
                 continue
             print(f"{acr}  {player} ...", flush=True)
             try:
+                if a.faces:
+                    msg = do_faces(acr, player, a.out, session, want=a.faces)
+                    print("   " + msg, flush=True)
+                    continue
                 msg = do_player(acr, player, a.out, a.redo, session, [x.strip() for x in forced[key].split('|')] if key in forced else None,
                                 photos.get(key), cands=a.cands, prefer=prefer.get(key), tries=a.tries, pics=a.pics, deep=a.deep)
             except Exception as e:                       # noqa: BLE001

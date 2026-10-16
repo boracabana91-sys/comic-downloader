@@ -1,0 +1,62 @@
+name: Fetch front-facing close-ups (vv21)
+
+# Deep search on Wikimedia Commons (free licences only) for big, level, front-facing portraits of every
+# listed player. A photo is kept only when the face is large and looks at the camera. New close-ups are added
+# next to the existing photos (head<N>.png), nothing is overwritten.
+on:
+  push:
+    branches: [sports-clipper-vv21]
+    paths: [".github/fetch-faces-vv21.txt", ".github/workflows/fetch-players-vv21.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install --upgrade pip requests pillow numpy onnxruntime "rembg[cpu]" "opencv-python-headless>=4.8,<5"
+      - name: Find faces
+        working-directory: sports-clipper-vv21
+        run: |
+          ARGS="$(grep -v '^#' ../.github/fetch-faces-vv21.txt | tr '\n' ' ')"
+          eval python tools/get_players.py --out players --shard ${{ matrix.shard }}/6 $ARGS 2>&1 | tee ../faces-${{ matrix.shard }}.log
+      - name: Commit this shard
+        run: |
+          mkdir -p sports-clipper-vv21/players
+          cp faces-${{ matrix.shard }}.log sports-clipper-vv21/players/_faces-${{ matrix.shard }}.log
+          git config user.name "players-bot"; git config user.email "players-bot@users.noreply.github.com"
+          git add sports-clipper-vv21/players
+          git commit -m "vv21: front-facing close-ups, shard ${{ matrix.shard }}" || echo "nothing new"
+          for i in 1 2 3 4 5 6; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            sleep $((RANDOM % 10 + 3))
+          done
+  credits:
+    needs: fetch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rewrite CREDITS.txt
+        run: |
+          python -m pip install requests pillow numpy "opencv-python-headless>=4.8,<5"
+          cd sports-clipper-vv21 && python tools/get_players.py --out players --credits-only
+          git config user.name "players-bot"; git config user.email "players-bot@users.noreply.github.com"
+          git add players/CREDITS.txt; git commit -m "vv21: credits" || echo "nothing new"
+          git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"

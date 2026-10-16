@@ -1,0 +1,2 @@
+# vv21: add up to 3 front-facing close-ups per player (face at least 200 px wide, level, looking at the camera)
+--faces 3
