@@ -1,4 +1,17 @@
+[cutout.png]
 File:Ja Morant (51915379490).jpg
 Author: Erik Drost
 Licence: CC BY 2.0
 https://commons.wikimedia.org/wiki/File:Ja_Morant_(51915379490).jpg
+
+[cutout2.png]
+File:Ja Morant (51913793887).jpg
+Author: Erik Drost
+Licence: CC BY 2.0
+https://commons.wikimedia.org/wiki/File:Ja_Morant_(51913793887).jpg
+
+[cutout3.png]
+File:Ja Morant (51916213334).jpg
+Author: Erik Drost
+Licence: CC BY 2.0
+https://commons.wikimedia.org/wiki/File:Ja_Morant_(51916213334).jpg
