@@ -1,28 +1,0 @@
-ATL  Jalen Johnson ...
-[0;93m2026-10-16 13:17:29.697770764 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▍                                     | 1.98M/179M [00:00<00:08, 19.7MB/s]  4%|█▍                                    | 6.96M/179M [00:00<00:04, 37.4MB/s]  8%|███                                   | 14.5M/179M [00:00<00:02, 54.9MB/s] 13%|████▊                                 | 22.4M/179M [00:00<00:02, 64.3MB/s] 17%|██████▌                               | 30.6M/179M [00:00<00:02, 70.8MB/s] 22%|████████▎                             | 39.0M/179M [00:00<00:01, 75.1MB/s] 26%|██████████                            | 47.3M/179M [00:00<00:01, 77.7MB/s] 31%|███████████▊                          | 55.5M/179M [00:00<00:01, 79.2MB/s] 36%|█████████████▌                        | 63.5M/179M [00:00<00:01, 79.5MB/s] 40%|███████████████▎                      | 71.9M/179M [00:01<00:01, 80.8MB/s] 45%|█████████████████                     | 80.3M/179M [00:01<00:01, 81.7MB/s] 50%|██████████████████▊                   | 88.7M/179M [00:01<00:01, 82.4MB/s] 54%|████████████████████▌                 | 97.0M/179M [00:01<00:01, 81.6MB/s] 59%|██████████████████████▉                | 105M/179M [00:01<00:00, 82.0MB/s] 64%|████████████████████████▊              | 114M/179M [00:01<00:00, 82.9MB/s] 68%|██████████████████████████▋            | 122M/179M [00:01<00:00, 83.5MB/s] 73%|████████████████████████████▌          | 131M/179M [00:01<00:00, 83.4MB/s] 78%|██████████████████████████████▎        | 139M/179M [00:01<00:00, 83.8MB/s] 83%|████████████████████████████████▏      | 147M/179M [00:01<00:00, 83.9MB/s] 87%|██████████████████████████████████     | 156M/179M [00:02<00:00, 84.3MB/s] 92%|███████████████████████████████████▉   | 164M/179M [00:02<00:00, 84.1MB/s] 97%|█████████████████████████████████████▋ | 173M/179M [00:02<00:00, 84.0MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 751GB/s]
-   2 picture(s): File:Jalen Johnson.jpg | File:JalenJohnsonNicoletHighFeb2019.jpg
-ATL  Nickeil Alexander-Walker ...
-   3 picture(s): File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–067.jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–082.jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–002.jpg
-DAL  Kyrie Irving ...
-   1 picture(s): File:Kyrie Irving (8194733825).jpg
-DAL  Cooper Flagg ...
-   2 picture(s): File:Duke at UNC, Mar 2025, Flagg.jpg | File:Duke and Wake Forest basketball game, 2025-03-03 Wake Forest Cooper Flagg dunking C (cropped).jpg
-LAC  Darius Garland ...
-   3 picture(s): File:Darius Garland (51915095048).jpg | File:Darius Garland (51915679545).jpg | File:Darius Garland (51830878317).jpg
-LAC  Brandon Ingram ...
-   3 picture(s): File:Brandon Ingram 2020 (cropped).jpg | File:MCDAAG closed practice Brandon Ingram (cropped).JPG | File:20150401 MCDAAG Brandon Ingram (1).JPG
-NOP  Zion Williamson ...
-   3 picture(s): File:Zion Williamson 2020.jpg | File:ZionWilliamson2020.jpg | File:Zion Williamson Duke (cropped).jpg
-NOP  Trey Murphy III ...
-   no category: 0 usable pictures
-   fewer than wanted - also trying photos with a neighbouring player (he is cut away)
-   no photo with the whole player in it - trying the ones cut at the edge
-   NO PICTURE FOUND
-POR  Deni Avdija ...
-   3 picture(s): File:Deni Avdija Maccabi (cropped) 2.jpg | File:Deni Avdija (51873832857) (cropped).jpg | File:Deni Avdija 2022 (52380408867).jpg
-POR  Ja Morant ...
-   3 picture(s): File:Ja Morant (51915379490).jpg | File:Ja Morant dribbling.jpg | File:Ja Morant (51664923611).jpg
-
-Done. Still missing: NOP:Trey Murphy III

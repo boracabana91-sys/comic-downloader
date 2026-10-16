@@ -25,7 +25,14 @@ Nothing else to install - ffmpeg is built into the app, and no password is neede
 
 **AI titles (Claude Haiku 5.5, optional):** this is the default. Without a key the app uses plain titles. To use it, open `~/SportsClipper/config.json` and put your Anthropic API key in `"api_key"` under `"ai"`, then Save settings. The key is separate from a Claude chat subscription.
 
-## vv13: cleaner thumbnail, font styles, no post-game interview, YouTube thumbnail check (new in this version)
+## vv14: start at the jump ball, 3 photos per star, rosters re-checked (new in this version)
+- **Start at the jump ball:** a new tick, **Start at the jump ball**, next to the length options. When it is ticked, the video begins a few seconds before the opening tip and everything before it (long intros, warm-ups, pre-game talk) is cut. Leave it unticked for Playoff games where the pre-game is worth keeping. It reads the scoreboard clock: if the clock cannot be read, the video simply starts from the beginning as before.
+- **3 photos for every team star** (also the 2nd star). Next to the **Player** drop-down there is now a **Photo** drop-down (Photo 1, 2, 3); the preview redraws at once and your choice is remembered per player (`photo_choice`). Photos are free-licence pictures with the background removed, hand-picked, and the author credits are in `players/CREDITS.txt`. Some players have fewer than 3 because no clear free photo of them exists (the list only offers photos that exist).
+- **Rosters re-checked** against the summer 2026 trades and signings (for example Giannis Antetokounmpo is now with Miami). The first star of each team is the default; the second star is in the drop-down.
+- **Your own photos still win:** a picture dropped into `~/SportsClipper/players/<Team - ACR - Player>/` (cutout.png, cutout2.png, cutout3.png) replaces the built-in one.
+- **Photo limits:** free photos of a player often show an older team. Giannis, for example, only has Bucks photos so far; drop in your own Heat photo to replace it.
+
+## vv13: cleaner thumbnail, font styles, no post-game interview, YouTube thumbnail check
 - **Thumbnail:** the final score is gone. The **date sits in the middle, under "VS"**; the bottom band keeps the video length. Everything else is as in vv12.
 - **Font style:** a **Font style** drop-down next to the preview (Impact, Anton, Bebas Neue, Archivo Black, Fjalla One, Russo One, Bangers). The preview redraws at once and your choice is remembered (`thumb_font`). Fonts are free (SIL Open Font License) and come inside the app.
 - **Post-game interview:** tick **Include post-game interview** to keep it. It is **off by default**: everything after the last play is cut, and the "reach the minimum length" top-up never pulls it back in. When the scoreboard clock cannot be read the app cannot see where the game ends, so it drops the last ~6 % (at most 3 min) and says so in the log. CLI: `clip FILE --interview`.
@@ -33,7 +40,7 @@ Nothing else to install - ffmpeg is built into the app, and no password is neede
 - **Thumbnail on YouTube:** YouTube does **not** read a thumbnail from inside the video file; it needs a separate picture, which the app sends right after the upload (the YouTube Data API call `thumbnails.set`). YouTube only allows this on a **verified channel** (youtube.com/verify). The app now checks YouTube's answer, retries while the video is still processing, and if it still fails shows a **pop-up with the reason** and where the picture is saved, so it can be set by hand in YouTube Studio.
 - **Optional extras (both off by default):** *Save the thumbnail inside the video file* (cover picture in Finder / QuickTime; YouTube ignores it) and *Show the thumbnail for 1 second at the start* of the video. The separate YouTube thumbnail is always sent either way.
 
-## vv12: you choose the final length (new in this version)
+## vv12: you choose the final length
 Instead of a percentage, set **Final length: at least [8] min, at most [12] min** in the window (`min_minutes` / `max_minutes` in `config.json`).
 - Over your maximum: whole stretches of play are dropped (dullest first, spread through the game) until it fits.
 - Under your minimum: the most active stretches that were cut (crowd noise + motion) are put back, in game order, until the minimum is reached.
@@ -42,7 +49,7 @@ Instead of a percentage, set **Final length: at least [8] min, at most [12] min*
 - A video shorter than your minimum is kept whole. The log shows how much live play was found and the final length.
 - CLI: `clip FILE --min 8 --max 12`.
 
-## vv11: two-star thumbnails with a player drop-down (new in this version)
+## vv11: two-star thumbnails with a player drop-down
 The thumbnail shows the star player of each team, one on each side: **team acronym** on top, the player's **alias** under it
 (surname when there is no well-known alias), the player cut out from the photo background, and the date / duration band below.
 
