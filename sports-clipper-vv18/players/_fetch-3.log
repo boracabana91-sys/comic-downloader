@@ -1,66 +1,0 @@
-MIA  Giannis Antetokounmpo ...
-   Category:Giannis Antetokounmpo: 54 usable pictures
-[0;93m2026-10-16 15:08:07.107741150 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  3%|█▏                                    | 5.78M/179M [00:00<00:02, 57.8MB/s]  6%|██▍                                   | 11.6M/179M [00:00<00:03, 48.9MB/s] 11%|████▏                                 | 19.4M/179M [00:00<00:02, 61.2MB/s] 15%|█████▌                                | 26.3M/179M [00:00<00:02, 64.1MB/s] 18%|██████▉                               | 32.9M/179M [00:00<00:02, 59.7MB/s] 23%|████████▋                             | 40.6M/179M [00:00<00:02, 65.1MB/s] 27%|██████████▏                           | 48.0M/179M [00:00<00:01, 67.9MB/s] 31%|███████████▋                          | 54.8M/179M [00:00<00:01, 64.6MB/s] 35%|█████████████▎                        | 62.6M/179M [00:00<00:01, 68.4MB/s] 39%|██████████████▊                       | 69.5M/179M [00:01<00:01, 66.5MB/s] 43%|████████████████▏                     | 76.2M/179M [00:01<00:01, 65.0MB/s] 47%|█████████████████▊                    | 83.9M/179M [00:01<00:01, 66.6MB/s] 51%|███████████████████▍                  | 91.6M/179M [00:01<00:01, 69.5MB/s] 55%|████████████████████▉                 | 98.6M/179M [00:01<00:01, 68.7MB/s] 59%|███████████████████████                | 105M/179M [00:01<00:01, 67.5MB/s] 64%|████████████████████████▊              | 113M/179M [00:01<00:00, 71.2MB/s] 68%|██████████████████████████▎            | 121M/179M [00:01<00:00, 67.4MB/s] 71%|███████████████████████████▊           | 127M/179M [00:01<00:00, 65.7MB/s] 76%|█████████████████████████████▍         | 135M/179M [00:02<00:00, 68.6MB/s] 79%|██████████████████████████████▉        | 142M/179M [00:02<00:00, 68.6MB/s] 83%|████████████████████████████████▍      | 149M/179M [00:02<00:00, 66.3MB/s] 88%|██████████████████████████████████▏    | 157M/179M [00:02<00:00, 70.2MB/s] 92%|███████████████████████████████████▊   | 164M/179M [00:02<00:00, 64.3MB/s] 96%|█████████████████████████████████████▎ | 171M/179M [00:02<00:00, 66.0MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 774GB/s]
-   skipped File:Giannis Antetokounmpo Free Throw 2026 Denver.jpg: 4 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51914646457).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo (51915070867).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51915085858).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo (51915196011).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo (51914940496).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51915016368).jpg: player too small in the photo (982px, 34% of the frame)
-   skipped File:Giannis Antetokounmpo (51915516179).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916471863).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (2020), Τριαντάφυλλος Βαΐτσης.jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51914619427).jpg: too wide for one player standing
-   skipped File:Giannis Antetokounmpo (51915222152).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51915521254).jpg: 6 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51915616441).jpg: 3 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51915715053).jpg: 3 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51915995798).jpg: 4 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916325986).jpg: 4 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916333331).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo and Jarrett Allen (51915439429).jpg: 3 bodies in the picture
-   skipped File:LeBron James and Giannis Antetokounmpo (51916240541).jpg: 4 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51913915972).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo (51916331921).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51915684508).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51915813870).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51915907506).jpg: 5 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916165318).jpg: 6 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916220654).jpg: 6 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916222854).jpg: 3 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916230730).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916322536).jpg: too wide for one player standing
-   skipped File:Thanasis and Giannis Antetokounmpo at Sepolia, Greece.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo vs Golden State Warriors 2025.jpg: 3 bodies in the picture
-   skipped File:Giannis Antetokounmpo Deni Avdija (51664932991).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (24845003687) (cropped).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Wisconsin National Guard presents Wortham Award 131109-Z-EJ222-044.jpg: 3 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51914646457).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo (51915085858).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo (51915196011).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo (51914940496).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51915016368).jpg: player too small in the photo (982px, 34% of the frame)
-   skipped File:Giannis Antetokounmpo (51914619427).jpg: too wide for one player standing
-   skipped File:Giannis Antetokounmpo (51915222152).jpg: player too small in the photo (356px, 28% of the frame)
-   skipped File:Giannis Antetokounmpo (51915616441).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916325986).jpg: 3 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916333331).jpg: too wide for one player standing
-   skipped File:LeBron James and Giannis Antetokounmpo (51916240541).jpg: 3 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51913915972).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo (51915684508).jpg: head cut off at the top of the photo
-   skipped File:Giannis Antetokounmpo (51915907506).jpg: 4 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916165318).jpg: 4 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916220654).jpg: 5 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916222854).jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (51916230730).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo (51916322536).jpg: too wide for one player standing
-   skipped File:Thanasis and Giannis Antetokounmpo at Sepolia, Greece.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Giannis Antetokounmpo vs Golden State Warriors 2025.jpg: 2 bodies in the picture
-   skipped File:Giannis Antetokounmpo (24845003687) (cropped).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Wisconsin National Guard presents Wortham Award 131109-Z-EJ222-044.jpg: 3 bodies in the picture
-   3 photo(s): File:Giannis Antetokounmpo (51914060952).jpg | File:Giannis Antetokounmpo (51915088933).jpg | File:Giannis Antetokounmpo (51915264514).jpg
-
-Done. Every player has a cutout.

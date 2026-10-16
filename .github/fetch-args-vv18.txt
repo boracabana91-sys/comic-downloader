@@ -1,3 +1,4 @@
-# vv18: a deep search for Giannis (2025-26 Bucks, Greece, Heat) - 30 candidates kept to choose by eye
---redo --cands 30 --tries 150 --pics 3 --deep
+# vv18: Giannis - hand-picked from the deep search (all old-jersey: Bucks 2021 and the 2022 All-Star game; Commons has nothing newer or from Greece)
+--redo --pics 4
+--file "MIA:Giannis Antetokounmpo=~File:Giannis Antetokounmpo (51915153421) (cropped).jpg|~File:Giannis Antetokounmpo (51916274036) (cropped).jpg|~File:Giannis Antetokounmpo (39004611954).jpg|~File:Giannis Antetokounmpo (51915480450).jpg|~File:Giannis Antetokounmpo (51915264514).jpg"
 --only "MIA:Giannis Antetokounmpo"
