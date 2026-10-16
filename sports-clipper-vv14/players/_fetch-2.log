@@ -1,0 +1,25 @@
+BKN  Michael Porter Jr. ...
+[0;93m2026-10-16 13:17:28.621551062 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  4%|█▌                                    | 7.18M/179M [00:00<00:02, 70.3MB/s]  9%|███▍                                  | 16.4M/179M [00:00<00:01, 83.1MB/s] 15%|█████▌                                | 26.1M/179M [00:00<00:01, 89.5MB/s] 20%|███████▍                              | 35.1M/179M [00:00<00:01, 86.3MB/s] 26%|█████████▋                            | 45.8M/179M [00:00<00:01, 93.6MB/s] 31%|███████████▉                          | 56.2M/179M [00:00<00:01, 95.9MB/s] 37%|█████████████▉                        | 65.8M/179M [00:00<00:01, 93.5MB/s] 43%|████████████████▍                     | 77.1M/179M [00:00<00:01, 99.7MB/s] 50%|███████████████████▍                   | 89.0M/179M [00:00<00:00, 106MB/s] 57%|██████████████████████▌                 | 101M/179M [00:01<00:00, 110MB/s] 63%|█████████████████████████▏              | 112M/179M [00:01<00:00, 111MB/s] 69%|███████████████████████████▋            | 124M/179M [00:01<00:00, 110MB/s] 75%|██████████████████████████████▏         | 135M/179M [00:01<00:00, 109MB/s] 82%|████████████████████████████████▋       | 146M/179M [00:01<00:00, 111MB/s] 88%|███████████████████████████████████▍    | 158M/179M [00:01<00:00, 113MB/s] 95%|█████████████████████████████████████▉  | 169M/179M [00:01<00:00, 112MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 962GB/s]
+   3 picture(s): File:20170329 MCDAAG Michael Porter Jr. with the ball.jpg | File:20170329 MCDAAG Michael Porter Jr. MVP (2).jpg | File:20170329 MCDAAG Michael Porter Jr. free throw.jpg
+BKN  Julius Randle ...
+   1 picture(s): File:Julius Randle with Lakers.jpg
+DET  Cade Cunningham ...
+   3 picture(s): File:1 cade cunningham 2024.jpg | File:Cade Cunningham charging against T. J. McConnell, 2024-11-29.jpg | File:Cade Cunningham Oklahoma State (cropped).jpg
+DET  Jalen Duren ...
+   2 picture(s): File:Jalen Duren Free Throw 01252026 (cropped).jpg | File:Jalen Duren Free Throw 01252026 (cropped) 2.jpg
+MEM  Cameron Boozer ...
+   1 picture(s): File:Boozer – Clemson – February 14 2026 (cropped).png
+MEM  Zach Edey ...
+   2 picture(s): File:Zach Edey 2 (cropped).jpg | File:Zach Edey defending Jonathan Baehre.jpg
+OKC  Shai Gilgeous-Alexander ...
+   3 picture(s): File:Shai Gilgeous-Alexander - Thunder vs. Wizards.png | File:Shai Gilgeous-Alexander (51815871018) (cropped).jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–108.jpg
+OKC  Jalen Williams ...
+   1 picture(s): File:Jalen Williams OKCThunder 2025 NBA Cup (cropped) (cropped).jpg
+SAS  Victor Wembanyama ...
+   3 picture(s): File:Victor Wembanyama San Antonio Spurs 2025 NBA Cup.jpg | File:Victor Wembanyama Metropolitans 01-03-2023.jpg | File:Victor Wembanyama Mets 92 (2).jpg
+SAS  Stephon Castle ...
+   1 picture(s): File:Stephon Castle in 2026 Western Conference Finals.jpg
+
+Done. Every player has a cutout.
