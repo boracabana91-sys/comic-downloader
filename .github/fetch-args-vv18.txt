@@ -1,0 +1,3 @@
+# vv18: a deep search for Giannis (2025-26 Bucks, Greece, Heat) - 30 candidates kept to choose by eye
+--redo --cands 30 --tries 150 --pics 3 --deep
+--only "MIA:Giannis Antetokounmpo"
