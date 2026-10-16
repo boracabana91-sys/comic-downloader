@@ -25,7 +25,13 @@ Nothing else to install - ffmpeg is built into the app, and no password is neede
 
 **AI titles (Claude Haiku 5.5, optional):** this is the default. Without a key the app uses plain titles. To use it, open `~/SportsClipper/config.json` and put your Anthropic API key in `"api_key"` under `"ai"`, then Save settings. The key is separate from a Claude chat subscription.
 
-## vv17: reclip one video from its link (new in this version)
+## vv18: the jump-ball start works on any scoreboard layout; more Giannis photos (new in this version)
+- **Start at the jump ball** no longer depends on the app being able to read the scoreboard clock. When the clock cannot be read (a different broadcast layout), the app now finds the **score bug** (the small score box that appears once the game starts, wherever it sits on screen). The jump ball is the wide-camera shot just before the bug appears; the clip starts 3 seconds before the tip (setting `tip_lead_s`). The log says which method was used (`from the scoreboard clock` or `from the score bug`).
+- Tested on a Nets at Heat preseason video (clock not readable): the clip now starts at the wide shot of the opening tip instead of the lineups and bench shots before it.
+- Limits: it needs the score bug to appear within the first 30 minutes and to stay on screen; if no bug is found, you get a warning in the log and the clip is not shortened.
+- **Giannis:** Giannis Antetokounmpo now has 4 photos and 3 close-ups (Bucks 2021 and the 2022 All-Star game, marked old team). Wikimedia Commons has no free photo of him with the Heat, in Greece's jersey or from the 2025-26 season, so a Heat photo of your own can be dropped into `~/SportsClipper/players/` (see vv15).
+
+## vv17: reclip one video from its link
 - The **Search** box over the video list now takes a **link to one video** as well as a playlist link. Paste it (`youtube.com/watch?v=...`, `youtu.be/...`, a Short or a live link) and press **Enter** (or **Scan all videos**): only that video is read, it is selected for you, and **Reclip selected video** reclips it.
 - A video link that also carries `&list=...` is treated as that one video, not the whole playlist. For the playlist, paste the playlist link.
 - The permission rule is unchanged: a video is only reclipped if its channel is in your list with the permission box ticked; otherwise you get the usual message.
