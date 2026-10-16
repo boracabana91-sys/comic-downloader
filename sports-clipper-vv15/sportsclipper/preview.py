@@ -26,7 +26,8 @@ def analyse(title: str, picks: dict | None = None, photos: dict | None = None) -
             slots.append({"team": t, "label": roster.TEAMS[t][0], "names": names,
                           "labels": [roster.label(o) for o in opts], "selected": sel,
                           "photos": n_photos, "photo": ph,
-                          "photo_counts": [len(o.get("cutouts") or [1]) for o in opts]})
+                          "photo_counts": [len(o.get("cutouts") or [1]) for o in opts],
+                          "photo_old": [o.get("old") or [] for o in opts]})
     return {"teams": teams, "slots": slots}
 
 

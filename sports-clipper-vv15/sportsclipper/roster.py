@@ -139,6 +139,15 @@ def _cutouts_in(fol: str) -> list:
     return [os.path.join(fol, f) for f in sorted(pngs, key=key)]
 
 
+def _old_in(fol: str) -> list:
+    """vv15: old.txt lists the photo numbers (1 = first) that show an OLD team's jersey. They are offered in the Photo
+    drop-down; a player whose FIRST photo is an old-team one is not the team's default while a teammate has a current photo."""
+    try:
+        return sorted({int(x) - 1 for x in _read(os.path.join(fol, "old.txt")).split() if x.isdigit() and int(x) > 0})
+    except OSError:
+        return []
+
+
 def _cutout_in(fol: str):
     c = _cutouts_in(fol)
     return c[0] if c else None
@@ -168,7 +177,7 @@ def options(acr: str, root: str | None = None) -> list:
                 a = alias
                 if os.path.exists(af):
                     a = _read(af).upper() or alias
-                out.append({"name": name, "alias": a, "cutout": png, "cutouts": pngs})
+                out.append({"name": name, "alias": a, "cutout": png, "cutouts": pngs, "old": _old_in(fol)})
                 seen.add(want)
                 break
     for r in roots:
@@ -186,7 +195,9 @@ def options(acr: str, root: str | None = None) -> list:
             af = os.path.join(fol, "alias.txt")
             if os.path.exists(af):
                 a = _read(af)
-            out.append({"name": name, "alias": (a or name.split()[-1]).upper(), "cutout": png, "cutouts": pngs})
+            out.append({"name": name, "alias": (a or name.split()[-1]).upper(), "cutout": png, "cutouts": pngs, "old": _old_in(fol)})
+    # vv15: a star whose first photo shows an old team's jersey is never the default while a teammate has a current one
+    out.sort(key=lambda o: 0 in (o.get("old") or []))
     return out
 
 

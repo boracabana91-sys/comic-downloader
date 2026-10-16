@@ -225,11 +225,13 @@ def search(player: str, session, acr: str = "") -> list:
                 print(f"   team search skipped: {e}", flush=True)
             time.sleep(0.3)
     if not cat or len(out) < 4:                           # nothing (or almost nothing) identified: add a text search, checked by eye later
-        for extra in ("free throw", "shooting", "dunk", "layup dribbling"):
-            data = _query(session, action="query", generator="search", gsrnamespace=6, gsrlimit=25,
-                          gsrsearch=f"{player} {extra}", prop="imageinfo", iiprop="url|size|extmetadata", iiurlwidth=1800)
-            _collect(out, data, player, False, acr)
-            time.sleep(0.3)
+        base = re.sub(r"\s+(III|II|Jr\.?)$", "", player)               # "Trey Murphy III" is filed as "Trey Murphy ..."
+        for nm in {player, base}:
+            for extra in ("free throw", "shooting", "dunk", "layup dribbling", "Pelicans" if base != player else "game"):
+                data = _query(session, action="query", generator="search", gsrnamespace=6, gsrlimit=25,
+                              gsrsearch=f"{nm} {extra}", prop="imageinfo", iiprop="url|size|extmetadata", iiurlwidth=1800)
+                _collect(out, data, player, False, acr)
+                time.sleep(0.3)
     print(f"   {cat or 'no category'}: {len(out)} usable pictures", flush=True)
     return sorted(((sc, t, ii, st) for t, (sc, ii, st) in out.items()), key=lambda x: -x[0])
 
@@ -381,7 +383,7 @@ def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tri
         return "already there"
     if redo or forced:
         for f in os.listdir(fol):                         # a redo must not leave old (maybe wrong) pictures behind
-            if re.fullmatch(r"cutout\d*\.png", f) or f == "credit.txt":
+            if re.fullmatch(r"cutout\d*\.png", f) or f in ("credit.txt", "old.txt"):
                 os.remove(os.path.join(fol, f))
     if photo:
         cut_out(photo, png, check=False)
@@ -391,6 +393,11 @@ def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tri
     src = os.path.join(fol, "_source.jpg")
     credits, notes = [], []
     if forced:
+        old_slots = [str(k + 1) for k, t in enumerate(forced) if t.startswith("~")]     # "~File:..." = shows an old team's jersey
+        forced = [t.lstrip("~") for t in forced]
+        if old_slots:
+            with open(os.path.join(fol, "old.txt"), "w", encoding="utf-8") as f:
+                f.write(" ".join(old_slots))
         for k, title in enumerate(forced):
             _, t, ii = file_info(title, session)
             try:

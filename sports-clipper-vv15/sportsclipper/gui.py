@@ -114,7 +114,7 @@ class App:
         self.pv_row = ttk.Frame(pv)
         self.pv_row.pack(fill="x", padx=6, pady=4)
         self.pv_vars, self.pv_combos, self.pv_names, self.pv_teams = [], [], [[], []], ["", ""]
-        self.pv_photo_cbs, self.pv_photo_counts = [], [[], []]
+        self.pv_photo_cbs, self.pv_photo_counts, self.pv_photo_old = [], [[], []], [[], []]
         for i in range(2):
             col = ttk.Frame(self.pv_row); col.pack(side="left", fill="x", expand=True, padx=4)
             lab = ttk.Label(col, text="", font=("Helvetica", 11, "bold")); lab.pack(anchor="w")
@@ -279,10 +279,11 @@ class App:
                 sl = state["slots"][i]
                 self.pv_teams[i], self.pv_names[i] = sl["team"], sl["names"]
                 self.pv_photo_counts[i] = sl["photo_counts"]
+                self.pv_photo_old[i] = sl.get("photo_old", [])
                 lab.config(text=f"{sl['team']}  -  {sl['label']}")
                 cb.config(values=sl["labels"], state="readonly" if len(sl["labels"]) > 1 else "disabled")
                 cb.current(sl["selected"])
-                self._fill_photo_combo(i, sl["photos"], sl["photo"])
+                self._fill_photo_combo(i, sl["photos"], sl["photo"], (sl.get("photo_old") or [[]])[sl["selected"]] if sl.get("photo_old") else ())
             else:
                 self.pv_teams[i], self.pv_names[i] = "", []
                 self.pv_photo_counts[i] = []
@@ -291,13 +292,13 @@ class App:
                 var.set(""); cb.config(values=[], state="disabled")
         self.pv_render()
 
-    def _fill_photo_combo(self, i, n, sel):
+    def _fill_photo_combo(self, i, n, sel, old=()):
         """The Photo drop-down of a team: 'Photo 1 of 3'; greyed out when the player has just one picture."""
         pcb = self.pv_photo_cbs[i]
         if n <= 0:
             pcb.config(values=[], state="disabled"); pcb.set("")
             return
-        pcb.config(values=[f"Photo {k + 1} of {n}" for k in range(n)], state="readonly" if n > 1 else "disabled")
+        pcb.config(values=[f"Photo {k + 1} of {n}" + (" (old team)" if k in old else "") for k in range(n)], state="readonly" if n > 1 else "disabled")
         pcb.current(min(sel, n - 1))
 
     def pv_pick(self, i):
@@ -309,7 +310,8 @@ class App:
             self.save()
             counts = self.pv_photo_counts[i]
             n = counts[idx] if idx < len(counts) else 1
-            self._fill_photo_combo(i, n, int(self.cfg.get("photo_choice", {}).get(names[idx], 0)))     # that player's own photos
+            olds = self.pv_photo_old[i]
+            self._fill_photo_combo(i, n, int(self.cfg.get("photo_choice", {}).get(names[idx], 0)), olds[idx] if idx < len(olds) else ())     # that player's own photos
         self.pv_render()
 
     def pv_photo_pick(self, i):
