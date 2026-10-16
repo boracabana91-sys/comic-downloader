@@ -13,7 +13,7 @@ DEFAULTS = {
     "sources": [],  # see rights.Source
     "schedule": {"mode": "interval", "hours": 2, "times": ["09:00", "21:00"]},
     "publish_delay_min": [5, 10],      # minutes after the source was published
-    "resolutions": [2160, 1080, 720, 480, 360],
+    "resolutions": [1080, 720, 480, 360],
     "allow_upscale": True,      # 1080p/4K ticked on a 720p source are upscaled and labelled            # a 720p source cannot become real 4K
     "upload_resolution": 1080,
     "target_ratio": 0.59,              # Reclip kept 59% of Original
@@ -28,7 +28,7 @@ DEFAULTS = {
     "preset": "fast",                     # x264 speed (software encoder only)
     "encoder": "auto",                    # auto = Apple hardware encoder on a Mac, libx264 elsewhere
     "parallel_renders": 3,                # sizes made at the same time after the upload size (Mac)
-    "config_version": 9,
+    "config_version": 10,
     "upload": {"enabled": False, "privacy": "public", "category_id": "17",
                "client_secret": "", "token": os.path.join(HOME, "youtube_token.json")},
     "cloudinary": {"enabled": False, "cloud_name": "", "api_key": "", "api_secret": ""},
@@ -55,7 +55,10 @@ def load(path: str = CONFIG_PATH) -> dict:
             saved = json.load(f)
         if saved.get("config_version", 0) < 9:          # 0.9: older files saved the slow software encoder
             saved["encoder"] = "auto"
-            saved["config_version"] = 9
+        if saved.get("config_version", 0) < 10:         # 0.9.1: 4K off by default (tick it again if you want it)
+            if "resolutions" in saved:
+                saved["resolutions"] = [h for h in saved["resolutions"] if h != 2160] or [1080]
+        saved["config_version"] = 10
         return _merge(DEFAULTS, saved)
     except (OSError, ValueError):
         return deepcopy(DEFAULTS)

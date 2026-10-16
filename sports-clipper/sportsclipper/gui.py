@@ -47,7 +47,7 @@ class App:
                   foreground="#555").pack(anchor="w", padx=14)
 
         # --- sources: paste a link, nothing else to fill in
-        ttk.Label(page, text="Add a channel - paste its YouTube link").pack(anchor="w", **pad)
+        ttk.Label(page, text="Add a channel or playlist - paste its YouTube link").pack(anchor="w", **pad)
         form = ttk.Frame(page); form.pack(fill="x", padx=14)
         self.s_link = tk.StringVar()
         ttk.Entry(form, textvariable=self.s_link).pack(side="left", fill="x", expand=True)
@@ -68,13 +68,25 @@ class App:
         vf = ttk.LabelFrame(page, text="Pick a video from the selected channel")
         vf.pack(fill="x", padx=14, pady=4)
         vb = ttk.Frame(vf); vb.pack(fill="x", padx=6, pady=4)
-        ttk.Button(vb, text="Scan selected channel", command=self.scan_channel).pack(side="left")
+        self.scan_btn = ttk.Button(vb, text="Scan all videos", command=self.scan_channel)
+        self.scan_btn.pack(side="left")
         ttk.Button(vb, text="Reclip selected video", command=self.reclip_selected).pack(side="left", padx=6)
-        self.vid_tree = ttk.Treeview(vf, columns=("title", "date"), show="headings", height=5)
-        self.vid_tree.heading("title", text="Title"); self.vid_tree.column("title", width=560)
-        self.vid_tree.heading("date", text="Posted"); self.vid_tree.column("date", width=140)
-        self.vid_tree.pack(fill="x", padx=6, pady=(0, 6))
+        ttk.Label(vb, text="  Search:").pack(side="left")
+        self.vid_filter = tk.StringVar()
+        self.vid_filter.trace_add("write", lambda *_: self.show_videos())
+        ttk.Entry(vb, textvariable=self.vid_filter, width=24).pack(side="left", padx=4)
+        self.vid_count = tk.StringVar(value="")
+        ttk.Label(vb, textvariable=self.vid_count, foreground="#555").pack(side="left", padx=6)
+        tf = ttk.Frame(vf); tf.pack(fill="x", padx=6, pady=(0, 6))
+        self.vid_tree = ttk.Treeview(tf, columns=("date",), show="tree headings", height=10)
+        self.vid_tree.heading("#0", text="Title (open a folder: Videos, Live, Shorts, Playlists)")
+        self.vid_tree.column("#0", width=600)
+        self.vid_tree.heading("date", text="Posted"); self.vid_tree.column("date", width=130, stretch=False)
+        vsb = ttk.Scrollbar(tf, orient="vertical", command=self.vid_tree.yview)
+        self.vid_tree.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y"); self.vid_tree.pack(side="left", fill="x", expand=True)
         self.vid_items = {}
+        self.all_videos = []
 
         # --- schedule
         ttk.Label(page, text="When to scan").pack(anchor="w", **pad)
@@ -204,10 +216,9 @@ class App:
                         self.bar.stop(); self.bar.config(mode="determinate", value=m[2])
                     continue
                 if isinstance(m, tuple) and m[0] == "__videos__":
-                    self.vid_tree.delete(*self.vid_tree.get_children()); self.vid_items = {}
-                    for i, v in enumerate(m[1]):
-                        self.vid_items[str(i)] = v
-                        self.vid_tree.insert("", "end", iid=str(i), values=(v.title, v.published.astimezone().strftime("%Y-%m-%d %H:%M")))
+                    self.all_videos = m[1]
+                    self.scan_btn.config(state="normal")
+                    self.show_videos()
                     continue
                 if m == "\0done":
                     self.bar.stop(); self.bar.config(mode="determinate", value=0)
@@ -261,20 +272,46 @@ class App:
         src = self._channel_src()
         if not src:
             return
-        self.log(f"scanning {src.name} ...")
+        self.log(f"reading every video on {src.name} (this can take a minute on a big channel) ...")
+        self.vid_count.set("reading ...")
+        self.scan_btn.config(state="disabled")
         def job():
             try:
-                vids = sources.list_videos(src, 25)
+                vids = sources.list_all(src, self.log)
                 self.q.put(("__videos__", vids))
-                self.log(f"found {len(vids)} video(s) on {src.name} - click one, then Reclip selected video")
+                n = len({v.id for v in vids})
+                self.log(f"found {n} video(s) on {src.name} - open a folder, click one, then Reclip selected video")
             except Exception as e:
                 self.log(f"scan failed: {e}")
+                self.q.put(("__videos__", []))
         threading.Thread(target=job, daemon=True).start()
+
+    def show_videos(self):
+        """Fill the list from everything scanned, grouped like the channel, filtered by the search box."""
+        q = self.vid_filter.get().strip().lower()
+        self.vid_tree.delete(*self.vid_tree.get_children())
+        self.vid_items = {}
+        groups: dict = {}
+        for v in self.all_videos:
+            if q and q not in v.title.lower():
+                continue
+            groups.setdefault(v.group or "Videos", []).append(v)
+        shown = 0
+        for gi, (g, vids) in enumerate(groups.items()):
+            parent = self.vid_tree.insert("", "end", iid=f"g{gi}", text=f"{g}  ({len(vids)})", open=bool(q) or gi == 0)
+            for j, v in enumerate(vids):
+                iid = f"v{gi}_{j}"
+                self.vid_items[iid] = v
+                when = v.published.astimezone().strftime("%Y-%m-%d") if v.dated else ""
+                self.vid_tree.insert(parent, "end", iid=iid, text=v.title, values=(when,))
+                shown += 1
+        total = len({v.id for v in self.all_videos})
+        self.vid_count.set(f"{shown} shown of {total}" if self.all_videos else "")
 
     def reclip_selected(self):
         sel = self.vid_tree.selection()
-        if not sel:
-            return messagebox.showinfo("Reclip", "Scan a channel and click a video first.")
+        if not sel or sel[0] not in self.vid_items:
+            return messagebox.showinfo("Reclip", "Scan all videos, open a folder and click a video first.")
         src = self._channel_src()
         if not src:
             return

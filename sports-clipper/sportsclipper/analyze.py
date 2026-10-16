@@ -10,6 +10,7 @@ Clips always stay in game order at normal speed.
 """
 from __future__ import annotations
 import os
+import sys
 import tempfile
 import numpy as np
 
@@ -24,12 +25,25 @@ def _extract(path: str, info: dict, roi, tmp: str):
     cw = max(8, int(W * roi[2]) // 2 * 2); ch = max(8, int(H * roi[3]) // 2 * 2)
     cx = int(W * roi[0]); cy = int(H * roi[1])
     clock = os.path.join(tmp, "clock.raw"); mot = os.path.join(tmp, "mot.raw"); aud = os.path.join(tmp, "aud.raw")
-    cmd = [media.need("ffmpeg"), "-v", "error", "-y", "-i", path,
-           "-map", "0:v:0", "-vf", f"fps={CLOCK_FPS},crop={cw}:{ch}:{cx}:{cy},format=gray", "-f", "rawvideo", clock,
-           "-map", "0:v:0", "-vf", "fps=1,scale=64:36,format=gray", "-f", "rawvideo", mot]
-    if info["has_audio"]:
-        cmd += ["-map", "0:a:0", "-ac", "1", "-ar", "8000", "-f", "s16le", aud]
-    media.run(cmd)
+    def build(hw: bool):
+        cmd = [media.need("ffmpeg"), "-v", "error", "-y"]
+        if hw:
+            cmd += ["-hwaccel", "videotoolbox"]                 # the Mac's decoder chip: much faster than the CPU
+        cmd += ["-i", path,
+                "-map", "0:v:0", "-vf", f"fps={CLOCK_FPS},crop={cw}:{ch}:{cx}:{cy},format=gray", "-f", "rawvideo", clock,
+                "-map", "0:v:0", "-vf", "fps=1,scale=64:36,format=gray", "-f", "rawvideo", mot]
+        if info["has_audio"]:
+            cmd += ["-map", "0:a:0", "-ac", "1", "-ar", "8000", "-f", "s16le", aud]
+        return cmd
+
+    on_pct = lambda p: progress.set("analysing the video", p)
+    if sys.platform == "darwin":
+        try:
+            media.run_progress(build(True), info["duration"], on_pct)
+        except RuntimeError:
+            media.run_progress(build(False), info["duration"], on_pct)       # no hardware decode for this video
+    else:
+        media.run_progress(build(False), info["duration"], on_pct)
     clk = np.fromfile(clock, np.uint8).reshape(-1, ch * cw)
     m = np.fromfile(mot, np.uint8).reshape(-1, 36 * 64).astype(np.float32)
     a = np.fromfile(aud, np.int16).astype(np.float32) / 32768 if info["has_audio"] and os.path.exists(aud) else np.zeros(0, np.float32)
@@ -130,6 +144,8 @@ def _even_drop(segs: list, loud_z: np.ndarray, target: float) -> list:
 def plan(path: str, cfg: dict, log=print) -> dict:
     progress.set("analysing the video")
     info = media.probe(path)
+    m, s = divmod(int(info["duration"]), 60)
+    log(f"video: {info['width']}x{info['height']}, {info['codec']}, {m}:{s:02d} long")
     secs = int(info["duration"])
     with tempfile.TemporaryDirectory() as tmp:
         clk, mot, aud = _extract(path, info, cfg["clock_roi"], tmp)

@@ -21,11 +21,95 @@ class Video:
     published: datetime          # UTC
     url: str = ""
     path: str = ""               # set for local files
+    group: str = ""              # "Videos", "Live", "Shorts" or "Playlist: name" (set by list_all)
+    dated: bool = True           # False when the listing did not give a posting date
 
 
 def _channel_id(loc: str) -> str:
     m = re.search(r"(UC[\w-]{22})", loc)
     return m.group(1) if m else ""
+
+
+def _playlist_url(loc: str) -> str:
+    return f"https://www.youtube.com/playlist?list={loc.split(':', 1)[1]}" if loc.startswith("playlist:") else loc
+
+
+def parse_flat(info: dict, group: str = "") -> list:
+    """Turn a yt-dlp flat listing (a channel tab or a playlist) into Video rows. Pure function, tested."""
+    out = []
+    for e in (info or {}).get("entries") or []:
+        if not e or not e.get("id"):
+            continue
+        if str(e.get("ie_key", "")).lower() == "youtubetab" or (e.get("url") or "").find("/playlist?") >= 0:
+            continue                                         # a playlist entry on the Playlists tab, not a video
+        ts, ud = e.get("timestamp"), e.get("upload_date")
+        pub, dated = datetime.now(timezone.utc), False
+        if ts:
+            pub, dated = datetime.fromtimestamp(ts, timezone.utc), True
+        elif ud and re.fullmatch(r"\d{8}", str(ud)):
+            pub, dated = datetime.strptime(str(ud), "%Y%m%d").replace(tzinfo=timezone.utc), True
+        out.append(Video(e["id"], e.get("title") or e["id"], pub, url=f"https://www.youtube.com/watch?v={e['id']}",
+                         group=group, dated=dated))
+    return out
+
+
+def parse_playlists(info: dict) -> list:
+    """(playlist id, title) for each playlist on a channel's Playlists tab."""
+    out = []
+    for e in (info or {}).get("entries") or []:
+        pid = (e or {}).get("id") or ""
+        if pid.startswith(("PL", "OL", "UU", "LL", "FL")):
+            out.append((pid, e.get("title") or pid))
+    return out
+
+
+def _flat(url: str, **extra):
+    import yt_dlp
+    opts = {"quiet": True, "no_warnings": True, "extract_flat": "in_playlist", "skip_download": True,
+            "ignoreerrors": True, "socket_timeout": 30}
+    opts.update(extra)
+    with yt_dlp.YoutubeDL(opts) as y:
+        return y.extract_info(url, download=False)
+
+
+def list_all(src: Source, log=print) -> list:
+    """Every video on a channel, grouped the way the channel is: Videos, Live, Shorts and each of its
+    playlists; or every video of a single playlist. Reads the lists only (no downloads)."""
+    if src.kind != "youtube":
+        return list_videos(src, 1000)
+    loc = src.location
+    if loc.startswith("playlist:"):
+        name = src.name or "Playlist"
+        vids = parse_flat(_flat(_playlist_url(loc)), f"Playlist: {name}")
+        log(f"playlist {name}: {len(vids)} videos")
+        return vids
+    cid = _channel_id(loc)
+    base = f"https://www.youtube.com/channel/{cid}" if cid else loc.rstrip("/")
+    out, seen = [], set()
+    for tab, label in (("videos", "Videos"), ("streams", "Live"), ("shorts", "Shorts")):
+        try:
+            vids = parse_flat(_flat(f"{base}/{tab}"), label)
+        except Exception as e:
+            log(f"{label}: not available ({str(e)[:80]})")
+            continue
+        vids = [v for v in vids if v.id not in seen]
+        seen.update(v.id for v in vids)
+        log(f"{label}: {len(vids)} videos")
+        out += vids
+    try:
+        pls = parse_playlists(_flat(f"{base}/playlists"))
+    except Exception as e:
+        pls = []
+        log(f"Playlists: not available ({str(e)[:80]})")
+    for pid, title in pls:
+        try:
+            vids = parse_flat(_flat(f"https://www.youtube.com/playlist?list={pid}"), f"Playlist: {title}")
+        except Exception as e:
+            log(f"Playlist {title}: not available ({str(e)[:80]})")
+            continue
+        log(f"Playlist {title}: {len(vids)} videos")
+        out += vids                                           # may repeat videos from Videos: each folder is complete
+    return out
 
 
 def list_videos(src: Source, limit: int = 15) -> list:
@@ -55,7 +139,7 @@ def list_videos(src: Source, limit: int = 15) -> list:
         # handle / playlist URL: ask yt-dlp for the list only
         import yt_dlp
         with yt_dlp.YoutubeDL({"quiet": True, "extract_flat": True, "playlistend": limit}) as y:
-            info = y.extract_info(src.location, download=False)
+            info = y.extract_info(_playlist_url(src.location), download=False)
         out = []
         for e in info.get("entries", [])[:limit]:
             ts = e.get("timestamp")
@@ -80,8 +164,9 @@ def fetch(v: Video, work_dir: str, max_height: int = 1080) -> str:
         from . import media
         opts = {"quiet": True, "outtmpl": tpl, "merge_output_format": "mp4",
                 "ffmpeg_location": media.need("ffmpeg"),          # the app's bundled ffmpeg, no install needed
-                "format": (f"b[height<={max_height}][ext=mp4]/bv*[height<={max_height}]+ba/"
-                           f"b[height<={max_height}]/b")}
+                "format": (f"bv*[height<={max_height}][vcodec^=avc1]+ba[acodec^=mp4a]/"
+                           f"b[height<={max_height}][vcodec^=avc1]/"
+                           f"bv*[height<={max_height}]+ba/b[height<={max_height}]/b")}
         def _hook(d):
             tot = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
             if d.get("status") == "downloading" and tot:
@@ -118,6 +203,14 @@ def resolve_youtube(text: str) -> dict:
     s = (text or "").strip()
     if not s:
         raise ValueError("Paste the channel link first.")
+    pl = re.search(r"[?&]list=([\w-]+)", s) or re.fullmatch(r"((?:PL|OL|UU|FL)[\w-]{10,})", s)
+    if pl:                                                    # a playlist link: scan that playlist directly
+        pid = pl.group(1) if pl.lastindex else s
+        try:
+            title = (_flat(f"https://www.youtube.com/playlist?list={pid}", playlistend=1) or {}).get("title") or pid
+        except Exception:
+            title = pid
+        return {"name": f"Playlist: {title}", "kind": "youtube", "location": f"playlist:{pid}"}
     m = re.search(r"/channel/" + _UC, s) or re.fullmatch(_UC, s)
     name = ""
     if m:

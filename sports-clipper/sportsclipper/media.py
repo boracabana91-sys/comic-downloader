@@ -26,7 +26,8 @@ def probe(path: str) -> dict:
     if not d or not v:
         raise RuntimeError("could not read this video: " + err[-300:])
     fps = re.search(r"([\d.]+)\s*fps", err)
-    return {"duration": int(d.group(1)) * 3600 + int(d.group(2)) * 60 + float(d.group(3)),
+    codec = re.search(r"Video:\s*(\w+)", err)
+    return {"codec": codec.group(1) if codec else "?", "duration": int(d.group(1)) * 3600 + int(d.group(2)) * 60 + float(d.group(3)),
             "width": int(v.group(1)), "height": int(v.group(2)),
             "fps": float(fps.group(1)) if fps else 30.0, "has_audio": "Audio:" in err}
 

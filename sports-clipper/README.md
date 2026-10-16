@@ -61,6 +61,10 @@ Outputs go to `~/SportsClipper/output/manual/`. Use `--ratio 0.6` to change how 
 - On a Mac, encoding uses Apple's hardware encoder (VideoToolbox) with a bitrate per size. If it is not available, that size is redone with the software encoder (libx264) automatically. To always use the software encoder, set `"encoder": "libx264"` in config.json.
 - The upload size (1080p) is made first and uploaded; the other sizes are made afterwards, several at once. The activity log shows how long each step took.
 - The source frame rate is kept exactly (29.97 stays 29.97).
+- Downloads prefer the H.264 version of a video, which the Mac decodes in hardware, and analysis uses hardware decoding too. 4K is off by default: a 720p or 1080p source upscaled to 4K takes much longer and adds no detail (tick 4K if you really want it).
+
+## Scan all videos
+Click a channel, then **Scan all videos**. The whole channel is listed (not just the latest 15), grouped like the channel: Videos, Live, Shorts, and each playlist as its own folder. Use the Search box to filter by title, open a folder, click a video and press **Reclip selected video**. Paste a playlist link in the add box to add just that playlist. Only channels with the permission box ticked can be reclipped.
 
 ## Highlights tick
 Dead time is cut first: the intro before tip-off, timeouts, free-throw stretches and the post-game interview. If the video is still longer than "Keep about %", whole chunks of play (12-45 s) are dropped, spread evenly through the game, the way the reference reclip does it. Never dropped: the tip-off, the last 2 minutes, and the loudest crowd moments. Play stays in game order at normal speed.
