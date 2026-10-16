@@ -1,0 +1,17 @@
+[cutout.png]
+File:1 alperen sengun.jpg
+Author: Chensiyuan
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:1_alperen_sengun.jpg
+
+[cutout2.png]
+File:Alperen Şengün 23 Türkiye 20250823 (2) (cropped).jpg
+Author: Zafer
+Licence: CC BY 4.0
+https://commons.wikimedia.org/wiki/File:Alperen_%C5%9Eeng%C3%BCn_23_T%C3%BCrkiye_20250823_(2)_(cropped).jpg
+
+[cutout3.png]
+File:Alperen Şengün 23 Türkiye 20250823 (1).jpg
+Author: Zafer
+Licence: CC BY 4.0
+https://commons.wikimedia.org/wiki/File:Alperen_%C5%9Eeng%C3%BCn_23_T%C3%BCrkiye_20250823_(1).jpg
