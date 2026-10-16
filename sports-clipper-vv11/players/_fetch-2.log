@@ -1,0 +1,63 @@
+BKN  Michael Porter Jr. ...
+[0;93m2026-10-16 06:30:09.057288911 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  4%|█▎                                    | 6.45M/179M [00:00<00:02, 64.5MB/s]  7%|██▋                                   | 12.9M/179M [00:00<00:02, 64.4MB/s] 11%|████▎                                 | 20.1M/179M [00:00<00:02, 67.7MB/s] 15%|█████▋                                | 26.8M/179M [00:00<00:02, 67.5MB/s] 19%|███████▏                              | 33.9M/179M [00:00<00:02, 68.6MB/s] 23%|████████▋                             | 40.8M/179M [00:00<00:01, 69.0MB/s] 27%|██████████▏                           | 47.7M/179M [00:00<00:01, 66.7MB/s] 31%|███████████▋                          | 54.9M/179M [00:00<00:01, 68.0MB/s] 35%|█████████████▏                        | 62.0M/179M [00:00<00:01, 69.1MB/s] 39%|██████████████▋                       | 69.3M/179M [00:01<00:01, 70.4MB/s] 43%|████████████████▎                     | 76.5M/179M [00:01<00:01, 70.8MB/s] 47%|█████████████████▊                    | 83.7M/179M [00:01<00:01, 71.1MB/s] 51%|███████████████████▎                  | 90.8M/179M [00:01<00:01, 70.8MB/s] 55%|████████████████████▊                 | 97.9M/179M [00:01<00:01, 69.3MB/s] 59%|██████████████████████▉                | 105M/179M [00:01<00:01, 70.3MB/s] 63%|████████████████████████▌              | 113M/179M [00:01<00:00, 72.0MB/s] 67%|██████████████████████████▏            | 120M/179M [00:01<00:00, 71.1MB/s] 71%|███████████████████████████▋           | 127M/179M [00:01<00:00, 69.1MB/s] 75%|█████████████████████████████▎         | 134M/179M [00:01<00:00, 69.4MB/s] 79%|██████████████████████████████▊        | 141M/179M [00:02<00:00, 68.9MB/s] 83%|████████████████████████████████▎      | 148M/179M [00:02<00:00, 68.2MB/s] 87%|█████████████████████████████████▊     | 155M/179M [00:02<00:00, 69.2MB/s] 91%|███████████████████████████████████▍   | 163M/179M [00:02<00:00, 71.1MB/s] 95%|█████████████████████████████████████  | 170M/179M [00:02<00:00, 69.0MB/s] 99%|██████████████████████████████████████▋| 177M/179M [00:02<00:00, 71.1MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 798GB/s]
+   File:20170329 MCDAAG Michael Porter Jr. free throw.jpg  [CC BY-SA 4.0]  (+0 candidates)
+BKN  Julius Randle ...
+   Category:Julius Randle: 30 usable pictures
+   skipped File:20130403 MCDAAG Dakari Johnson putback dunk (1).JPG: 4 bodies in the picture
+   skipped File:20130403 MCDAAG Dakari Johnson putback dunk (4).JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Jabari Parker dunk (1).JPG: 3 bodies in the picture
+   skipped File:20130403 MCDAAG Jabari Parker dunk (2).JPG: 6 bodies in the picture
+   skipped File:20130403 MCDAAG Jabari Parker dunk (3).JPG: player too small in the photo (577px, 20% of the frame)
+   skipped File:20130403 MCDAAG Jabari Parker dunk (4).JPG: player too small in the photo (1109px, 39% of the frame)
+   skipped File:20130403 MCDAAG Julius Randle reverse dunk (1).JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Andrew Wiggins drives on Jabari Parker (2).JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Andrew Wiggins drives on Jabari Parker (3).JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Demetrius Jackson driving.JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Kasey Hill dribbling.JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Aaron Harrison to the hoop (3).JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Aaron Harrison to the hoop (5).JPG: player too small in the photo (1228px, 43% of the frame)
+   skipped File:20130403 MCDAAG Anthony Barber passing.JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Julius Randle attacks Aaron Gordon (1).JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Julius Randle attacks Aaron Gordon (3).JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Julius Randle attacks Aaron Gordon (4).JPG: 2 bodies in the picture
+   skipped File:20130403 MCDAAG Julius Randle defended by Aaron Gordon.JPG: 3 bodies in the picture
+   skipped File:20130403 MCDAAG Julius Randle to the rim (2).JPG: 3 bodies in the picture
+   skipped File:20130403 MCDAAG Julius Randle to the rim (3).JPG: 4 bodies in the picture
+   skipped File:20130403 MCDAAG Julius Randle to the rim (4).JPG: 3 bodies in the picture
+   File:20130403 MCDAAG Dakari Johnson putback dunk (2).JPG  [CC BY-SA 3.0]  (+7 candidates)
+DET  Cade Cunningham ...
+   File:1 cade cunningham 2024.jpg  [CC BY-SA 4.0]  (+0 candidates)
+DET  Jalen Duren ...
+   File:Jalen Duren Free Throw 01252026 (cropped).jpg  [CC BY 4.0]  (+0 candidates)
+MEM  Cameron Boozer ...
+   Category:Cameron Boozer: 2 usable pictures
+   skipped File:Boozer Ngongba Foster Sarr – Clemson – February 14 2026.png: 3 bodies in the picture
+   File:Boozer – Clemson – February 14 2026 (cropped).png  [CC BY 4.0]  (+0 candidates)
+MEM  Zach Edey ...
+   File:Zach Edey 2 (cropped).jpg  [CC BY-SA 2.0]  (+0 candidates)
+OKC  Shai Gilgeous-Alexander ...
+   Category:Shai Gilgeous-Alexander: 20 usable pictures
+   skipped File:Grizzlies vs. Thunder, March 2025.png: 5 bodies in the picture
+   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–121.jpg: 2 bodies in the picture
+   skipped File:Greece vs. Canada, 2024 Summer Olympic men's basketball, 2024-07-27 (196).jpg: 3 bodies in the picture
+   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–123.jpg: 2 bodies in the picture
+   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–051.jpg: 3 bodies in the picture
+   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–052.jpg: 3 bodies in the picture
+   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–122.jpg: 2 bodies in the picture
+   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–124.jpg: 2 bodies in the picture
+   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–125.jpg: 2 bodies in the picture
+   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–155.jpg: 2 bodies in the picture
+   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–162.jpg: 2 bodies in the picture
+   File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–108.jpg  [CC BY-SA 4.0]  (+7 candidates)
+OKC  Jalen Williams ...
+   File:Jalen Williams OKCThunder 2025 NBA Cup (cropped) (cropped).jpg  [CC BY 4.0]  (+0 candidates)
+SAS  Victor Wembanyama ...
+   File:Victor Wembanyama San Antonio Spurs 2025 NBA Cup.jpg  [CC BY 4.0]  (+0 candidates)
+SAS  Stephon Castle ...
+   Category:Stephon Castle: 2 usable pictures
+   skipped File:Stephon Castle.jpg: nothing left
+   File:Stephon Castle in 2026 Western Conference Finals.jpg  [CC BY-SA 4.0]  (+0 candidates)
+
+Done. Every player has a cutout.
