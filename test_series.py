@@ -229,6 +229,14 @@ def main():
         _t.sleep = _sl
         core.fetch = real
 
+    # --- a page that lists every picture twice (01.webp.jpg and 01.webp): keep one of each ---
+    b = "https://media.example.org/file/x/uploads/s/abc/"
+    twice = [f"{b}{i:02d}.webp.jpg" for i in range(1, 14)] + [f"{b}{i:02d}.webp" for i in range(2, 14)] + [b + "01.webp"]
+    got = series.dedupe_images(twice)
+    assert got == [f"{b}{i:02d}.webp.jpg" for i in range(1, 14)], got
+    assert series.dedupe_images([b + "a.webp", b + "b.webp", b + "a.webp"]) == [b + "a.webp", b + "b.webp"]
+    assert len(series.dedupe_images([b + "1.jpg", "https://other.org/s/1.jpg"])) == 2   # different sites stay
+
     # --- the little picture shown in the window ---
     p1 = series.layout_preview("one", "Demo", ".cbz", True, 5)
     assert "Demo - Chapter 001.cbz" in p1 and "Demo - Chapter 001.epub" in p1 and "Pages/" not in p1

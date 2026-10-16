@@ -418,6 +418,23 @@ def _finish_layout(work_root, name, total, size, series_dir, folder, layout, dev
     return final
 
 
+_DOUBLE_EXT = re.compile(r"(\.(?:webp|avif|png|jpe?g|gif))\.(?:webp|avif|png|jpe?g|gif)$", re.I)
+
+
+def dedupe_images(urls):
+    """Some pages list each picture twice, e.g. 01.webp.jpg (what the page shows) and 01.webp
+    (which may not exist). Keep one of each, the first one listed, in reading order."""
+    seen, out = set(), []
+    for u in urls:
+        key = _DOUBLE_EXT.sub(r"\1", urlparse(u).path.lower())
+        key = (urlparse(u).netloc.lower(), key)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(u)
+    return out
+
+
 def _download_with_retry(imgs, name, work, url, progress, stop, size, convert, say):
     """Websites sometimes refuse a burst of downloads for a moment. Missing pages are asked for
     again, slower each time (4, then 2, then 1 at a time, with a wait). Pages already saved are kept."""
@@ -439,7 +456,7 @@ def _download_with_retry(imgs, name, work, url, progress, stop, size, convert, s
 def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series_title=""):
     """Everything for one chapter. Returns the number of pages. Raises on any problem."""
     info = _inspect_with_retry(inspect, url, stop)
-    imgs = info["images"]
+    imgs = dedupe_images(info["images"])
     if not imgs:
         raise core.NoImages()
     say(f"  {len(imgs)} pages found.")
