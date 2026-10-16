@@ -1,0 +1,72 @@
+name: Build Sports Clipper vv10 (Mac)
+
+# Separate from the older Sports Clipper builds: this only builds the sports-clipper-vv10 folder and
+# publishes its own release, so releases 0.4.0 - 0.9.3 are never touched.
+on:
+  push:
+    branches: [sports-clipper-vv10]
+    paths: ["sports-clipper-vv10/**", ".github/workflows/build-sports-clipper-vv10.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: sports-clipper-vv10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tools
+        run: python -m pip install --upgrade pip pyinstaller -r requirements.txt
+      - name: Self-tests
+        run: python -m unittest discover -s tests
+      - name: Build Mac app
+        run: |
+          pyinstaller --windowed --collect-data certifi --collect-all imageio_ffmpeg --collect-data cv2 --add-data "sportsclipper/fonts:sportsclipper/fonts" --collect-all yt_dlp --collect-all googleapiclient --collect-all google_auth_oauthlib --collect-all tkinterdnd2 --name SportsClipper sports_clipper_app.py
+          dist/SportsClipper.app/Contents/MacOS/SportsClipper --selftest selftest.txt || true
+          echo "Built app self-test: $(cat selftest.txt)"
+          grep -qx OK selftest.txt
+          ditto -c -k --sequesterRsrc --keepParent dist/SportsClipper.app SportsClipper-Mac.zip
+      - name: Players kit (picture downloader)
+        run: |
+          mkdir -p kit/SportsClipper-Players-Kit/sportsclipper
+          cp -R tools kit/SportsClipper-Players-Kit/tools
+          cp sportsclipper/roster.py kit/SportsClipper-Players-Kit/sportsclipper/roster.py
+          touch kit/SportsClipper-Players-Kit/sportsclipper/__init__.py
+          chmod +x kit/SportsClipper-Players-Kit/tools/get_players.command
+          (cd kit && ditto -c -k --sequesterRsrc --keepParent SportsClipper-Players-Kit SportsClipper-Players-Kit.zip)
+          mv kit/SportsClipper-Players-Kit.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SportsClipper-vv10
+          path: |
+            sports-clipper-vv10/SportsClipper-Mac.zip
+            sports-clipper-vv10/SportsClipper-Players-Kit.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SportsClipper-vv10
+          path: files
+      - uses: actions/checkout@v4
+        with:
+          path: src
+      - name: Publish download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="sports-clipper-$(tr -d '[:space:]' < src/sports-clipper-vv10/VERSION)"
+          gh release delete "$V" --repo "${{ github.repository }}" --cleanup-tag --yes || true
+          gh release create "$V" files/SportsClipper-Mac.zip files/SportsClipper-Players-Kit.zip \
+            --repo "${{ github.repository }}" --target "${{ github.sha }}" \
+            --title "Sports Clipper $(tr -d '[:space:]' < src/sports-clipper-vv10/VERSION)" \
+            --notes "Sports Clipper vv10 - two-star-player thumbnails. Mac: download SportsClipper-Mac.zip (steps in sports-clipper-vv10/README.md). Then download SportsClipper-Players-Kit.zip, unzip it and double-click tools/get_players.command once to fetch the 30 player pictures."
