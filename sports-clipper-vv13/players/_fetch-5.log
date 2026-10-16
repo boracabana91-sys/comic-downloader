@@ -1,23 +1,2 @@
-CLE  Donovan Mitchell ...
-[0;93m2026-10-16 09:41:18.365277795 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  4%|█▍                                    | 6.50M/179M [00:00<00:02, 65.0MB/s]  7%|██▊                                   | 13.0M/179M [00:00<00:02, 64.9MB/s] 11%|████▎                                 | 20.3M/179M [00:00<00:02, 68.7MB/s] 15%|█████▊                                | 27.2M/179M [00:00<00:02, 67.6MB/s] 19%|███████▏                              | 33.9M/179M [00:00<00:02, 66.9MB/s] 23%|████████▊                             | 41.7M/179M [00:00<00:01, 70.4MB/s] 27%|██████████▎                           | 48.7M/179M [00:00<00:01, 70.3MB/s] 31%|███████████▊                          | 55.8M/179M [00:00<00:01, 69.9MB/s] 35%|█████████████▍                        | 62.9M/179M [00:00<00:01, 69.1MB/s] 39%|███████████████                       | 70.5M/179M [00:01<00:01, 71.3MB/s] 43%|████████████████▌                     | 77.7M/179M [00:01<00:01, 70.7MB/s] 47%|██████████████████                    | 84.8M/179M [00:01<00:01, 70.2MB/s] 52%|███████████████████▌                  | 92.1M/179M [00:01<00:01, 71.2MB/s] 56%|█████████████████████                 | 99.3M/179M [00:01<00:01, 68.5MB/s] 59%|███████████████████████▏               | 106M/179M [00:01<00:01, 68.9MB/s] 64%|████████████████████████▊              | 114M/179M [00:01<00:00, 70.9MB/s] 68%|██████████████████████████▍            | 121M/179M [00:01<00:00, 70.3MB/s] 72%|███████████████████████████▉           | 128M/179M [00:01<00:00, 70.7MB/s] 76%|█████████████████████████████▌         | 135M/179M [00:01<00:00, 71.5MB/s] 80%|███████████████████████████████▏       | 143M/179M [00:02<00:00, 69.9MB/s] 84%|████████████████████████████████▋      | 150M/179M [00:02<00:00, 69.0MB/s] 88%|██████████████████████████████████▏    | 157M/179M [00:02<00:00, 69.6MB/s] 92%|███████████████████████████████████▊   | 164M/179M [00:02<00:00, 69.9MB/s] 96%|█████████████████████████████████████▎ | 171M/179M [00:02<00:00, 70.3MB/s]100%|██████████████████████████████████████▉| 179M/179M [00:02<00:00, 72.1MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|███████████████████████████████████████| 179M/179M [00:00<00:00, 1.05TB/s]
-   File:Donovan Mitchell Cavs Playoffs (cropped).jpg  [CC BY 2.0]  [CLE jersey]  (+0 candidates)
-CLE  James Harden ...
-   File:James Harden (51830898977).jpg  [CC BY 2.0]  [CLE jersey]  (+0 candidates)
-IND  Tyrese Haliburton ...
-   File:1 tyrese haliburton 2025.jpg  [CC BY-SA 4.0]  [IND jersey]  (+0 candidates)
-IND  Ivica Zubac ...
-   File:Ivica Zubac (cropped).jpg  [CC BY-SA 2.0]  [OLD TEAM? the photo names another NBA team, not IND]  (+0 candidates)
-MIN  Anthony Edwards ...
-   File:Anthony Edwards Kentavious Caldwell-Pope (51734745028) (cropped) (cropped).jpg  [CC BY-SA 2.0]  [MIN jersey]  (+0 candidates)
-MIN  LaMelo Ball ...
-   File:LaMelo Ball (cropped).jpg  [CC BY 2.0]  (+0 candidates)
-PHX  Devin Booker ...
-   File:Devin Booker, Olympic Games 2024.jpg  [CC BY-SA 4.0]  (+0 candidates)
-WAS  Anthony Davis ...
-   File:Anthony Davis, Olympic Games 2024.jpg  [CC BY-SA 4.0]  (+0 candidates)
-WAS  Trae Young ...
-   File:Trae Young (51916215049) (cropped).jpg  [CC BY 2.0]  (+0 candidates)
 
 Done. Every player has a cutout.
