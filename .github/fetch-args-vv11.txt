@@ -1,6 +1,6 @@
 # Extra arguments for tools/get_players.py. Changing this file makes the cloud fetch run again.
 # --file pins the Commons picture chosen by eye for a player.
---redo --cands 8
+--redo --cands 8 --team DAL,MIA,MIL,UTA
 --file "ATL:CJ McCollum=File:2025 Washington Wizards Media Day 30.jpg"
 --file "ATL:Jalen Johnson=File:Jalen-Johnson.jpg"
 --file "BOS:Derrick White=File:Celtics at Wizards 2024-12-036 (White).jpg"
@@ -53,3 +53,6 @@
 --file "MIL:Myles Turner=File:Myles Turner (39916223764) (cropped).jpg"
 --file "NYK:Karl-Anthony Towns=File:Karl-Anthony Towns (51914675261) (cropped).jpg"
 --file "OKC:Shai Gilgeous-Alexander=File:Shai Gilgeous-Alexander (51815871018) (cropped).jpg"
+--file "MIA:Bam Adebayo=File:Bam Adebayo (cropped).jpg"
+--file "MIL:Tyler Herro=File:Tyler Herro (cropped).jpg"
+--file "UTA:Keyonte George=File:Keyonte George Jan 14 2026.jpg"

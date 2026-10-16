@@ -78,7 +78,7 @@ PLAYERS = {
     "PHX": [("Devin Booker", "BOOK")],
     "POR": [("Deni Avdija", "AVDIJA"), ("Ja Morant", "JA")],
     "SAC": [("Domantas Sabonis", "SABONIS")],
-    "SAS": [("Victor Wembanyama", "WEMBY"), ("De'Aaron Fox", "SWIPA")],
+    "SAS": [("Victor Wembanyama", "WEMBY")],
     "TOR": [("Kawhi Leonard", "THE KLAW"), ("Scottie Barnes", "BARNES")],
     "UTA": [("Lauri Markkanen", "THE FINNISHER"), ("Keyonte George", "KEYONTE")],
     "WAS": [("Anthony Davis", "THE BROW"), ("Trae Young", "ICE TRAE")],

@@ -175,7 +175,7 @@ def search(player: str, session) -> list:
                 out[t] = (2 + (ii.get("height", 0) >= ii.get("width", 0)), ii)
         except Exception:                                 # noqa: BLE001
             pass
-    if not cat:                                           # nothing identified: fall back to a text search (checked by eye later)
+    if not cat or len(out) < 4:                           # nothing (or almost nothing) identified: add a text search, checked by eye later
         for extra in ("free throw", "shooting", "dunk", "layup dribbling"):
             data = _query(session, action="query", generator="search", gsrnamespace=6, gsrlimit=25,
                           gsrsearch=f"{player} {extra}", prop="imageinfo", iiprop="url|size|extmetadata", iiurlwidth=1800)
