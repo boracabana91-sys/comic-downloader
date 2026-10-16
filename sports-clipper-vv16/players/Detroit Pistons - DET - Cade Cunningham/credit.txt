@@ -4,6 +4,7 @@ Author: Chensiyuan
 Licence: CC BY-SA 4.0
 https://commons.wikimedia.org/wiki/File:1_cade_cunningham_2024.jpg
 
+(head1.png is a close-up cropped from this picture)
 [cutout2.png]
 File:Cade Cunningham charging against T. J. McConnell, 2024-11-29.jpg
 Author: Navin75
@@ -15,3 +16,5 @@ File:Cade Cunningham Oklahoma State (cropped).jpg
 Author: OSU Athletics
 Licence: CC BY-SA 2.0
 https://commons.wikimedia.org/wiki/File:Cade_Cunningham_Oklahoma_State_(cropped).jpg
+
+(head3.png is a close-up cropped from this picture)
