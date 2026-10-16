@@ -1,4 +1,17 @@
+[cutout.png]
 File:Celtics at Wizards 2024-12-036 (White).jpg
 Author: Hameltion
 Licence: CC BY-SA 4.0
 https://commons.wikimedia.org/wiki/File:Celtics_at_Wizards_2024-12-036_(White).jpg
+
+[cutout2.png]
+File:Celtics at Wizards 2024-12-036.jpg
+Author: Hameltion
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:Celtics_at_Wizards_2024-12-036.jpg
+
+[cutout3.png]
+File:P20241121OC-0670 (54156380927).jpg
+Author: The White House
+Licence: Public domain
+https://commons.wikimedia.org/wiki/File:P20241121OC-0670_(54156380927).jpg
