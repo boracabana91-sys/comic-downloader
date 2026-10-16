@@ -1,0 +1,25 @@
+BOS  Jayson Tatum ...
+[0;93m2026-10-16 13:36:53.624713703 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  3%|█▏                                    | 5.86M/179M [00:00<00:02, 58.6MB/s]  8%|██▉                                   | 13.8M/179M [00:00<00:02, 71.0MB/s] 12%|████▌                                 | 21.4M/179M [00:00<00:02, 73.0MB/s] 16%|██████▏                               | 29.2M/179M [00:00<00:01, 75.1MB/s] 21%|███████▊                              | 37.0M/179M [00:00<00:01, 76.1MB/s] 25%|█████████▌                            | 45.1M/179M [00:00<00:01, 77.9MB/s] 30%|███████████▎                          | 53.1M/179M [00:00<00:01, 78.6MB/s] 34%|█████████████                         | 61.1M/179M [00:00<00:01, 79.0MB/s] 39%|██████████████▋                       | 69.0M/179M [00:00<00:01, 76.5MB/s] 43%|████████████████▎                     | 77.0M/179M [00:01<00:01, 77.4MB/s] 47%|██████████████████                    | 84.8M/179M [00:01<00:01, 77.7MB/s] 52%|███████████████████▉                  | 93.7M/179M [00:01<00:01, 81.2MB/s] 57%|██████████████████████▎                | 102M/179M [00:01<00:00, 82.3MB/s] 62%|████████████████████████▏              | 111M/179M [00:01<00:00, 83.1MB/s] 67%|██████████████████████████             | 119M/179M [00:01<00:00, 84.1MB/s] 72%|███████████████████████████▉           | 128M/179M [00:01<00:00, 84.0MB/s] 76%|█████████████████████████████▊         | 136M/179M [00:01<00:00, 84.0MB/s] 81%|███████████████████████████████▌       | 145M/179M [00:01<00:00, 84.1MB/s] 86%|█████████████████████████████████▍     | 153M/179M [00:01<00:00, 84.6MB/s] 91%|███████████████████████████████████▎   | 162M/179M [00:02<00:00, 83.4MB/s] 95%|█████████████████████████████████████▏ | 170M/179M [00:02<00:00, 82.8MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 873GB/s]
+   3 picture(s): File:Jayson Tatum (51839569977) (cropped).jpg | File:Jayson Tatum (cropped).jpg | File:Jayson Tatum (51686834897).jpg
+BOS  Derrick White ...
+   3 picture(s): File:Celtics at Wizards 2024-12-036 (White).jpg | File:Derrick White 2023.png | File:Celtics at Wizards 2024-12-036.jpg
+DEN  Nikola Jokic ...
+   3 picture(s): File:Nikola Jokic free throw (cropped).jpg | File:Nikola Jokic (51915414414).jpg | File:Nikola Jokic (51914984866).jpg
+DEN  Jamal Murray ...
+   2 picture(s): File:Jamal Murray free throw (cropped).jpg | File:Jamal Murray 2020 (cropped).jpg
+LAL  Luka Doncic ...
+   2 picture(s): File:Luka Doncic (51914951721) (cropped1).jpg | File:Luka Doncic 2021 (cropped).jpg
+LAL  Austin Reaves ...
+   3 picture(s): File:Austin Reaves drives.jpg | File:Austin Reaves (51959765431) (cropped).jpg | File:Austin Reaves (cropped).jpg
+NYK  Jalen Brunson ...
+   3 picture(s): File:Jalen Brunson (cropped).jpg | File:Jalen Brunson 2023 (cropped).jpg | File:Jalen Brunson cropped.jpg
+NYK  Karl-Anthony Towns ...
+   3 picture(s): File:Karl-Anthony Towns (51914283512) (cropped) (cropped).jpg | File:Karl-Anthony Towns (51914283512) (square).jpg | File:2026 NBA Finals, Game 3.png
+SAC  Domantas Sabonis ...
+   3 picture(s): File:Domantas Sabonis by Augustas Didzgalvis.jpg | File:Detroit Pistons vs Indiana Pacers, October 23, 2019 P102319AZS (49088211311).jpg | File:Detroit Pistons vs Indiana Pacers, October 23, 2019 P102319AZS (49088210626).jpg
+SAC  Zach LaVine ...
+   3 picture(s): File:Zach Lavine 2022.jpg | File:Zach LaVine (2022 All-Star Weekend).jpg | File:Zach LaVine (51914840418).jpg
+
+Done. Every player has a cutout.
