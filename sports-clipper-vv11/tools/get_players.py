@@ -55,9 +55,9 @@ def year_of(meta: dict) -> int:
     return 0
 
 
-def score(title: str, w: int, h: int, player: str, year: int = 0) -> float:
+def score(title: str, w: int, h: int, player: str, year: int = 0, need_name: bool = True) -> float:
     t = roster.ascii_name(title).lower()
-    if surname(player) not in t or any(b in t for b in BAD) or not t.endswith((".jpg", ".jpeg", ".png")):
+    if (need_name and surname(player) not in t) or any(b in t for b in BAD) or not t.endswith((".jpg", ".jpeg", ".png")):
         return -1
     if w < 1000:
         return -1
@@ -80,19 +80,56 @@ def _query(session, **params):
     raise RuntimeError("Commons is busy, try again later")
 
 
+def _plain(s: str) -> str:
+    return re.sub(r"[^a-z0-9 ]", "", roster.ascii_name(s).lower().replace(".", "")).strip()
+
+
+def find_category(player: str, session) -> str | None:
+    """The player's own Commons category ('Category:Nikola Jokic'): every file in it shows that person."""
+    data = _query(session, action="query", list="search", srnamespace=14, srsearch=player, srlimit=10)
+    want = _plain(player)
+    titles = [h["title"] for h in data.get("query", {}).get("search", [])]
+    for t in titles:
+        if _plain(t.split(":", 1)[1]) == want:
+            return t
+    return None
+
+
+def _collect(out: dict, data: dict, player: str, in_category: bool) -> None:
+    for p in (data.get("query", {}).get("pages", {}) or {}).values():
+        ii = (p.get("imageinfo") or [{}])[0]
+        if not ii or not licence_ok(ii.get("extmetadata", {})):
+            continue
+        t = roster.ascii_name(p["title"]).lower()
+        if any(b in t for b in BAD) or not t.endswith((".jpg", ".jpeg", ".png")) or ii.get("width", 0) < 1000:
+            continue
+        if not in_category and surname(player) not in t:
+            continue
+        sc = score(p["title"], ii.get("width", 0), ii.get("height", 0), player, year_of(ii.get("extmetadata", {})),
+                   need_name=not in_category)
+        if sc >= 0:
+            out[p["title"]] = (sc + (1 if in_category else 0), ii)
+
+
 def search(player: str, session) -> list:
     out = {}
-    for extra in ("free throw", "shooting", "dunk", "layup dribbling", "basketball"):
+    cat = find_category(player, session)
+    if cat:
+        cont = {}
+        for _ in range(8):                                # up to ~400 files of the category
+            data = _query(session, action="query", generator="categorymembers", gcmtitle=cat, gcmtype="file",
+                          gcmlimit=50, prop="imageinfo", iiprop="url|size|extmetadata", iiurlwidth=1800, **cont)
+            _collect(out, data, player, True)
+            cont = data.get("continue", {})
+            if not cont:
+                break
+            time.sleep(0.3)
+    for extra in ("free throw", "shooting", "dunk", "layup dribbling"):
         data = _query(session, action="query", generator="search", gsrnamespace=6, gsrlimit=25,
                       gsrsearch=f"{player} {extra}", prop="imageinfo", iiprop="url|size|extmetadata", iiurlwidth=1800)
-        for p in (data.get("query", {}).get("pages", {}) or {}).values():
-            ii = (p.get("imageinfo") or [{}])[0]
-            if not ii or not licence_ok(ii.get("extmetadata", {})):
-                continue
-            sc = score(p["title"], ii.get("width", 0), ii.get("height", 0), player, year_of(ii.get("extmetadata", {})))
-            if sc >= 0:
-                out[p["title"]] = (sc, ii)
-        time.sleep(0.4)
+        _collect(out, data, player, False)
+        time.sleep(0.3)
+    print(f"   {cat or 'no category'}: {len(out)} usable pictures", flush=True)
     return sorted(((sc, t, ii) for t, (sc, ii) in out.items()), key=lambda x: -x[0])
 
 
@@ -108,7 +145,34 @@ def file_info(title: str, session) -> tuple:
 _session_cache = {}
 
 
-def cut_out(src_path: str, out_png: str) -> None:
+def judge(cut):
+    """(ok, quality, why). A good cut-out is ONE player who fills the picture: not a group, not a tiny figure."""
+    import cv2
+    import numpy as np
+    alpha = np.asarray(cut.getchannel("A"))
+    mask = (alpha > 128).astype(np.uint8)
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    if n < 2:
+        return False, 0, "nothing left"
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    big = int(areas.argmax()) + 1
+    total = float(areas.sum())
+    x, y, w, h, area = stats[big]
+    others = [int(a) for i, a in enumerate(areas, 1) if i != big and a > 0.04 * area]
+    if others:
+        return False, 0, f"{1 + len(others)} bodies in the picture"
+    if area / total < 0.8:
+        return False, 0, "scattered"
+    frame = alpha.shape[0]
+    fill = h / frame
+    if h < 450 or fill < 0.45:
+        return False, 0, f"player too small in the photo ({h}px, {fill:.0%} of the frame)"
+    if w > 1.15 * h:
+        return False, 0, "too wide for one player standing"
+    return True, fill + min(area / (w * h), 0.7), "ok"
+
+
+def cut_out(src_path: str, out_png: str, check: bool = True) -> float:
     try:
         from rembg import new_session, remove
     except ImportError:
@@ -118,41 +182,48 @@ def cut_out(src_path: str, out_png: str) -> None:
         _session_cache["s"] = new_session("isnet-general-use")
     im = Image.open(src_path).convert("RGB")
     cut = remove(im, session=_session_cache["s"], alpha_matting=False, post_process_mask=True)
+    if check:
+        ok, quality, why = judge(cut)
+        if not ok:
+            raise RuntimeError(why)
+    else:
+        quality = 1.0
     box = cut.getchannel("A").point(lambda a: 255 if a > 20 else 0).getbbox()
     if not box:
         raise RuntimeError("nothing left after removing the background")
     cut = cut.crop(box)
-    if cut.height < 350 or cut.height < cut.width * 0.45:      # a sliver or a wide crop is not a player standing there
-        raise RuntimeError(f"cut-out looks wrong ({cut.width}x{cut.height})")
     if cut.height > MAX_H:
         cut = cut.resize((max(1, round(cut.width * MAX_H / cut.height)), MAX_H), Image.LANCZOS)
     cut.save(out_png, optimize=True)
+    return quality
 
 
 def _strip(meta, k):
     return html.unescape(re.sub("<[^>]+>", "", (meta.get(k) or {}).get("value", ""))).strip()
 
 
-def do_player(acr, player, out_root, redo, session, forced=None, photo=None) -> str:
+def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tries=12) -> str:
     fol = os.path.join(out_root, roster.folder_name(acr, player))
     os.makedirs(fol, exist_ok=True)
     png = os.path.join(fol, "cutout.png")
     if os.path.exists(png) and not redo and not forced and not photo:
         return "already there"
+    if redo and os.path.exists(png):
+        os.remove(png)                                   # a redo must not leave the old (maybe wrong) picture behind
     if photo:
-        cut_out(photo, png)
+        cut_out(photo, png, check=False)
         with open(os.path.join(fol, "credit.txt"), "w", encoding="utf-8") as f:
             f.write(f"Picture supplied by the owner of the app: {os.path.basename(photo)}\n")
         return "cut out from your picture"
     hits = [file_info(forced, session)] if forced else search(player, session)
     src = os.path.join(fol, "_source.jpg")
-    for sc, title, ii in hits[:4]:                       # try the best few, keep the first that cuts out cleanly
+    for sc, title, ii in hits[:tries]:                   # best first; keep the first that cuts out as one clear player
         try:
             r = session.get(ii.get("thumburl") or ii["url"], headers={"User-Agent": UA}, timeout=90)
             r.raise_for_status()
             with open(src, "wb") as f:
                 f.write(r.content)
-            cut_out(src, png)
+            cut_out(src, png, check=not forced)
         except Exception as e:                           # noqa: BLE001
             print(f"   skipped {title}: {e}", flush=True)
             continue
@@ -190,6 +261,8 @@ def main() -> None:
     ap.add_argument("--out", default=roster.players_dir())
     ap.add_argument("--team", help="acronyms, comma separated (default: all 30)")
     ap.add_argument("--redo", action="store_true")
+    ap.add_argument("--shard", help='"i/n": only every n-th team, starting at i (to run several fetches side by side)')
+    ap.add_argument("--credits-only", action="store_true", help="just rewrite CREDITS.txt")
     ap.add_argument("--file", action="append", help='"DEN:Nikola Jokic=File:Name.jpg"')
     ap.add_argument("--photo", action="append", help='"DEN:Nikola Jokic=/path.jpg"')
     a = ap.parse_args()
@@ -197,6 +270,13 @@ def main() -> None:
     bad = [t for t in teams if t not in roster.PLAYERS]
     if bad:
         sys.exit(f"unknown team acronym: {', '.join(bad)}")
+    if a.credits_only:
+        write_credits(a.out)
+        return
+    if a.shard:
+        i, n = (int(x) for x in a.shard.split("/"))
+        teams = [t for k, t in enumerate(teams) if k % n == i]
+    os.makedirs(a.out, exist_ok=True)
     forced, photos = _pairs(a.file), _pairs(a.photo)
     import requests
     session = requests.Session()
@@ -212,7 +292,6 @@ def main() -> None:
             print("   " + msg, flush=True)
             if msg.startswith(("NO PICTURE", "FAILED")):
                 missing.append(key)
-    write_credits(a.out)
     print("\nDone." + (f" Still missing: {', '.join(missing)}" if missing else " Every player has a cutout."))
 
 

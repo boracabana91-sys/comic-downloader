@@ -163,3 +163,22 @@ class Window(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CutoutJudge(unittest.TestCase):
+    """The picture fetcher accepts one clear player and rejects groups and tiny figures."""
+    def _img(self, boxes, size=(900, 1200)):
+        im = Image.new("RGBA", size, (0, 0, 0, 0))
+        d = ImageDraw.Draw(im)
+        for b in boxes:
+            d.rectangle(b, fill=(200, 200, 200, 255))
+        return im
+
+    def test_judge(self):
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
+        import get_players
+        self.assertTrue(get_players.judge(self._img([(300, 150, 600, 1150)]))[0])               # one big player
+        self.assertFalse(get_players.judge(self._img([(100, 150, 400, 1150), (500, 200, 800, 1150)]))[0])   # two bodies
+        self.assertFalse(get_players.judge(self._img([(400, 700, 480, 900)]))[0])               # tiny in the frame
+        self.assertFalse(get_players.judge(self._img([(50, 400, 850, 800)]))[0])                # wide group shape
+        self.assertEqual(get_players.surname("Michael Porter Jr."), "porter")

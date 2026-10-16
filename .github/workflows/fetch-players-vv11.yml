@@ -1,7 +1,8 @@
 name: Fetch NBA player pictures (vv11)
 
 # Runs in the cloud, so nobody has to run anything on a Mac: it finds free-licence player pictures on Wikimedia
-# Commons, cuts out the background and uploads them (plus a contact sheet) as an artifact to be checked and bundled.
+# Commons (from each player's own category), cuts out the background, keeps only clear one-player pictures and
+# commits them to the branch together with a contact sheet to be checked.
 on:
   push:
     branches: [sports-clipper-vv11]
@@ -15,34 +16,53 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install
-        run: python -m pip install --upgrade pip requests pillow numpy onnxruntime "rembg[cpu]"
+        run: python -m pip install --upgrade pip requests pillow numpy onnxruntime "rembg[cpu]" opencv-python-headless
       - name: Fetch and cut out
         working-directory: sports-clipper-vv11
         run: |
           ARGS="$(grep -v '^#' ../.github/fetch-args-vv11.txt | tr '\n' ' ')"
-          eval python tools/get_players.py --out ../players_out $ARGS 2>&1 | tee ../fetch.log
-      - name: Contact sheet
-        run: python sports-clipper-vv11/tools/contact_sheet.py players_out contact.jpg
-      - name: Commit the pictures to the branch
+          mkdir -p ../out
+          eval python tools/get_players.py --out ../out --shard ${{ matrix.shard }}/6 $ARGS 2>&1 | tee ../fetch-${{ matrix.shard }}.log
+      - name: Commit this shard
         run: |
           mkdir -p sports-clipper-vv11/players
-          cp -R players_out/. sports-clipper-vv11/players/
-          cp contact.jpg sports-clipper-vv11/players/_contact.jpg
-          cp fetch.log sports-clipper-vv11/players/_fetch.log
+          cp -R out/. sports-clipper-vv11/players/
+          cp fetch-${{ matrix.shard }}.log sports-clipper-vv11/players/_fetch-${{ matrix.shard }}.log
           git config user.name "players-bot"; git config user.email "players-bot@users.noreply.github.com"
           git add sports-clipper-vv11/players
-          git commit -m "vv11: player pictures (cloud fetch)" || echo "nothing new"
-          git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"
-      - uses: actions/upload-artifact@v4
+          git commit -m "vv11: player pictures, shard ${{ matrix.shard }}" || echo "nothing new"
+          for i in 1 2 3 4 5 6; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            sleep $((RANDOM % 10 + 3))
+          done
+
+  sheet:
+    needs: fetch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          name: players-vv11
-          path: |
-            players_out
-            contact.jpg
-            fetch.log
+          python-version: "3.12"
+      - run: python -m pip install pillow
+      - name: Contact sheet and credits
+        run: |
+          python sports-clipper-vv11/tools/contact_sheet.py sports-clipper-vv11/players sports-clipper-vv11/players/_contact.jpg
+          python sports-clipper-vv11/tools/get_players.py --credits-only --out sports-clipper-vv11/players
+          git config user.name "players-bot"; git config user.email "players-bot@users.noreply.github.com"
+          git add sports-clipper-vv11/players
+          git commit -m "vv11: contact sheet and credits" || echo "nothing new"
+          for i in 1 2 3 4 5 6; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            sleep 5
+          done
