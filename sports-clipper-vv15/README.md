@@ -25,7 +25,12 @@ Nothing else to install - ffmpeg is built into the app, and no password is neede
 
 **AI titles (Claude Haiku 5.5, optional):** this is the default. Without a key the app uses plain titles. To use it, open `~/SportsClipper/config.json` and put your Anthropic API key in `"api_key"` under `"ai"`, then Save settings. The key is separate from a Claude chat subscription.
 
-## vv14: start at the jump ball, 3 photos per star, rosters re-checked (new in this version)
+## vv15: old-jersey photos as extra options (new in this version)
+- Photos that show a player in an **older team's jersey** are now offered too, marked **(old team)** in the Photo drop-down. They are never the default: if a team's first star only has old-team photos, the other star becomes the default (the first star is still in the Player drop-down).
+- Players that had no photo before now have some, even if not perfect (Kyrie Irving, Paolo Banchero, Jaren Jackson Jr., Giannis in a Bucks jersey). Trey Murphy III has no free photo at all, so NOP offers only Zion Williamson.
+- Replace any of them with your own photo by dropping it in `~/SportsClipper/players/<Team - ACR - Player>/`.
+
+## vv14: start at the jump ball, 3 photos per star, rosters re-checked
 - **Start at the jump ball:** a new tick, **Start at the jump ball**, next to the length options. When it is ticked, the video begins a few seconds before the opening tip and everything before it (long intros, warm-ups, pre-game talk) is cut. Leave it unticked for Playoff games where the pre-game is worth keeping. It reads the scoreboard clock: if the clock cannot be read, the video simply starts from the beginning as before.
 - **3 photos for every team star** (also the 2nd star). Next to the **Player** drop-down there is now a **Photo** drop-down (Photo 1, 2, 3); the preview redraws at once and your choice is remembered per player (`photo_choice`). Photos are free-licence pictures with the background removed, hand-picked, and the author credits are in `players/CREDITS.txt`. Some players have fewer than 3 because no clear free photo of them exists (the list only offers photos that exist).
 - **Rosters re-checked** against the summer 2026 trades and signings (for example Giannis Antetokounmpo is now with Miami). The first star of each team is the default; the second star is in the drop-down.
