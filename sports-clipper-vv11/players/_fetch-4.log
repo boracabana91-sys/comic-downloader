@@ -1,0 +1,37 @@
+CHI  Josh Giddey ...
+[0;93m2026-10-16 06:30:04.360384522 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  3%|█▎                                    | 6.08M/179M [00:00<00:02, 60.8MB/s]  7%|██▊                                   | 13.4M/179M [00:00<00:02, 67.9MB/s] 12%|████▍                                 | 21.0M/179M [00:00<00:02, 71.3MB/s] 16%|██████▏                               | 28.8M/179M [00:00<00:02, 74.2MB/s] 20%|███████▋                              | 36.3M/179M [00:00<00:01, 73.2MB/s] 25%|█████████▎                            | 44.0M/179M [00:00<00:01, 74.6MB/s] 29%|███████████                           | 52.1M/179M [00:00<00:01, 76.8MB/s] 33%|████████████▋                         | 59.8M/179M [00:00<00:01, 76.8MB/s] 38%|██████████████▎                       | 67.5M/179M [00:00<00:01, 74.6MB/s] 42%|███████████████▉                      | 75.1M/179M [00:01<00:01, 74.9MB/s] 47%|█████████████████▋                    | 83.1M/179M [00:01<00:01, 76.5MB/s] 51%|███████████████████▍                  | 91.3M/179M [00:01<00:01, 78.1MB/s] 55%|█████████████████████                 | 99.1M/179M [00:01<00:01, 77.4MB/s] 60%|███████████████████████▎               | 107M/179M [00:01<00:00, 76.7MB/s] 64%|█████████████████████████▏             | 115M/179M [00:01<00:00, 78.6MB/s] 69%|██████████████████████████▊            | 123M/179M [00:01<00:00, 78.7MB/s] 73%|████████████████████████████▋          | 131M/179M [00:01<00:00, 79.6MB/s] 78%|██████████████████████████████▍        | 139M/179M [00:01<00:00, 79.2MB/s] 82%|████████████████████████████████       | 147M/179M [00:01<00:00, 79.3MB/s] 87%|█████████████████████████████████▉     | 156M/179M [00:02<00:00, 80.7MB/s] 92%|███████████████████████████████████▋   | 164M/179M [00:02<00:00, 80.0MB/s] 96%|█████████████████████████████████████▍ | 172M/179M [00:02<00:00, 79.8MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 877GB/s]
+   File:Josh Giddey 2022.jpg  [CC BY 2.0]  (+0 candidates)
+CHI  Matas Buzelis ...
+   File:Matas Buzelis Jan 14 2026.jpg  [CC BY-SA 4.0]  (+0 candidates)
+HOU  Kevin Durant ...
+   File:Kevin Durant dunk.jpg  [CC BY-SA 2.0]  (+0 candidates)
+HOU  Alperen Sengun ...
+   File:Alperen Şengün 23 Türkiye 20250823 (1).jpg  [CC BY 4.0]  (+0 candidates)
+MIL  Tyler Herro ...
+   Category:Tyler Herro: 2 usable pictures
+   skipped File:Tyler Herro.jpg: 2 bodies in the picture
+   File:Fletcher Magee, Tyler Herro - 2019-03-23 NCAA Tournament.jpg  [CC BY 2.0]  (+0 candidates)
+MIL  Myles Turner ...
+   Category:Myles Turner: 20 usable pictures
+   skipped File:20140402 MCDAAG Cliff Alexander tomahawk dunk (1).JPG: 4 bodies in the picture
+   skipped File:20140402 MCDAAG Cliff Alexander tomahawk dunk (2).JPG: 2 bodies in the picture
+   skipped File:20140402 MCDAAG Trey Lyles dunk (1).JPG: 2 bodies in the picture
+   skipped File:20140402 MCDAAG Jahlil Okafor layup.JPG: 2 bodies in the picture
+   skipped File:Myles Turner dunk.jpg: 3 bodies in the picture
+   skipped File:20140402 MCDAAG Tyler Ulis J.JPG: 2 bodies in the picture
+   File:20140402 MCDAAG Myles Turner opening jump ball against Jahlil Okafor (1).JPG  [CC BY-SA 3.0]  (+7 candidates)
+PHI  Tyrese Maxey ...
+   File:1 tyrese maxey 2026 (cropped).jpg  [CC BY-SA 4.0]  (+0 candidates)
+PHI  LeBron James ...
+   File:LeBron James (51959977144) (cropped2).jpg  [CC BY 2.0]  (+0 candidates)
+UTA  Jaren Jackson Jr. ...
+   Category:Jaren Jackson Jr.: 11 usable pictures
+   skipped File:20170329 MCDAAG Jaren Jackson Jr. dunks in front of Nicholas Richards.jpg: 2 bodies in the picture
+   skipped File:20170329 MCDAAG Jaren Jackson Jr. sizing up Mitchell Robinson.jpg: 4 bodies in the picture
+   File:20170329 MCDAAG Jaylen Hands watches ball.jpg  [CC BY-SA 4.0]  (+7 candidates)
+UTA  Lauri Markkanen ...
+   File:Lauri Markkanen, Cavaliers vs Rockets on December 15, 2021 (cropped).jpg  [CC BY 2.0]  (+0 candidates)
+
+Done. Every player has a cutout.
