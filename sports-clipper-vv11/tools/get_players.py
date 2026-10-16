@@ -69,9 +69,9 @@ def score(title: str, w: int, h: int, player: str, year: int = 0, need_name: boo
     return s
 
 
-def _query(session, **params):
+def _query(session, _url=None, **params):
     for attempt in range(4):
-        r = session.get(API, params={"format": "json", **params}, headers={"User-Agent": UA}, timeout=40)
+        r = session.get(_url or API, params={"format": "json", **params}, headers={"User-Agent": UA}, timeout=40)
         if r.status_code in (429, 503):
             time.sleep(5 * (attempt + 1))
             continue
@@ -84,15 +84,33 @@ def _plain(s: str) -> str:
     return re.sub(r"[^a-z0-9 ]", "", roster.ascii_name(s).lower().replace(".", "")).strip()
 
 
-def find_category(player: str, session) -> str | None:
-    """The player's own Commons category ('Category:Nikola Jokic'): every file in it shows that person."""
-    data = _query(session, action="query", list="search", srnamespace=14, srsearch=player, srlimit=10)
-    want = _plain(player)
-    titles = [h["title"] for h in data.get("query", {}).get("search", [])]
-    for t in titles:
-        if _plain(t.split(":", 1)[1]) == want:
-            return t
-    return None
+WIKI = "https://en.wikipedia.org/w/api.php"
+WIKIDATA = "https://www.wikidata.org/w/api.php"
+
+
+def identify(player: str, session) -> tuple:
+    """(Commons category title or None, main photo 'File:...' or None) of THIS basketball player, via Wikipedia + Wikidata,
+    so a namesake (another 'Anthony Edwards') can never be mixed in."""
+    data = _query(session, WIKI, action="query", generator="search", gsrsearch=f"{player} basketball", gsrlimit=5,
+                  prop="pageprops", ppprop="wikibase_item")
+    pages = sorted((data.get("query", {}).get("pages", {}) or {}).values(), key=lambda p: p.get("index", 99))
+    for pg in pages:
+        qid = (pg.get("pageprops") or {}).get("wikibase_item")
+        if not qid or surname(player) not in _plain(pg["title"]).replace(" ", ""):
+            continue
+        ent = _query(session, WIKIDATA, action="wbgetentities", ids=qid, props="claims")["entities"][qid]["claims"]
+        occ = {c["mainsnak"].get("datavalue", {}).get("value", {}).get("id") for c in ent.get("P106", [])}
+        if "Q3665646" not in occ:                       # not a basketball player: a namesake
+            continue
+        def first(prop):
+            for c in ent.get(prop, []):
+                v = c["mainsnak"].get("datavalue", {}).get("value")
+                if isinstance(v, str):
+                    return v
+            return None
+        cat, img = first("P373"), first("P18")
+        return (f"Category:{cat}" if cat else None, f"File:{img}" if img else None)
+    return None, None
 
 
 def _collect(out: dict, data: dict, player: str, in_category: bool) -> None:
@@ -113,10 +131,10 @@ def _collect(out: dict, data: dict, player: str, in_category: bool) -> None:
 
 def search(player: str, session) -> list:
     out = {}
-    cat = find_category(player, session)
+    cat, main = identify(player, session)
     if cat:
         cont = {}
-        for _ in range(8):                                # up to ~400 files of the category
+        for _ in range(10):                               # up to ~500 files of the category
             data = _query(session, action="query", generator="categorymembers", gcmtitle=cat, gcmtype="file",
                           gcmlimit=50, prop="imageinfo", iiprop="url|size|extmetadata", iiurlwidth=1800, **cont)
             _collect(out, data, player, True)
@@ -124,11 +142,19 @@ def search(player: str, session) -> list:
             if not cont:
                 break
             time.sleep(0.3)
-    for extra in ("free throw", "shooting", "dunk", "layup dribbling"):
-        data = _query(session, action="query", generator="search", gsrnamespace=6, gsrlimit=25,
-                      gsrsearch=f"{player} {extra}", prop="imageinfo", iiprop="url|size|extmetadata", iiurlwidth=1800)
-        _collect(out, data, player, False)
-        time.sleep(0.3)
+    if main and main not in out:                          # his Wikipedia infobox photo: certainly him
+        try:
+            _, t, ii = file_info(main, session)
+            if licence_ok(ii.get("extmetadata", {})):
+                out[t] = (2 + (ii.get("height", 0) >= ii.get("width", 0)), ii)
+        except Exception:                                 # noqa: BLE001
+            pass
+    if not cat:                                           # nothing identified: fall back to a text search (checked by eye later)
+        for extra in ("free throw", "shooting", "dunk", "layup dribbling"):
+            data = _query(session, action="query", generator="search", gsrnamespace=6, gsrlimit=25,
+                          gsrsearch=f"{player} {extra}", prop="imageinfo", iiprop="url|size|extmetadata", iiurlwidth=1800)
+            _collect(out, data, player, False)
+            time.sleep(0.3)
     print(f"   {cat or 'no category'}: {len(out)} usable pictures", flush=True)
     return sorted(((sc, t, ii) for t, (sc, ii) in out.items()), key=lambda x: -x[0])
 
@@ -202,7 +228,7 @@ def _strip(meta, k):
     return html.unescape(re.sub("<[^>]+>", "", (meta.get(k) or {}).get("value", ""))).strip()
 
 
-def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tries=12) -> str:
+def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tries=12, cands=0) -> str:
     fol = os.path.join(out_root, roster.folder_name(acr, player))
     os.makedirs(fol, exist_ok=True)
     png = os.path.join(fol, "cutout.png")
@@ -217,13 +243,29 @@ def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tri
         return "cut out from your picture"
     hits = [file_info(forced, session)] if forced else search(player, session)
     src = os.path.join(fol, "_source.jpg")
-    for sc, title, ii in hits[:tries]:                   # best first; keep the first that cuts out as one clear player
+    kept, best = 0, None
+    cdir = os.path.join(out_root, "_cands", roster.folder_name(acr, player))
+    for sc, title, ii in hits[:(max(tries, 4 * cands) if cands else tries)]:   # best first; first clear one-player cut-out wins
+        if cands and kept >= cands:
+            break
         try:
             r = session.get(ii.get("thumburl") or ii["url"], headers={"User-Agent": UA}, timeout=90)
             r.raise_for_status()
             with open(src, "wb") as f:
                 f.write(r.content)
-            cut_out(src, png, check=not forced)
+            target = png if (not cands or best is None) else os.path.join(fol, "_try.png")
+            cut_out(src, target, check=not forced)
+            if cands:
+                os.makedirs(cdir, exist_ok=True)
+                from PIL import Image
+                th = Image.open(target); th.thumbnail((420, 520)); th.save(os.path.join(cdir, f"{kept + 1}.png"))
+                with open(os.path.join(cdir, "index.txt"), "a", encoding="utf-8") as f:
+                    f.write(f"{kept + 1}\t{title}\n")
+                kept += 1
+                if os.path.exists(os.path.join(fol, "_try.png")):
+                    os.remove(os.path.join(fol, "_try.png"))
+                if best is not None:
+                    continue
         except Exception as e:                           # noqa: BLE001
             print(f"   skipped {title}: {e}", flush=True)
             continue
@@ -234,8 +276,10 @@ def do_player(acr, player, out_root, redo, session, forced=None, photo=None, tri
         with open(os.path.join(fol, "credit.txt"), "w", encoding="utf-8") as f:
             f.write(f"{title}\nAuthor: {_strip(meta, 'Artist')}\nLicence: {_strip(meta, 'LicenseShortName')}\n"
                     f"{ii.get('descriptionurl', '')}\n")
-        return f"{title}  [{_strip(meta, 'LicenseShortName')}]"
-    return "NO PICTURE FOUND"
+        best = f"{title}  [{_strip(meta, 'LicenseShortName')}]"
+        if not cands:
+            return best
+    return f"{best}  (+{kept - 1} candidates)" if best else "NO PICTURE FOUND"
 
 
 def write_credits(out_root: str) -> None:
@@ -261,6 +305,7 @@ def main() -> None:
     ap.add_argument("--out", default=roster.players_dir())
     ap.add_argument("--team", help="acronyms, comma separated (default: all 30)")
     ap.add_argument("--redo", action="store_true")
+    ap.add_argument("--cands", type=int, default=0, help="also keep this many candidate cut-outs per player (_cands/) to choose by eye")
     ap.add_argument("--shard", help='"i/n": only every n-th team, starting at i (to run several fetches side by side)')
     ap.add_argument("--credits-only", action="store_true", help="just rewrite CREDITS.txt")
     ap.add_argument("--file", action="append", help='"DEN:Nikola Jokic=File:Name.jpg"')
@@ -286,7 +331,7 @@ def main() -> None:
             key = f"{acr}:{player}"
             print(f"{acr}  {player} ...", flush=True)
             try:
-                msg = do_player(acr, player, a.out, a.redo, session, forced.get(key), photos.get(key))
+                msg = do_player(acr, player, a.out, a.redo, session, forced.get(key), photos.get(key), cands=a.cands)
             except Exception as e:                       # noqa: BLE001
                 msg = f"FAILED: {e}"
             print("   " + msg, flush=True)

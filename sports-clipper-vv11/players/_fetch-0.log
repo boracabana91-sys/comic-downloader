@@ -1,36 +1,0 @@
-ATL  Jalen Johnson ...
-   Category:Jalen Johnson: 2 usable pictures
-[0;93m2026-10-16 06:15:11.750434348 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  3%|█▏                                    | 5.65M/179M [00:00<00:03, 56.5MB/s] 10%|███▋                                  | 17.1M/179M [00:00<00:01, 90.6MB/s] 16%|██████▎                                | 28.7M/179M [00:00<00:01, 102MB/s] 22%|████████▋                              | 40.0M/179M [00:00<00:01, 106MB/s] 29%|███████████▏                           | 51.1M/179M [00:00<00:01, 108MB/s] 35%|█████████████▌                         | 62.1M/179M [00:00<00:01, 109MB/s] 41%|███████████████▉                       | 73.3M/179M [00:00<00:00, 110MB/s] 47%|██████████████████▍                    | 84.5M/179M [00:00<00:00, 110MB/s] 53%|████████████████████▊                  | 95.5M/179M [00:00<00:00, 109MB/s] 60%|███████████████████████▊                | 107M/179M [00:01<00:00, 110MB/s] 66%|██████████████████████████▎             | 118M/179M [00:01<00:00, 108MB/s] 72%|████████████████████████████▊           | 129M/179M [00:01<00:00, 109MB/s] 78%|███████████████████████████████▎        | 140M/179M [00:01<00:00, 110MB/s] 85%|█████████████████████████████████▊      | 151M/179M [00:01<00:00, 110MB/s] 91%|████████████████████████████████████▎   | 162M/179M [00:01<00:00, 111MB/s] 97%|██████████████████████████████████████▊ | 173M/179M [00:01<00:00, 110MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 918GB/s]
-   File:Jalen Johnson.jpg  [CC BY-SA 2.0]
-ATL  CJ McCollum ...
-   Category:C.J. McCollum: 40 usable pictures
-   File:2025 Washington Wizards Media Day 02.jpg  [CC BY-SA 4.0]
-DAL  Kyrie Irving ...
-   Category:Kyrie Irving: 2 usable pictures
-   File:Kyrie Irving free throw.jpg  [CC BY-SA 2.0]
-DAL  Cooper Flagg ...
-   Category:Cooper Flagg: 9 usable pictures
-   File:Duke and Wake Forest basketball game, 2025-03-03 Wake Forest Cooper Flagg shooting a free throw reverse.jpg  [CC BY-SA 2.0]
-LAC  Darius Garland ...
-   Category:Darius Garland: 160 usable pictures
-   File:Darius Garland at 2021 Landry Celebrity Softball Game.jpg  [CC BY 2.0]
-LAC  Brandon Ingram ...
-   Category:Brandon Ingram: 17 usable pictures
-   File:Brandon Ingram 2020.jpg  [CC BY 2.0]
-NOP  Zion Williamson ...
-   Category:Zion Williamson: 25 usable pictures
-   File:Zion Williamson (49488155071).jpg  [CC BY 2.0]
-NOP  Trey Murphy III ...
-   no category: 0 usable pictures
-   NO PICTURE FOUND
-POR  Deni Avdija ...
-   Category:Deni Avdija: 23 usable pictures
-   skipped File:Deni Avdija and Nikola Vucevic battling at the rim, Wizards vs Bulls on January 1, 2022.jpg: 3 bodies in the picture
-   File:Wizards vs. Clippers - 51847435877 (Avdija).jpg  [CC BY-SA 2.0]
-POR  Ja Morant ...
-   Category:Ja Morant: 27 usable pictures
-   File:Ja Morant dribbling.jpg  [CC BY-SA 2.0]
-
-Done. Still missing: NOP:Trey Murphy III

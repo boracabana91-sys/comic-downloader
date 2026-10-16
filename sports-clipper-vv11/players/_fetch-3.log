@@ -1,40 +1,0 @@
-CHA  Kon Knueppel ...
-   no category: 0 usable pictures
-   NO PICTURE FOUND
-CHA  Brandon Miller ...
-   no category: 0 usable pictures
-   NO PICTURE FOUND
-GSW  Stephen Curry ...
-   Category:Stephen Curry: 13 usable pictures
-[0;93m2026-10-16 06:15:26.300312332 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  3%|█▏                                    | 5.53M/179M [00:00<00:03, 55.3MB/s] 10%|███▋                                  | 17.3M/179M [00:00<00:01, 92.1MB/s] 16%|██████▍                                | 29.5M/179M [00:00<00:01, 105MB/s] 23%|█████████                              | 41.6M/179M [00:00<00:01, 112MB/s] 30%|███████████▋                           | 53.8M/179M [00:00<00:01, 115MB/s] 37%|██████████████▎                        | 65.7M/179M [00:00<00:00, 117MB/s] 44%|████████████████▉                      | 77.8M/179M [00:00<00:00, 118MB/s] 50%|███████████████████▌                   | 89.9M/179M [00:00<00:00, 119MB/s] 57%|██████████████████████▊                 | 102M/179M [00:00<00:00, 119MB/s] 64%|█████████████████████████▌              | 114M/179M [00:01<00:00, 120MB/s] 71%|████████████████████████████▏           | 126M/179M [00:01<00:00, 120MB/s] 77%|██████████████████████████████▉         | 138M/179M [00:01<00:00, 120MB/s] 84%|█████████████████████████████████▋      | 150M/179M [00:01<00:00, 120MB/s] 91%|████████████████████████████████████▎   | 162M/179M [00:01<00:00, 121MB/s] 98%|███████████████████████████████████████ | 174M/179M [00:01<00:00, 121MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 966GB/s]
-   File:Stephen Curry, Olympic Games 2024.jpg  [CC BY-SA 4.0]
-GSW  Draymond Green ...
-   Category:Draymond Green: 33 usable pictures
-   skipped File:Draymond Green attempts free throw in MSU game.jpg: player too small in the photo (20px, 1% of the frame)
-   File:Draymond Green (51913848277) (cropped).jpg  [CC BY 2.0]
-MIA  Giannis Antetokounmpo ...
-   Category:Giannis Antetokounmpo: 15 usable pictures
-   skipped File:Giannis Antetokounmpo Free Throw 2026 Denver.jpg: 4 bodies in the picture
-   skipped File:Giannis Antetokounmpo vs Golden State Warriors 2025.jpg: 3 bodies in the picture
-   File:Giannis Antetokounmpo (39004611954).jpg  [CC BY-SA 2.0]
-MIA  Bam Adebayo ...
-   Category:Bam Adebayo: 18 usable pictures
-   skipped File:20160330 MCDAAG T. J. Leaf reverse dunk.jpg: 2 bodies in the picture
-   File:20160330 MCDAAG Bam Adebayo final play of the game (dunk).jpg  [CC BY-SA 4.0]
-ORL  Paolo Banchero ...
-   Category:Paolo Banchero: 12 usable pictures
-   skipped File:Paolo Banchero Dunk.jpg: 2 bodies in the picture
-   File:Paolo Banchero Dunking in High School on Roosevelt.jpg  [CC BY-SA 4.0]
-ORL  Franz Wagner ...
-   Category:Franz Wagner: 1 usable pictures
-   File:Franz Wagner free throw.jpg  [CC BY-SA 2.0]
-TOR  Kawhi Leonard ...
-   Category:Kawhi Leonard: 32 usable pictures
-   File:Kawhi Leonard San Diego State Dunk.jpg  [CC BY 2.0]
-TOR  Scottie Barnes ...
-   Category:Scottie Barnes: 23 usable pictures
-   File:Scottie Barnes, Wizards vs Raptors on October 12, 2021.jpg  [CC BY-SA 2.0]
-
-Done. Still missing: CHA:Kon Knueppel, CHA:Brandon Miller
