@@ -25,21 +25,21 @@ Nothing else to install - ffmpeg is built into the app, and no password is neede
 
 **AI titles (Claude Haiku 5.5, optional):** this is the default. Without a key the app uses plain titles. To use it, open `~/SportsClipper/config.json` and put your Anthropic API key in `"api_key"` under `"ai"`, then Save settings. The key is separate from a Claude chat subscription.
 
-## vv10: two-star thumbnails (new in this version)
-The thumbnail now shows the star player of each team, one on each side: **team acronym** on top, the player's **alias** under it
-(surname when there is no well-known alias), the player cut out from the photo background, with the date/score band and duration below.
-The bot reads the two teams from the video title ("Denver Nuggets vs LA Clippers", "Nuggets vs Clippers" or "DEN vs LAC"), looks in
-`~/SportsClipper/players/` for each team's folder and builds the thumbnail. If either team has no picture it falls back to the older photo style.
+## vv11: two-star thumbnails with a player drop-down (new in this version)
+The thumbnail shows the star player of each team, one on each side: **team acronym** on top, the player's **alias** under it
+(surname when there is no well-known alias), the player cut out from the photo background, and the date / duration band below.
 
-1. From the same GitHub release download **SportsClipper-Players-Kit.zip**, unzip it, and double-click `tools/get_players.command` once
-   (right-click > Open if the Mac asks). It finds a free-licence action photo of each star on Wikimedia Commons (free throw / jump shot /
-   dunk first), removes the background and fills `~/SportsClipper/players/<Team - ACR - Player Name>/cutout.png`, e.g.
-   `Denver Nuggets - DEN - Nikola Jokic`. `credit.txt` in each folder holds the photographer and licence (keep the credit line in the
-   video description when a licence asks for it).
-2. Your own picture for a team: `python get_players.py --team DEN --photo my_jokic.jpg`. Redo one team: `--team DEN --redo`.
-3. Change a star or alias: edit `STARS` in `sportsclipper/roster.py`, or put an `alias.txt` in that player's folder.
-
-Stars follow the 2026-27 preseason rankings (NBA 2K27 top 100, Yahoo and CBS rankings), checked against current rosters in Oct 2026.
+- **Nothing to download or run.** The player pictures (Wikimedia Commons, free licences) are inside the app. Photo credits: `players/CREDITS.txt`.
+- **Instant preview.** In the window, the *Thumbnail preview* box reads the two teams from a game title or file name ("DEN vs LAC",
+  "Denver Nuggets vs LA Clippers"). It fills itself when you click a video in the channel list or pick a test file, or you can type a title.
+- **Drop-down per team.** Teams with two players show a drop-down (the first is the default, e.g. Nikola Jokic - THE JOKER, or Jamal Murray - MURRAY).
+  Change it and the preview redraws. The choice is remembered per team (`player_choice` in `config.json`) and is used for the real thumbnail.
+- **Your own picture** (wins over the bundled one): make a folder `~/SportsClipper/players/<Team - ACR - Player Name>` (for example
+  `Dallas Mavericks - DAL - Kyrie Irving`) and put a transparent-background `cutout.png` in it. An `alias.txt` in the folder sets the name shown.
+  Any extra folder you add for a team appears in that team's drop-down. A team with no picture uses the older photo-style thumbnail.
+- No free-licence photo was usable for a few players (Kyrie Irving, Jaren Jackson Jr., Trey Murphy III, Stephon Castle, Mark Williams, De'Aaron Fox),
+  so Dallas defaults to Cooper Flagg until you add a Kyrie picture as above.
+- Who is listed: edit `PLAYERS` in `sportsclipper/roster.py`. Stars follow the 2026-27 preseason rankings (NBA 2K27 top 100, Yahoo, CBS).
 
 ## Developers: run from source
 `pip install -r requirements.txt` then `python -m sportsclipper gui` (or `clip FILE`, `scan`, `run`). `install-launchd` makes the CLI start at login.

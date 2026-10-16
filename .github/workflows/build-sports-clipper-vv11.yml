@@ -1,0 +1,61 @@
+name: Build Sports Clipper vv11 (Mac)
+
+# Separate from the older Sports Clipper builds: this only builds the sports-clipper-vv11 folder and
+# publishes its own release, so the older releases are never touched.
+on:
+  push:
+    branches: [sports-clipper-vv11]
+    paths: ["sports-clipper-vv11/**", ".github/workflows/build-sports-clipper-vv11.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: sports-clipper-vv11
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tools
+        run: python -m pip install --upgrade pip pyinstaller -r requirements.txt
+      - name: Self-tests
+        run: python -m unittest discover -s tests
+      - name: Build Mac app
+        run: |
+          pyinstaller --windowed --collect-data certifi --collect-all imageio_ffmpeg --collect-data cv2 --add-data "sportsclipper/fonts:sportsclipper/fonts" --add-data "players:players" --collect-all yt_dlp --collect-all googleapiclient --collect-all google_auth_oauthlib --collect-all tkinterdnd2 --name SportsClipper sports_clipper_app.py
+          dist/SportsClipper.app/Contents/MacOS/SportsClipper --selftest selftest.txt || true
+          echo "Built app self-test: $(cat selftest.txt)"
+          grep -qx OK selftest.txt
+          ditto -c -k --sequesterRsrc --keepParent dist/SportsClipper.app SportsClipper-Mac.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SportsClipper-vv11
+          path: sports-clipper-vv11/SportsClipper-Mac.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SportsClipper-vv11
+          path: files
+      - uses: actions/checkout@v4
+        with:
+          path: src
+      - name: Publish download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="sports-clipper-$(tr -d '[:space:]' < src/sports-clipper-vv11/VERSION)"
+          gh release delete "$V" --repo "${{ github.repository }}" --cleanup-tag --yes || true
+          gh release create "$V" files/SportsClipper-Mac.zip \
+            --repo "${{ github.repository }}" --target "${{ github.sha }}" \
+            --title "Sports Clipper $(tr -d '[:space:]' < src/sports-clipper-vv11/VERSION)" \
+            --notes "Sports Clipper vv11 - two-star-player thumbnails with a player drop-down and instant preview. The player pictures are inside the app: nothing else to download. Mac: download SportsClipper-Mac.zip (steps in sports-clipper-vv11/README.md)."

@@ -5,7 +5,7 @@ import sys
 from PIL import Image, ImageDraw, ImageFont
 
 
-def main(root: str, out: str, cols: int = 6, cell=(300, 380)) -> None:
+def main(root: str, out: str, cols: int = 8, cell=(240, 330)) -> None:
     names = sorted(n for n in os.listdir(root) if os.path.exists(os.path.join(root, n, "cutout.png")))
     rows = (len(names) + cols - 1) // cols
     sheet = Image.new("RGB", (cols * cell[0], max(1, rows) * cell[1]), (52, 56, 66))

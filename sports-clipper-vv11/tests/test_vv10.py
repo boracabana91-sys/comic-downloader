@@ -66,8 +66,11 @@ class VersusThumbnail(unittest.TestCase):
         self.tmp = tempfile.mkdtemp()
         self.root = os.path.join(self.tmp, "players")
         os.environ["SPORTSCLIPPER_PLAYERS"] = self.root
+        self._bundled = roster.bundled_dir
+        roster.bundled_dir = lambda: os.path.join(self.tmp, "no-bundled-pictures")      # only the temp folder counts here
 
     def tearDown(self):
+        roster.bundled_dir = self._bundled
         os.environ.pop("SPORTSCLIPPER_PLAYERS", None)
 
     def test_two_stars_make_a_1080p_thumbnail_without_the_video(self):
