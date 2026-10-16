@@ -1,0 +1,25 @@
+CHI  Josh Giddey ...
+[0;93m2026-10-16 13:17:29.232277245 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▍                                     | 1.91M/179M [00:00<00:09, 18.8MB/s]  8%|███                                   | 14.3M/179M [00:00<00:02, 80.4MB/s] 16%|██████▍                                | 29.2M/179M [00:00<00:01, 112MB/s] 25%|█████████▊                             | 44.8M/179M [00:00<00:01, 129MB/s] 33%|████████████▉                          | 59.4M/179M [00:00<00:00, 135MB/s] 42%|████████████████▍                      | 75.5M/179M [00:00<00:00, 144MB/s] 51%|███████████████████▉                   | 91.1M/179M [00:00<00:00, 148MB/s] 60%|███████████████████████▊                | 106M/179M [00:00<00:00, 150MB/s] 68%|███████████████████████████▏            | 121M/179M [00:00<00:00, 137MB/s] 76%|██████████████████████████████▍         | 136M/179M [00:01<00:00, 139MB/s] 85%|█████████████████████████████████▉      | 152M/179M [00:01<00:00, 145MB/s] 94%|█████████████████████████████████████▌  | 168M/179M [00:01<00:00, 149MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|███████████████████████████████████████| 179M/179M [00:00<00:00, 1.04TB/s]
+   2 picture(s): File:Josh Giddey 2022.jpg | File:Josh Giddey (2022 All-Star Weekend) (cropped).jpg
+CHI  Norman Powell ...
+   3 picture(s): File:1 norman powell toronto raptors 2019 (cropped2).jpg | File:Norman Powell with Steve Alford (2) (cropped).jpg | File:Carter Effect 14 (37026423026).jpg
+HOU  Kevin Durant ...
+   3 picture(s): File:Kevin Durant, Paris 2024.jpg | File:Kevin Durant - TechCrunch Disrupt SF 2017 - Day 2 (36517992753).jpg | File:Kevin Durant, Olympic Games 2024.jpg
+HOU  Alperen Sengun ...
+   3 picture(s): File:1 alperen sengun.jpg | File:Alperen Şengün 23 Türkiye 20250823 (2) (cropped).jpg | File:Alperen Şengün 23 Türkiye 20250823 (1).jpg
+MIL  Tyler Herro ...
+   2 picture(s): File:Tyler Herro.jpg | File:Fletcher Magee, Tyler Herro - 2019-03-23 NCAA Tournament.jpg
+MIL  Myles Turner ...
+   3 picture(s): File:Detroit Pistons vs Indiana Pacers, October 23, 2019 P102319AZS (49087702643).jpg | File:Detroit Pistons vs Indiana Pacers, October 23, 2019 P102319AZS (49088211571).jpg | File:20140402 MCDAAG Myles Turner.JPG
+PHI  Tyrese Maxey ...
+   3 picture(s): File:1 tyrese maxey 2026 (cropped).jpg | File:Tyrese Maxey (51781889578) (cropped).jpg | File:Tyrese Maxey (cropped).jpg
+PHI  LeBron James ...
+   3 picture(s): File:LeBron James (51959977144) (cropped2).jpg | File:LeBron James and Kevin Love (cropped).jpg | File:LebronFT.jpg
+UTA  Lauri Markkanen ...
+   3 picture(s): File:Lauri Markkanen, Cavaliers vs Rockets on December 15, 2021 (cropped).jpg | File:EuroBasket 2017 Greece vs Finland 67.jpg | File:EuroBasket 2017 Finland vs Poland 72.jpg
+UTA  Jaren Jackson Jr. ...
+   2 picture(s): File:20170329 MCDAAG Jaren Jackson Jr. inbounds.jpg | File:20170329 MCDAAG Kris Wilkes defended by Jaren Jackson Jr. (1).jpg
+
+Done. Every player has a cutout.
