@@ -1,4 +1,17 @@
+[cutout.png]
 File:Lauri Markkanen, Cavaliers vs Rockets on December 15, 2021 (cropped).jpg
 Author: Erik Drost
 Licence: CC BY 2.0
 https://commons.wikimedia.org/wiki/File:Lauri_Markkanen,_Cavaliers_vs_Rockets_on_December_15,_2021_(cropped).jpg
+
+[cutout2.png]
+File:EuroBasket 2017 Finland vs Poland 72.jpg
+Author: Tuomas Vitikainen
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:EuroBasket_2017_Finland_vs_Poland_72.jpg
+
+[cutout3.png]
+File:EuroBasket 2017 Finland vs Slovenia 63.jpg
+Author: Tuomas Vitikainen
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:EuroBasket_2017_Finland_vs_Slovenia_63.jpg

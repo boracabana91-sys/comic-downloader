@@ -1,4 +1,17 @@
+[cutout.png]
 File:Kevin Durant, Paris 2024.jpg
 Author: Clément Bardot
 Licence: CC BY-SA 4.0
 https://commons.wikimedia.org/wiki/File:Kevin_Durant,_Paris_2024.jpg
+
+[cutout2.png]
+File:Kevin Durant dunks USA basketball 2015 140801-F-AT963-843.JPG
+Author: U.S. Air Force photo by Airman 1st Class Thomas Spangler
+Licence: Public domain
+https://commons.wikimedia.org/wiki/File:Kevin_Durant_dunks_USA_basketball_2015_140801-F-AT963-843.JPG
+
+[cutout3.png]
+File:Kevin Durant, Olympic Games 2024.jpg
+Author: Clément Bardot
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:Kevin_Durant,_Olympic_Games_2024.jpg
