@@ -1,12 +1,8 @@
-CHA  Kon Knueppel ...
-[0;93m2026-10-16 09:41:18.778246170 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▍                                     | 1.96M/179M [00:00<00:09, 19.6MB/s]  4%|█▍                                    | 6.90M/179M [00:00<00:04, 37.1MB/s]  8%|███                                   | 14.3M/179M [00:00<00:03, 54.1MB/s] 13%|████▊                                 | 22.7M/179M [00:00<00:02, 65.8MB/s] 17%|██████▌                               | 30.9M/179M [00:00<00:02, 71.6MB/s] 22%|████████▎                             | 39.2M/179M [00:00<00:01, 75.5MB/s] 26%|█████████▉                            | 46.7M/179M [00:00<00:01, 73.5MB/s] 31%|███████████▋                          | 55.1M/179M [00:00<00:01, 76.7MB/s] 35%|█████████████▍                        | 63.4M/179M [00:00<00:01, 78.6MB/s] 40%|███████████████▏                      | 71.4M/179M [00:01<00:01, 78.9MB/s] 44%|████████████████▉                     | 79.3M/179M [00:01<00:01, 79.2MB/s] 49%|██████████████████▋                   | 87.7M/179M [00:01<00:01, 80.4MB/s] 54%|████████████████████▍                 | 96.0M/179M [00:01<00:01, 81.3MB/s] 58%|██████████████████████▊                | 104M/179M [00:01<00:00, 82.0MB/s] 63%|████████████████████████▌              | 113M/179M [00:01<00:00, 82.5MB/s] 68%|██████████████████████████▍            | 121M/179M [00:01<00:00, 82.7MB/s] 72%|████████████████████████████▏          | 129M/179M [00:01<00:00, 82.7MB/s] 77%|██████████████████████████████         | 138M/179M [00:01<00:00, 83.7MB/s] 82%|███████████████████████████████▉       | 146M/179M [00:01<00:00, 83.8MB/s] 87%|█████████████████████████████████▊     | 155M/179M [00:02<00:00, 82.7MB/s] 91%|███████████████████████████████████▌   | 163M/179M [00:02<00:00, 83.2MB/s] 96%|█████████████████████████████████████▍ | 172M/179M [00:02<00:00, 83.8MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|███████████████████████████████████████| 179M/179M [00:00<00:00, 1.09TB/s]
-   File:Kon Knueppel.jpg  [CC0]  [CHA jersey]  (+0 candidates)
-CHA  Brandon Miller ...
-   File:Brandon Miller Alabama.jpg  [CC BY 2.0]  (+0 candidates)
 GSW  Stephen Curry ...
    Category:Stephen Curry: 9 usable pictures
+[0;93m2026-10-16 09:48:00.135205358 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▎                                     | 1.73M/179M [00:00<00:10, 17.3MB/s]  7%|██▋                                   | 12.4M/179M [00:00<00:02, 70.1MB/s] 15%|█████▋                                 | 26.1M/179M [00:00<00:01, 101MB/s] 23%|████████▉                              | 40.7M/179M [00:00<00:01, 118MB/s] 31%|████████████                           | 55.0M/179M [00:00<00:00, 127MB/s] 39%|███████████████                        | 68.9M/179M [00:00<00:00, 131MB/s] 46%|██████████████████▏                    | 83.0M/179M [00:00<00:00, 135MB/s] 55%|█████████████████████▎                 | 97.4M/179M [00:00<00:00, 137MB/s] 62%|████████████████████████▉               | 112M/179M [00:00<00:00, 139MB/s] 70%|████████████████████████████            | 125M/179M [00:01<00:00, 139MB/s] 78%|███████████████████████████████▏        | 139M/179M [00:01<00:00, 137MB/s] 86%|██████████████████████████████████▎     | 153M/179M [00:01<00:00, 138MB/s] 94%|█████████████████████████████████████▍  | 167M/179M [00:01<00:00, 139MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|███████████████████████████████████████| 179M/179M [00:00<00:00, 1.11TB/s]
    skipped File:Ayesha Curry (cropped).jpg: cut off at the side of the photo (arm or hand missing)
    skipped File:Stephen Curry wearing an shirt and hat for "Underrated".jpg: cut off at the side of the photo (arm or hand missing)
    skipped File:Booker and Curry, Paris 2024 Olympic Games.jpg: 2 bodies in the picture
@@ -14,8 +10,6 @@ GSW  Stephen Curry ...
    skipped File:Joel Embiid, Olympic Games 2024.jpg: too wide for one player standing
    skipped File:Indianapolis' second annual Juneteenth celebration, 2019-06-22 at Riverside Park P062219AZS (48140617421).jpg: 2 bodies in the picture
    File:Stephen Curry Shooting (cropped) (cropped).jpg  [CC BY-SA 4.0]  [GSW jersey]  (+2 candidates)
-GSW  Draymond Green ...
-   File:Draymond Green against Washington (cropped).jpg  [CC BY-SA 2.0]  [GSW jersey]  (+0 candidates)
 MIA  Giannis Antetokounmpo ...
    Category:Giannis Antetokounmpo: 6 usable pictures
    skipped File:Giannis Antetokounmpo Free Throw 2026 Denver.jpg: 4 bodies in the picture
@@ -55,11 +49,5 @@ ORL  Paolo Banchero ...
    skipped File:Paolo Banchero Playing Basketball.jpg: 4 bodies in the picture
    skipped File:Paolo Banchero Playing Defense for O’Dea High School.jpg: 3 bodies in the picture
    File:Paolo Banchero Dunking in High School on Roosevelt.jpg  [CC BY-SA 4.0]  (+3 candidates)
-ORL  Franz Wagner ...
-   File:Franz Wagner free throw.jpg  [CC BY-SA 2.0]  (+0 candidates)
-TOR  Kawhi Leonard ...
-   File:1 kawhi leonard 2019 nba finals.jpg  [CC BY-SA 4.0]  (+0 candidates)
-TOR  Scottie Barnes ...
-   File:WizardsRaptors 112 (51589980835) (cropped).jpg  [CC BY-SA 2.0]  [TOR jersey]  (+0 candidates)
 
 Done. Every player has a cutout.
