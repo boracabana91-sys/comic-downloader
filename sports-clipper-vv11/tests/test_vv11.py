@@ -144,6 +144,7 @@ class Window(unittest.TestCase):
         with tempfile.TemporaryDirectory() as r:
             add(r, "DEN", "Nikola Jokic"); add(r, "DEN", "Jamal Murray"); add(r, "LAC", "Darius Garland")
             with mock.patch.dict(os.environ, {"SPORTSCLIPPER_PLAYERS": r}), \
+                    mock.patch.object(roster, "bundled_dir", lambda: os.path.join(r, "none")), \
                     mock.patch.object(config, "save", lambda *a, **k: None):
                 app = gui.App(root)
                 app.pv_title.set("DEN vs LAC")
