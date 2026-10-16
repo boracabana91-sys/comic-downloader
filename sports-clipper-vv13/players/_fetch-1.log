@@ -1,23 +1,2 @@
-BOS  Jayson Tatum ...
-[0;93m2026-10-16 09:41:19.385148831 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▍                                     | 2.12M/179M [00:00<00:08, 21.2MB/s]  4%|█▋                                    | 7.72M/179M [00:00<00:04, 41.6MB/s]  9%|███▎                                  | 15.6M/179M [00:00<00:02, 58.4MB/s] 13%|█████                                 | 24.1M/179M [00:00<00:02, 69.0MB/s] 18%|██████▉                               | 32.5M/179M [00:00<00:01, 74.6MB/s] 23%|████████▋                             | 41.0M/179M [00:00<00:01, 78.0MB/s] 28%|██████████▌                           | 49.5M/179M [00:00<00:01, 80.2MB/s] 32%|████████████▏                         | 57.5M/179M [00:00<00:01, 78.7MB/s] 37%|██████████████                        | 65.9M/179M [00:00<00:01, 80.4MB/s] 42%|███████████████▊                      | 74.3M/179M [00:01<00:01, 81.4MB/s] 46%|█████████████████▌                    | 82.7M/179M [00:01<00:01, 82.4MB/s] 51%|███████████████████▎                  | 91.0M/179M [00:01<00:01, 81.7MB/s] 56%|█████████████████████▏                | 99.3M/179M [00:01<00:00, 82.2MB/s] 60%|███████████████████████▌               | 108M/179M [00:01<00:00, 82.9MB/s] 65%|█████████████████████████▎             | 116M/179M [00:01<00:00, 73.7MB/s] 70%|███████████████████████████▏           | 124M/179M [00:01<00:00, 76.6MB/s] 74%|████████████████████████████▉          | 133M/179M [00:01<00:00, 78.0MB/s] 79%|██████████████████████████████▊        | 141M/179M [00:01<00:00, 79.2MB/s] 83%|████████████████████████████████▌      | 149M/179M [00:01<00:00, 80.0MB/s] 88%|██████████████████████████████████▍    | 158M/179M [00:02<00:00, 81.7MB/s] 93%|████████████████████████████████████▎  | 166M/179M [00:02<00:00, 82.4MB/s] 98%|██████████████████████████████████████ | 175M/179M [00:02<00:00, 83.1MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 958GB/s]
-   File:Jayson Tatum (51839569977) (cropped).jpg  [CC BY-SA 2.0]  [BOS jersey]  (+0 candidates)
-BOS  Derrick White ...
-   File:Celtics at Wizards 2024-12-036 (White).jpg  [CC BY-SA 4.0]  [BOS jersey]  (+0 candidates)
-DEN  Nikola Jokic ...
-   File:Nikola Jokic free throw (cropped).jpg  [CC BY-SA 2.0]  [DEN jersey]  (+0 candidates)
-DEN  Jamal Murray ...
-   File:Jamal Murray free throw (cropped).jpg  [CC BY-SA 2.0]  [DEN jersey]  (+0 candidates)
-LAL  Luka Doncic ...
-   File:Luka Doncic (51914951721) (cropped1).jpg  [CC BY 2.0]  (+0 candidates)
-LAL  Austin Reaves ...
-   File:Austin Reaves drives.jpg  [CC BY 2.0]  [LAL jersey]  (+0 candidates)
-NYK  Jalen Brunson ...
-   File:Jalen Brunson (cropped).jpg  [CC BY 2.0]  [NYK jersey]  (+0 candidates)
-NYK  Karl-Anthony Towns ...
-   File:Karl-Anthony Towns (51914675261) (cropped).jpg  [CC BY 2.0]  (+0 candidates)
-SAC  Domantas Sabonis ...
-   File:Domantas Sabonis by Augustas Didzgalvis.jpg  [CC BY-SA 4.0]  (+0 candidates)
 
 Done. Every player has a cutout.
