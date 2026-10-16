@@ -1,17 +1,13 @@
-CHI  Josh Giddey ...
-[0;93m2026-10-16 09:41:18.561917032 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▎                                     | 1.21M/179M [00:00<00:14, 12.1MB/s]  2%|▊                                     | 3.59M/179M [00:00<00:09, 19.0MB/s]  4%|█▋                                    | 7.90M/179M [00:00<00:05, 29.9MB/s]  9%|███▎                                  | 15.6M/179M [00:00<00:03, 48.6MB/s] 14%|█████▌                                | 25.9M/179M [00:00<00:02, 68.2MB/s] 21%|███████▊                              | 37.0M/179M [00:00<00:01, 82.6MB/s] 27%|██████████▏                           | 48.1M/179M [00:00<00:01, 92.0MB/s] 33%|████████████▌                         | 59.3M/179M [00:00<00:01, 98.4MB/s] 39%|███████████████▍                       | 70.5M/179M [00:00<00:01, 103MB/s] 45%|█████████████████▋                     | 81.3M/179M [00:01<00:00, 104MB/s] 52%|████████████████████▏                  | 92.5M/179M [00:01<00:00, 107MB/s] 58%|███████████████████████▏                | 104M/179M [00:01<00:00, 108MB/s] 64%|█████████████████████████▋              | 115M/179M [00:01<00:00, 109MB/s] 71%|████████████████████████████▏           | 126M/179M [00:01<00:00, 110MB/s] 77%|██████████████████████████████▋         | 137M/179M [00:01<00:00, 110MB/s] 83%|█████████████████████████████████▏      | 148M/179M [00:01<00:00, 110MB/s] 89%|███████████████████████████████████▋    | 159M/179M [00:01<00:00, 110MB/s] 95%|██████████████████████████████████████  | 170M/179M [00:01<00:00, 110MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 937GB/s]
-   File:Josh Giddey 2022.jpg  [CC BY 2.0]  (+0 candidates)
 CHI  Matas Buzelis ...
    Category:Matas Buzelis: 1 usable pictures
+[0;93m2026-10-16 09:48:07.316820008 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▎                                     | 1.24M/179M [00:00<00:14, 12.1MB/s]  6%|██▎                                   | 10.9M/179M [00:00<00:02, 61.3MB/s] 15%|█████▊                                 | 26.7M/179M [00:00<00:01, 105MB/s] 24%|█████████▎                             | 42.8M/179M [00:00<00:01, 127MB/s] 33%|████████████▉                          | 59.2M/179M [00:00<00:00, 141MB/s] 42%|████████████████▌                      | 75.6M/179M [00:00<00:00, 148MB/s] 51%|████████████████████                   | 91.8M/179M [00:00<00:00, 153MB/s] 60%|████████████████████████                | 107M/179M [00:00<00:00, 154MB/s] 69%|███████████████████████████▊            | 124M/179M [00:00<00:00, 157MB/s] 79%|███████████████████████████████▍        | 140M/179M [00:01<00:00, 159MB/s] 88%|███████████████████████████████████▏    | 157M/179M [00:01<00:00, 161MB/s] 97%|██████████████████████████████████████▊ | 173M/179M [00:01<00:00, 162MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|███████████████████████████████████████| 179M/179M [00:00<00:00, 1.54TB/s]
+   skipped File:Matas Buzelis Jan 14 2026.jpg: cut off at the side of the photo (arm or hand missing)
+   no photo with just one player - trying again and removing a neighbouring player
    skipped File:Matas Buzelis Jan 14 2026.jpg: cut off at the side of the photo (arm or hand missing)
    no photo with the whole player in it - trying the ones cut at the edge
    File:Matas Buzelis Jan 14 2026.jpg  [CC BY-SA 4.0]  [CHI jersey]  [EDGE-CUT: no clean photo found, arm/hand may be missing]  (+0 candidates)
-HOU  Kevin Durant ...
-   File:Kevin Durant, Paris 2024.jpg  [CC BY-SA 4.0]  (+0 candidates)
-HOU  Alperen Sengun ...
-   File:1 alperen sengun.jpg  [CC BY-SA 4.0]  [HOU jersey]  (+0 candidates)
 MIL  Tyler Herro ...
    Category:Tyler Herro: 3 usable pictures
    skipped File:Tyler Herro.jpg: 2 bodies in the picture
@@ -34,13 +30,5 @@ MIL  Myles Turner ...
    skipped File:Detroit Pistons vs Indiana Pacers, October 23, 2019 P102319AZS (49088211571).jpg: 2 bodies in the picture
    skipped File:Detroit Pistons vs Indiana Pacers, October 23, 2019 P102319AZS (49088422782).jpg: 2 bodies in the picture
    File:20140402 MCDAAG Myles Turner.JPG  [CC BY-SA 3.0]  (+5 candidates)
-PHI  Tyrese Maxey ...
-   File:1 tyrese maxey 2026 (cropped).jpg  [CC BY-SA 4.0]  [PHI jersey]  (+0 candidates)
-PHI  LeBron James ...
-   File:LeBron James (51959977144) (cropped2).jpg  [CC BY 2.0]  [OLD TEAM? the photo names another NBA team, not PHI]  (+0 candidates)
-UTA  Lauri Markkanen ...
-   File:Lauri Markkanen, Cavaliers vs Rockets on December 15, 2021 (cropped).jpg  [CC BY 2.0]  [OLD TEAM? the photo names another NBA team, not UTA]  (+0 candidates)
-UTA  Keyonte George ...
-   File:Keyonte George Jan 14 2026.jpg  [CC BY-SA 4.0]  [UTA jersey]  (+0 candidates)
 
 Done. Every player has a cutout.
