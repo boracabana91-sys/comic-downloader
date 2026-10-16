@@ -6,7 +6,7 @@ import sys
 from PIL import Image, ImageDraw, ImageFont
 
 
-def main(root, prefix, per=12, n=6, cell=(250, 300)):
+def main(root, prefix, per=10, n=6, cell=(250, 300)):
     base = os.path.join(root, "_cands")
     names = sorted(os.listdir(base))
     font = ImageFont.truetype("DejaVuSans-Bold.ttf", 15)

@@ -110,7 +110,21 @@ def identify(player: str, session) -> tuple:
             return None
         cat, img = first("P373"), first("P18")
         return (f"Category:{cat}" if cat else None, f"File:{img}" if img else None)
-    return None, None
+    return _category_by_search(player, session), None
+
+
+def _category_by_search(player: str, session):
+    """Wikidata gave nothing: look for a category named like the player. A '(basketball...)' one beats a plain namesake."""
+    data = _query(session, action="query", list="search", srnamespace=14, srsearch=player, srlimit=10)
+    want, best = _plain(player), None
+    for h in data.get("query", {}).get("search", []):
+        name = h["title"].split(":", 1)[1]
+        base = _plain(re.sub(r"\(.*\)", "", name))
+        if base == want:
+            if "basketball" in name.lower():
+                return h["title"]
+            best = best or h["title"]
+    return best
 
 
 def _collect(out: dict, data: dict, player: str, in_category: bool) -> None:
@@ -142,6 +156,18 @@ def search(player: str, session) -> list:
             if not cont:
                 break
             time.sleep(0.3)
+    if cat and len(out) < 25:                             # few pictures: also look inside his sub-categories (games, seasons)
+        try:
+            sub = _query(session, action="query", list="categorymembers", cmtitle=cat, cmtype="subcat", cmlimit=30)
+            for sc_ in sub.get("query", {}).get("categorymembers", [])[:30]:
+                if re.search(r"(?i)\b(by|in)\b.*\b(year|photo|video)|audio|video|logo|statistics|signature", sc_["title"]):
+                    continue
+                data = _query(session, action="query", generator="categorymembers", gcmtitle=sc_["title"], gcmtype="file",
+                              gcmlimit=50, prop="imageinfo", iiprop="url|size|extmetadata", iiurlwidth=1800)
+                _collect(out, data, player, True)
+                time.sleep(0.3)
+        except Exception as e:                            # noqa: BLE001
+            print(f"   sub-categories skipped: {e}", flush=True)
     if main and main not in out:                          # his Wikipedia infobox photo: certainly him
         try:
             _, t, ii = file_info(main, session)
