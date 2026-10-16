@@ -4,7 +4,6 @@ Author: Keith Allison from Hanover, MD, USA
 Licence: CC BY-SA 2.0
 https://commons.wikimedia.org/wiki/File:Draymond_Green_against_Washington_(cropped).jpg
 
-(head1.png is a close-up cropped from this picture)
 [cutout2.png]
 File:Draymond Green (33053301711).jpg
 Author: Keith Allison from Hanover, MD, USA
@@ -16,5 +15,3 @@ File:Marcin Gortat vs. Draymond Green.jpg
 Author: Keith Allison from Hanover, MD, USA
 Licence: CC BY-SA 2.0
 https://commons.wikimedia.org/wiki/File:Marcin_Gortat_vs._Draymond_Green.jpg
-
-(head3.png is a close-up cropped from this picture)

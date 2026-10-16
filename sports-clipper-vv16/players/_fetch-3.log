@@ -1,25 +1,0 @@
-CHA  Kon Knueppel ...
-[0;93m2026-10-16 14:01:30.763697374 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  1%|▍                                     | 1.77M/179M [00:00<00:10, 17.5MB/s]  7%|██▋                                   | 12.8M/179M [00:00<00:02, 72.2MB/s] 15%|█████▉                                 | 27.0M/179M [00:00<00:01, 104MB/s] 23%|█████████                              | 41.4M/179M [00:00<00:01, 120MB/s] 31%|███████████▉                           | 54.8M/179M [00:00<00:00, 125MB/s] 39%|███████████████                        | 68.9M/179M [00:00<00:00, 130MB/s] 46%|██████████████████                     | 82.8M/179M [00:00<00:00, 133MB/s] 54%|█████████████████████                  | 96.7M/179M [00:00<00:00, 135MB/s] 62%|████████████████████████▊               | 111M/179M [00:00<00:00, 137MB/s] 70%|███████████████████████████▉            | 125M/179M [00:01<00:00, 138MB/s] 78%|███████████████████████████████         | 139M/179M [00:01<00:00, 139MB/s] 86%|██████████████████████████████████▎     | 153M/179M [00:01<00:00, 140MB/s] 94%|█████████████████████████████████████▍  | 167M/179M [00:01<00:00, 141MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 924GB/s]
-   1 picture(s): File:Kon Knueppel.jpg
-CHA  Brandon Miller ...
-   1 picture(s): File:Brandon Miller Alabama.jpg
-GSW  Stephen Curry ...
-   3 picture(s): File:Stephen Curry shooting.jpg | File:Stephen Curry dribbling 2016 (cropped).jpg | File:Stephen Curry (Crop).jpg
-GSW  Draymond Green ...
-   3 picture(s): File:Draymond Green against Washington (cropped).jpg | File:Draymond Green (33053301711).jpg | File:Marcin Gortat vs. Draymond Green.jpg
-MIA  Giannis Antetokounmpo ...
-   1 picture(s): File:Giannis Antetokounmpo.jpg
-MIA  Bam Adebayo ...
-   3 picture(s): File:Bam Adebayo (cropped).jpg | File:20160330 MCDAAG Bam Adebayo defends the rim (1).jpg | File:20160330 MCDAAG Bam Adebayo plants for a dunk.jpg
-ORL  Paolo Banchero ...
-   3 picture(s): File:Paolo Banchero Playing Defense at O'Dea.jpg | File:Paolo Banchero Dominating in High School.jpg | File:Paolo Banchero Playing High School Basketball.jpg
-ORL  Franz Wagner ...
-   3 picture(s): File:Franz Wagner free throw.jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–099.jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–105.jpg
-TOR  Kawhi Leonard ...
-   2 picture(s): File:1 kawhi leonard 2019 nba finals.jpg | File:Kawhi Leonard vs Charlotte 2019.jpg
-TOR  Scottie Barnes ...
-   3 picture(s): File:WizardsRaptors 112 (51589980835) (cropped).jpg | File:WizardsRaptors 119 (51589980655).jpg | File:WizardsRaptors 95 (51589981345).jpg
-
-Done. Every player has a cutout.

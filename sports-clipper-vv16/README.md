@@ -25,7 +25,12 @@ Nothing else to install - ffmpeg is built into the app, and no password is neede
 
 **AI titles (Claude Haiku 5.5, optional):** this is the default. Without a key the app uses plain titles. To use it, open `~/SportsClipper/config.json` and put your Anthropic API key in `"api_key"` under `"ai"`, then Save settings. The key is separate from a Claude chat subscription.
 
-## vv15: old-jersey photos as extra options (new in this version)
+## vv16: head-and-neck close-ups (new in this version)
+- Every photo that shows a clear face now also has a **close-up** (head, neck and shoulders) cut from the same picture. It is offered in the **Photo** drop-down after the full-body photos, marked **(close-up)**, so when the whole body does not look good you can pick the head shot. A close-up of an old-team photo is also marked **(old team)**.
+- The first photo of each player (the default) is unchanged. Close-ups were checked by eye; the ones that came out badly (two people, a ball over the face) were left out.
+- Your own photos work the same way: name a picture `head1.png`, `head2.png` ... in the player's folder to make it a close-up option.
+
+## vv15: old-jersey photos as extra options
 - Photos that show a player in an **older team's jersey** are now offered too, marked **(old team)** in the Photo drop-down. They are never the default: if a team's first star only has old-team photos, the other star becomes the default (the first star is still in the Player drop-down).
 - Players that had no photo before now have some, even if not perfect (Kyrie Irving, Paolo Banchero, Jaren Jackson Jr., Giannis in a Bucks jersey). Trey Murphy III has no free photo at all, so NOP offers only Zion Williamson.
 - Replace any of them with your own photo by dropping it in `~/SportsClipper/players/<Team - ACR - Player>/`.

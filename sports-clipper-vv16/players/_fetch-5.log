@@ -1,25 +1,0 @@
-CLE  Donovan Mitchell ...
-[0;93m2026-10-16 14:01:30.353203053 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  3%|█▏                                    | 5.33M/179M [00:00<00:03, 53.3MB/s]  6%|██▍                                   | 11.5M/179M [00:00<00:02, 57.9MB/s] 10%|███▉                                  | 18.6M/179M [00:00<00:02, 64.1MB/s] 14%|█████▍                                | 25.6M/179M [00:00<00:02, 66.6MB/s] 18%|██████▊                               | 32.3M/179M [00:00<00:02, 59.8MB/s] 22%|████████▍                             | 39.6M/179M [00:00<00:02, 63.9MB/s] 26%|█████████▊                            | 46.1M/179M [00:00<00:02, 64.1MB/s] 29%|███████████▏                          | 52.6M/179M [00:00<00:02, 58.1MB/s] 33%|████████████▋                         | 59.5M/179M [00:00<00:01, 61.4MB/s] 37%|██████████████                        | 66.0M/179M [00:01<00:01, 62.4MB/s] 41%|███████████████▍                      | 72.7M/179M [00:01<00:01, 63.8MB/s] 44%|████████████████▊                     | 79.2M/179M [00:01<00:01, 63.8MB/s] 48%|██████████████████▏                   | 85.6M/179M [00:01<00:01, 62.0MB/s] 52%|███████████████████▊                  | 93.0M/179M [00:01<00:01, 65.6MB/s] 56%|█████████████████████▏                | 99.6M/179M [00:01<00:01, 65.2MB/s] 59%|███████████████████████▏               | 106M/179M [00:01<00:01, 64.6MB/s] 64%|████████████████████████▊              | 114M/179M [00:01<00:00, 67.6MB/s] 67%|██████████████████████████▎            | 120M/179M [00:01<00:00, 62.0MB/s] 71%|███████████████████████████▊           | 128M/179M [00:02<00:00, 64.3MB/s] 75%|█████████████████████████████▎         | 135M/179M [00:02<00:00, 66.0MB/s] 79%|██████████████████████████████▊        | 141M/179M [00:02<00:00, 61.0MB/s] 83%|████████████████████████████████▏      | 147M/179M [00:02<00:00, 57.3MB/s] 87%|█████████████████████████████████▊     | 155M/179M [00:02<00:00, 62.1MB/s] 90%|███████████████████████████████████▏   | 161M/179M [00:02<00:00, 61.8MB/s] 94%|████████████████████████████████████▊  | 169M/179M [00:02<00:00, 64.8MB/s] 99%|██████████████████████████████████████▍| 176M/179M [00:02<00:00, 67.8MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 995GB/s]
-   3 picture(s): File:Donovan Mitchell Cavs Playoffs (cropped).jpg | File:Donovan Mitchell cavs 2023 (cropped).jpg | File:Donovan Mitchell '22.jpg
-CLE  Evan Mobley ...
-   3 picture(s): File:Evan Mobley (51832109159).jpg | File:Evan Mobley - 52591032378.jpg | File:Evan Mobley (51687642321).jpg
-IND  Tyrese Haliburton ...
-   2 picture(s): File:1 tyrese haliburton 2025.jpg | File:Tyrese Haliburton.jpg
-IND  Pascal Siakam ...
-   3 picture(s): File:1 pascal siakam 2025.jpg | File:Pascal Siakam, Mike Scott (38776063370).jpg | File:Toronto Raptors Pascal Siakam at TIFF17 (37064030281).jpg
-MIN  Anthony Edwards ...
-   3 picture(s): File:Anthony Edwards Kentavious Caldwell-Pope (51734745028) (cropped) (cropped).jpg | File:Anthony Edwards Georgia.jpg | File:Anthony Edwards.jpg
-MIN  LaMelo Ball ...
-   3 picture(s): File:LaMelo Ball (cropped).jpg | File:LaMelo Ball (51914959337).jpg | File:LaMelo Ball Drew League 2.jpg
-PHX  Devin Booker ...
-   1 picture(s): File:Devin Booker, Olympic Games 2024.jpg
-PHX  Dillon Brooks ...
-   3 picture(s): File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–091.jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–092.jpg | File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–033.jpg
-WAS  Anthony Davis ...
-   3 picture(s): File:Anthony Davis, Olympic Games 2024.jpg | File:Evan Mobley and Anthony Davis (cropped).jpg | File:Anthony Davis (38464014214).jpg
-WAS  Trae Young ...
-   3 picture(s): File:Trae Young (51916215049) (cropped).jpg | File:20170329 MCDAAG Trae Young dribbling.jpg | File:Trae Young (2022 All-Star Weekend) (cropped 2).jpg
-
-Done. Every player has a cutout.
