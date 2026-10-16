@@ -13,6 +13,7 @@ def main(argv=None) -> int:
     c.add_argument("file"); c.add_argument("--out", default=None)
     c.add_argument("--min", type=float, default=None, help="shortest finished length, minutes")
     c.add_argument("--max", type=float, default=None, help="longest finished length, minutes")
+    c.add_argument("--interview", action="store_true", help="keep the post-game interview (cut by default)")
     sub.add_parser("scan", help="scan all licensed sources once")
     sub.add_parser("run", help="scan on your schedule, 24/7")
     sub.add_parser("gui", help="open the window")
@@ -27,6 +28,8 @@ def main(argv=None) -> int:
             cfg["min_minutes"] = a.min
         if a.max:
             cfg["max_minutes"] = a.max
+        if a.interview:
+            cfg["include_interview"] = True
         p = analyze.plan(a.file, cfg)
         out = a.out or os.path.join(cfg["output_dir"], "manual", os.path.splitext(os.path.basename(a.file))[0])
         outs = render.render(a.file, p["segments"], p["info"], cfg, out)

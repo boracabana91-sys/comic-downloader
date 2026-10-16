@@ -16,6 +16,13 @@ def main(root, prefix, per=10, n=8, cell=(210, 300)):
         d = ImageDraw.Draw(sheet)
         for r, name in enumerate(chunk):
             d.text((8, r * cell[1] + 8), name.split(" - ", 1)[1], fill=(255, 255, 0), font=font)
+            status = {}
+            idx = os.path.join(base, name, "index.txt")
+            if os.path.exists(idx):                       # vv13: "n<TAB>title<TAB>current|other|unknown"
+                for line in open(idx, encoding="utf-8"):
+                    parts = line.rstrip("\n").split("\t")
+                    if len(parts) >= 3:
+                        status[parts[0]] = parts[2]
             for k in range(1, n + 1):
                 f = os.path.join(base, name, f"{k}.png")
                 if not os.path.exists(f):
@@ -25,7 +32,9 @@ def main(root, prefix, per=10, n=8, cell=(210, 300)):
                 im = im.resize((max(1, int(im.width * m)), max(1, int(im.height * m))))
                 x, y = 220 + (k - 1) * cell[0], r * cell[1]
                 sheet.paste(im, (x + 5, y + cell[1] - im.height - 2), im)
-                d.text((x + 6, y + 4), str(k), fill=(255, 255, 255), font=font)
+                st = status.get(str(k), "")
+                tag, col = {"current": ("NOW", (90, 255, 120)), "other": ("OLD", (255, 110, 110))}.get(st, ("", (255, 255, 255)))
+                d.text((x + 6, y + 4), f"{k} {tag}", fill=col, font=font)
         out = f"{prefix}{s // per + 1}.jpg"
         sheet.save(out, quality=85)
         print(out, len(chunk))
