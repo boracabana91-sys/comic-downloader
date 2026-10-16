@@ -1,112 +1,23 @@
 BKN  Michael Porter Jr. ...
-   Category:Michael Porter Jr.: 21 usable pictures
-[0;93m2026-10-16 09:27:15.563155115 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+[0;93m2026-10-16 09:41:17.795597331 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
 Downloading data from 'https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx' to file '/home/runner/.rembg/models/isnet-general-use/isnet-general-use.onnx'.
-  0%|                                               | 0.00/179M [00:00<?, ?B/s]  2%|▉                                     | 4.30M/179M [00:00<00:04, 42.9MB/s] 10%|███▊                                  | 17.6M/179M [00:00<00:01, 96.2MB/s] 18%|██████▊                                | 31.3M/179M [00:00<00:01, 115MB/s] 25%|█████████▊                             | 45.2M/179M [00:00<00:01, 124MB/s] 33%|████████████▉                          | 59.0M/179M [00:00<00:00, 129MB/s] 41%|███████████████▉                       | 72.8M/179M [00:00<00:00, 132MB/s] 49%|██████████████████▉                    | 86.7M/179M [00:00<00:00, 135MB/s] 56%|██████████████████████▍                 | 100M/179M [00:00<00:00, 135MB/s] 64%|█████████████████████████▍              | 114M/179M [00:00<00:00, 128MB/s] 71%|████████████████████████████▌           | 127M/179M [00:01<00:00, 131MB/s] 79%|███████████████████████████████▌        | 141M/179M [00:01<00:00, 132MB/s] 86%|██████████████████████████████████▌     | 154M/179M [00:01<00:00, 133MB/s] 94%|█████████████████████████████████████▋  | 168M/179M [00:01<00:00, 134MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 847GB/s]
-   skipped File:20170329 MCDAAG Michael Porter Jr. swats at Mohamed Bamba rebound.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20170329 MCDAAG M. J. Walker and Michael Porter Jr. watch Deandre Ayton rebound.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20170329 MCDAAG Michael Porter Jr. MVP (1).jpg: 3 bodies in the picture
-   skipped File:20170329 MCDAAG Michael Porter Jr. at the rim.jpg: 2 bodies in the picture
-   skipped File:20170329 MCDAAG Michael Porter Jr. rebound.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20170329 MCDAAG Michael Porter Jr. snares rebound.jpg: head cut off at the top of the photo
-   skipped File:20170329 MCDAAG Michael Porter Jr. under the rim.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20170329 MCDAAG Michael Porter Jr. steps into the lane.jpg: cut off at the side of the photo (arm or hand missing)
-   File:20170329 MCDAAG Michael Porter Jr. free throw.jpg  [CC BY-SA 4.0]  (+7 candidates)
+  0%|                                               | 0.00/179M [00:00<?, ?B/s]  3%|█                                     | 4.86M/179M [00:00<00:03, 48.6MB/s]  6%|██▍                                   | 11.4M/179M [00:00<00:02, 58.5MB/s] 11%|████▏                                 | 19.4M/179M [00:00<00:02, 68.3MB/s] 15%|█████▋                                | 26.5M/179M [00:00<00:02, 69.4MB/s] 19%|███████▎                              | 34.1M/179M [00:00<00:02, 71.8MB/s] 23%|████████▉                             | 42.0M/179M [00:00<00:01, 74.1MB/s] 28%|██████████▌                           | 49.7M/179M [00:00<00:01, 75.0MB/s] 32%|████████████▏                         | 57.2M/179M [00:00<00:01, 75.1MB/s] 36%|█████████████▊                        | 64.7M/179M [00:00<00:01, 75.1MB/s] 41%|███████████████▍                      | 72.8M/179M [00:01<00:01, 76.8MB/s] 45%|█████████████████                     | 80.5M/179M [00:01<00:01, 76.4MB/s] 49%|██████████████████▋                   | 88.1M/179M [00:01<00:01, 74.9MB/s] 54%|████████████████████▎                 | 95.7M/179M [00:01<00:01, 75.2MB/s] 58%|██████████████████████▌                | 104M/179M [00:01<00:00, 76.5MB/s] 62%|████████████████████████▎              | 111M/179M [00:01<00:00, 76.0MB/s] 67%|█████████████████████████▉             | 119M/179M [00:01<00:00, 75.0MB/s] 71%|███████████████████████████▋           | 127M/179M [00:01<00:00, 75.5MB/s] 76%|█████████████████████████████▍         | 135M/179M [00:01<00:00, 78.0MB/s] 80%|███████████████████████████████▏       | 143M/179M [00:01<00:00, 78.6MB/s] 84%|████████████████████████████████▉      | 151M/179M [00:02<00:00, 78.2MB/s] 89%|██████████████████████████████████▋    | 159M/179M [00:02<00:00, 78.2MB/s] 93%|████████████████████████████████████▎  | 167M/179M [00:02<00:00, 78.6MB/s] 98%|██████████████████████████████████████ | 174M/179M [00:02<00:00, 77.5MB/s]  0%|                                               | 0.00/179M [00:00<?, ?B/s]100%|████████████████████████████████████████| 179M/179M [00:00<00:00, 871GB/s]
+   File:20170329 MCDAAG Michael Porter Jr. free throw.jpg  [CC BY-SA 4.0]  (+0 candidates)
 BKN  Julius Randle ...
-   Category:Julius Randle: 30 usable pictures
-   skipped File:20130403 MCDAAG Dakari Johnson putback dunk (1).JPG: 4 bodies in the picture
-   skipped File:20130403 MCDAAG Dakari Johnson putback dunk (4).JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Jabari Parker dunk (1).JPG: 3 bodies in the picture
-   skipped File:20130403 MCDAAG Jabari Parker dunk (2).JPG: 6 bodies in the picture
-   skipped File:20130403 MCDAAG Jabari Parker dunk (3).JPG: player too small in the photo (577px, 20% of the frame)
-   skipped File:20130403 MCDAAG Jabari Parker dunk (4).JPG: player too small in the photo (1109px, 39% of the frame)
-   skipped File:20130403 MCDAAG Julius Randle reverse dunk (1).JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Andrew Wiggins drives on Jabari Parker (2).JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Andrew Wiggins drives on Jabari Parker (3).JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Demetrius Jackson driving.JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Kasey Hill dribbling.JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Aaron Harrison to the hoop (3).JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Aaron Harrison to the hoop (5).JPG: player too small in the photo (1228px, 43% of the frame)
-   skipped File:20130403 MCDAAG Anthony Barber passing.JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Julius Randle attacks Aaron Gordon (1).JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Julius Randle attacks Aaron Gordon (3).JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Julius Randle attacks Aaron Gordon (4).JPG: 2 bodies in the picture
-   skipped File:20130403 MCDAAG Julius Randle defended by Aaron Gordon.JPG: 3 bodies in the picture
-   skipped File:20130403 MCDAAG Julius Randle to the rim (2).JPG: 3 bodies in the picture
-   skipped File:20130403 MCDAAG Julius Randle to the rim (3).JPG: 4 bodies in the picture
-   skipped File:Julius-Randle.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:20130403 MCDAAG Julius Randle to the rim (4).JPG: 3 bodies in the picture
-   skipped File:20130403 MCDAAG Aaron Harrison to the hoop (7).JPG: cut off at the side of the photo (arm or hand missing)
-   skipped File:Jalen Brunson - 52977333593 (cropped).jpg: cut off at the side of the photo (arm or hand missing)
-   File:Julius Randle with Lakers.jpg  [CC BY-SA 2.0]  [OLD TEAM? the photo names another NBA team, not BKN]  (+5 candidates)
+   File:Julius Randle with Lakers.jpg  [CC BY-SA 2.0]  [OLD TEAM? the photo names another NBA team, not BKN]  (+0 candidates)
 DET  Cade Cunningham ...
-   Category:Cade Cunningham: 28 usable pictures
-   skipped File:Sengun layup against Pistons.jpg: 5 bodies in the picture
-   skipped File:Cade Cunningham charging against T. J. McConnell, 2024-11-29.jpg: 3 bodies in the picture
-   skipped File:Cade Cunningham charging against T. J. McConnell, 2024-11-29 (cropped).jpg: 3 bodies in the picture
-   skipped File:Cade Cunningham (51915113234) (cropped).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Cade Cunningham (51915271393).jpg: 2 bodies in the picture
-   skipped File:Cade Cunningham (51914153087).jpg: 2 bodies in the picture
-   skipped File:Cade Cunningham (51914218632).jpg: 3 bodies in the picture
-   skipped File:Cade Cunningham (51915123181).jpg: 3 bodies in the picture
-   skipped File:Cade Cunningham (51915150636).jpg: 6 bodies in the picture
-   skipped File:Cade Cunningham (51915189076).jpg: 2 bodies in the picture
-   skipped File:Cade Cunningham (51915247233).jpg: 5 bodies in the picture
-   skipped File:Cade Cunningham (51915406035).jpg: 2 bodies in the picture
-   skipped File:Cade Cunningham (51915765580).jpg: 3 bodies in the picture
-   skipped File:Cade Cunningham (51915805530).jpg: 3 bodies in the picture
-   skipped File:Cade Cunningham (51915806220).jpg: 4 bodies in the picture
-   skipped File:Cade Cunningham, Scottie Barnes, and Josh Giddey (51914249337).jpg: 2 bodies in the picture
-   skipped File:Cade Cunningham, Scottie Barnes, and Josh Giddey (51914250127).jpg: 2 bodies in the picture
-   skipped File:Cade Cunningham, Scotty Barnes, and Josh Giddey (51915789670).jpg: 3 bodies in the picture
-   skipped File:Evan Mobley, Cade Cunningham, and Scottie Barnes (51915740980).jpg: 4 bodies in the picture
-   skipped File:Scottie Barnes, Josh Giddey, and Cade Cunningham (51915143981).jpg: 3 bodies in the picture
-   File:1 cade cunningham 2024.jpg  [CC BY-SA 4.0]  [DET jersey]  (+7 candidates)
+   File:1 cade cunningham 2024.jpg  [CC BY-SA 4.0]  [DET jersey]  (+0 candidates)
 DET  Jalen Duren ...
-   Category:Jalen Duren: 5 usable pictures
-   skipped File:Sengun layup against Pistons.jpg: 5 bodies in the picture
-   skipped File:Jalen Duren fights for rebound 1232026.jpg: too wide for one player standing
-   File:Jalen Duren Free Throw 01252026 (cropped).jpg  [CC BY 4.0]  [DET jersey]  (+2 candidates)
+   File:Jalen Duren Free Throw 01252026 (cropped).jpg  [CC BY 4.0]  [DET jersey]  (+0 candidates)
 MEM  Cameron Boozer ...
-   Category:Cameron Boozer: 2 usable pictures
-   skipped File:Boozer – Clemson – February 14 2026 (cropped).png: head cut off at the top of the photo
-   skipped File:Boozer Ngongba Foster Sarr – Clemson – February 14 2026.png: 3 bodies in the picture
-   no photo with the whole player in it - trying the ones cut at the edge
-   skipped File:Boozer Ngongba Foster Sarr – Clemson – February 14 2026.png: 3 bodies in the picture
-   File:Boozer – Clemson – February 14 2026 (cropped).png  [CC BY 4.0]  [EDGE-CUT: no clean photo found, arm/hand may be missing]  (+0 candidates)
+   File:Boozer – Clemson – February 14 2026 (cropped).png  [CC BY 4.0]  (+0 candidates)
 MEM  Zach Edey ...
-   Category:Zach Edey: 4 usable pictures
-   skipped File:Zach Edey.jpg: 2 bodies in the picture
-   skipped File:Zach Edey defending Jonathan Baehre.jpg: 4 bodies in the picture
-   File:Zach Edey 2 (cropped).jpg  [CC BY-SA 2.0]  (+1 candidates)
+   File:Zach Edey 2 (cropped).jpg  [CC BY-SA 2.0]  (+0 candidates)
 OKC  Shai Gilgeous-Alexander ...
-   Category:Shai Gilgeous-Alexander: 21 usable pictures
-   skipped File:Grizzlies vs. Thunder, March 2025.png: 5 bodies in the picture
-   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–121.jpg: 2 bodies in the picture
-   skipped File:Greece vs. Canada, 2024 Summer Olympic men's basketball, 2024-07-27 (196).jpg: 3 bodies in the picture
-   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–123.jpg: 2 bodies in the picture
-   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–051.jpg: 3 bodies in the picture
-   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–052.jpg: 3 bodies in the picture
-   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–122.jpg: 2 bodies in the picture
-   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–124.jpg: 2 bodies in the picture
-   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–125.jpg: 2 bodies in the picture
-   skipped File:2023-08-09 Deutschland gegen Kanada (Basketball-Länderspiel) by Sandro Halank–155.jpg: 2 bodies in the picture
-   File:Shai Gilgeous-Alexander (51815871018) (cropped).jpg  [CC BY-SA 2.0]  [OKC jersey]  (+7 candidates)
+   File:Shai Gilgeous-Alexander - Thunder vs. Wizards.png  [CC BY-SA 2.0]  [OKC jersey]  (+0 candidates)
 OKC  Jalen Williams ...
-   no category: 2 usable pictures
-   skipped File:Mo Williams free throw.jpg: 3 bodies in the picture
    File:Jalen Williams OKCThunder 2025 NBA Cup (cropped) (cropped).jpg  [CC BY 4.0]  (+0 candidates)
 SAS  Victor Wembanyama ...
-   Category:Victor Wembanyama: 19 usable pictures
-   skipped File:San Antonio at Toronto - Wembanyama 2024.jpg: player too small in the photo (894px, 35% of the frame)
-   skipped File:Victor Wembanyama San Antonio Spurs 2025 NBA Cup (cropped 2).jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:Victor Wembanyama San Antonio Spurs 2024.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:San Antonio at Toronto - Wembanyama 2024 (cropped).jpg: 6 bodies in the picture
-   skipped File:Dylan Harper in 2026 Western Conference Finals.jpg: too wide for one player standing
-   skipped File:Wembanyama and Hart, 2026 NBA Finals.png: 2 bodies in the picture
-   skipped File:Victor Wembanyama NBA Paris Game.jpg: cut off at the side of the photo (arm or hand missing)
-   skipped File:France-Lituanie Basket qualifications pour le mondial 2023 2.jpg: 2 bodies in the picture
-   skipped File:Victor Wembanyama Mets 92 (2).jpg: 2 bodies in the picture
-   File:Victor Wembanyama San Antonio Spurs 2025 NBA Cup.jpg  [CC BY 4.0]  [SAS jersey]  (+7 candidates)
+   File:Victor Wembanyama San Antonio Spurs 2025 NBA Cup.jpg  [CC BY 4.0]  [SAS jersey]  (+0 candidates)
 
 Done. Every player has a cutout.
