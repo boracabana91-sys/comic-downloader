@@ -1,0 +1,39 @@
+[cutout.png]
+File:1 alperen sengun.jpg
+Author: Chensiyuan
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:1_alperen_sengun.jpg
+
+(head1.png is a close-up cropped from this picture)
+[cutout2.png]
+File:Alperen Şengün 23 Türkiye 20250823 (2) (cropped).jpg
+Author: Zafer
+Licence: CC BY 4.0
+https://commons.wikimedia.org/wiki/File:Alperen_%C5%9Eeng%C3%BCn_23_T%C3%BCrkiye_20250823_(2)_(cropped).jpg
+
+(head2.png is a close-up cropped from this picture)
+[cutout3.png]
+File:Alperen Şengün 23 Türkiye 20250823 (1).jpg
+Author: Zafer
+Licence: CC BY 4.0
+https://commons.wikimedia.org/wiki/File:Alperen_%C5%9Eeng%C3%BCn_23_T%C3%BCrkiye_20250823_(1).jpg
+
+(head3.png is a close-up cropped from this picture)
+[head4.png]
+File:Alperen Şengün 23 Türkiye 20250822 (1).jpg
+Author: Zafer
+Licence: CC BY 4.0
+https://commons.wikimedia.org/wiki/File:Alperen_%C5%9Eeng%C3%BCn_23_T%C3%BCrkiye_20250822_(1).jpg
+(front-facing close-up cut from this picture)
+[head5.png]
+File:Alperen Şengün 23 Türkiye 20250822 (2).jpg
+Author: Zafer
+Licence: CC BY 4.0
+https://commons.wikimedia.org/wiki/File:Alperen_%C5%9Eeng%C3%BCn_23_T%C3%BCrkiye_20250822_(2).jpg
+(front-facing close-up cut from this picture)
+[head6.png]
+File:Alperen Şengün 23 Türkiye 20250822 (3).jpg
+Author: Zafer
+Licence: CC BY 4.0
+https://commons.wikimedia.org/wiki/File:Alperen_%C5%9Eeng%C3%BCn_23_T%C3%BCrkiye_20250822_(3).jpg
+(front-facing close-up cut from this picture)
