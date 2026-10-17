@@ -1,0 +1,39 @@
+[cutout.png]
+File:Kevin Durant, Paris 2024.jpg
+Author: Clément Bardot
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:Kevin_Durant,_Paris_2024.jpg
+
+(head1.png is a close-up cropped from this picture)
+[cutout2.png]
+File:Kevin Durant - TechCrunch Disrupt SF 2017 - Day 2 (36517992753).jpg
+Author: TechCrunch
+Licence: CC BY 2.0
+https://commons.wikimedia.org/wiki/File:Kevin_Durant_-_TechCrunch_Disrupt_SF_2017_-_Day_2_(36517992753).jpg
+
+(head2.png is a close-up cropped from this picture)
+[cutout3.png]
+File:Kevin Durant, Olympic Games 2024.jpg
+Author: Clément Bardot
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:Kevin_Durant,_Olympic_Games_2024.jpg
+
+(head3.png is a close-up cropped from this picture)
+[head4.png]
+File:Kevin Durant and Frances Tiafoe (2023 DC Open) 01 (cropped).jpg
+Author: Hameltion
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:Kevin_Durant_and_Frances_Tiafoe_(2023_DC_Open)_01_(cropped).jpg
+(front-facing close-up cut from this picture)
+[head5.png]
+File:Kevin Durant - TechCrunch Disrupt SF 2017 - Day 2 (36933445680).jpg
+Author: TechCrunch
+Licence: CC BY 2.0
+https://commons.wikimedia.org/wiki/File:Kevin_Durant_-_TechCrunch_Disrupt_SF_2017_-_Day_2_(36933445680).jpg
+(front-facing close-up cut from this picture)
+[head6.png]
+File:Kevin Durant against Martynas Pocius.jpg
+Author: globalite
+Licence: CC BY-SA 2.0
+https://commons.wikimedia.org/wiki/File:Kevin_Durant_against_Martynas_Pocius.jpg
+(front-facing close-up cut from this picture)
