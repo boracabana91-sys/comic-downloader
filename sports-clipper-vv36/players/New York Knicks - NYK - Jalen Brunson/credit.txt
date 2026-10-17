@@ -1,0 +1,38 @@
+[cutout.png]
+File:Jalen Brunson (cropped).jpg
+Author: Erik Drost
+Licence: CC BY 2.0
+https://commons.wikimedia.org/wiki/File:Jalen_Brunson_(cropped).jpg
+
+(head1.png is a close-up cropped from this picture)
+[cutout2.png]
+File:Jalen Brunson 2023 (cropped).jpg
+Author: Erik Drost
+Licence: CC BY 2.0
+https://commons.wikimedia.org/wiki/File:Jalen_Brunson_2023_(cropped).jpg
+
+(head2.png is a close-up cropped from this picture)
+[cutout3.png]
+File:Jalen Brunson cropped.jpg
+Author: Erik Drost
+Licence: CC BY 2.5
+https://commons.wikimedia.org/wiki/File:Jalen_Brunson_cropped.jpg
+
+[head4.png]
+File:Jalen Brunson 2023 2 (cropped).jpg
+Author: Erik Drost
+Licence: CC BY 2.0
+https://commons.wikimedia.org/wiki/File:Jalen_Brunson_2023_2_(cropped).jpg
+(front-facing close-up cut from this picture)
+[head5.png]
+File:20140322 Jalen Brunson in IHSA consolation game (1).JPG
+Author: TonyTheTiger
+Licence: CC BY-SA 3.0
+https://commons.wikimedia.org/wiki/File:20140322_Jalen_Brunson_in_IHSA_consolation_game_(1).JPG
+(front-facing close-up cut from this picture)
+[head6.png]
+File:20150321 IHSA Class 4A championship game Jalen Brunson (14).JPG
+Author: TonyTheTiger
+Licence: CC BY-SA 4.0
+https://commons.wikimedia.org/wiki/File:20150321_IHSA_Class_4A_championship_game_Jalen_Brunson_(14).JPG
+(front-facing close-up cut from this picture)
