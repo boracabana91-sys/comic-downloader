@@ -34,8 +34,10 @@ class Thumbnail(unittest.TestCase):
         add(r, "DEN", "Nikola Jokic"); add(r, "LAC", "Darius Garland")
         self.p = mock.patch.dict(os.environ, {"SPORTSCLIPPER_PLAYERS": r}); self.p.start()
         self.b = mock.patch.object(roster, "bundled_dir", lambda: os.path.join(r, "none")); self.b.start()
+        thumbnail.set_layout("stars")                       # these tests describe the full-body layout (vv21 default is closeup)
 
     def tearDown(self):
+        thumbnail.set_layout("closeup")
         self.b.stop(); self.p.stop(); self.d.cleanup()
 
     def test_no_score_anywhere(self):
