@@ -379,12 +379,15 @@ def layout_preview(layout, series_title, ext, epub, size):
     one = layout != "parts"
     central = layout == "central"
     if central:
-        gadget = [f for f in files if not f.endswith(".epub")]
-        lines = [f"{t}/", f"  {t} EPUB/   (every EPUB of this title, all chapters together)",
-                 f"    {t} EPUB Chapter 001.epub", f"    {t} EPUB Chapter 002.epub", "    ...",
-                 "  Chapter 001/", "    001.webp  002.webp  003.webp ..."]
-        lines += ["    " + f.format(n=f"{t} - Chapter 001") for f in gadget]
-        lines += ["  Chapter 002/", "    ...", "  Chapter 003/ ..."]
+        lines = [f"{t}/"]
+        for kind, ex in (("EPUB", ".epub"), ) if (epub or ext == ".epub") else ():
+            lines += [f"  {t} {kind}/   (all chapters together)",
+                      f"    {t} {kind} Chapter 001{ex}", f"    {t} {kind} Chapter 002{ex}", "    ..."]
+        if ext and ext != ".epub":
+            k = ext.lstrip(".").upper()
+            lines += [f"  {t} {k}/", f"    {t} {k} Chapter 001{ext}", f"    {t} {k} Chapter 002{ext}", "    ..."]
+        lines += [f"  {t} WEBP/   (or JPEG)", f"    {t} WEBP Chapter 001/  001.webp 002.webp ...",
+                  f"    {t} WEBP Chapter 002/  001.webp 002.webp ...", "    ..."]
         return "\n".join(lines)
     lines = [f"{t}/", "  Chapter 001/"]
     if one:
@@ -400,9 +403,42 @@ def layout_preview(layout, series_title, ext, epub, size):
     return "\n".join(lines)
 
 
+def link_from_file(path):
+    """The web address inside a dropped .url (Windows) or .webloc (Mac) shortcut, or a .txt file."""
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as f:
+            text = f.read(20000)
+    except Exception:
+        return None
+    m = re.search(r"URL=(https?://\S+)", text) or re.search(r"<string>\s*(https?://[^<\s]+)", text) \
+        or re.search(r"(https?://\S+)", text)
+    return m.group(1).strip() if m else None
+
+
+def classify_drop(items):
+    """What was dropped on the window? Returns (kind, value): 'folder', 'cover', 'link' or (None, None)."""
+    for p in items:
+        p = p.strip()
+        if re.match(r"https?://", p, re.I):
+            return "link", p.split()[0]
+        if os.path.isdir(p):
+            return "folder", p
+        if os.path.isfile(p):
+            if covers.is_cover_file(p):
+                return "cover", p
+            if os.path.splitext(p)[1].lower() in (".url", ".webloc", ".txt"):
+                u = link_from_file(p)
+                if u:
+                    return "link", u
+    return None, None
+
+
 def _finish_layout(work_root, name, total, size, series_dir, folder, layout, device_folder, cover,
                    series_title=""):
     """Move the finished work out of the hidden work area into the chapter's own folder."""
+    if layout == "central":
+        return _finish_central(work_root, name, total, size, series_dir, folder, device_folder,
+                               cover, series_title)
     final = os.path.join(series_dir, folder)
     if os.path.isdir(final):
         shutil.rmtree(final)  # an older copy of this chapter made by this program
@@ -445,6 +481,62 @@ def _finish_layout(work_root, name, total, size, series_dir, folder, layout, dev
     except OSError:
         pass
     return final
+
+
+def _central_name(series_title, series_dir):
+    return series_title or os.path.basename(series_dir)
+
+
+def _finish_central(work_root, name, total, size, series_dir, folder, device_folder, cover, series_title):
+    """Layout C: every kind of file of this title has ONE folder for all chapters:
+         <Title> EPUB/  <Title> EPUB Chapter 001.epub ...
+         <Title> CBZ/   <Title> CBZ Chapter 001.cbz ...       (or PDF)
+         <Title> WEBP/  <Title> WEBP Chapter 001/ 001.webp ...  (or JPEG)
+       Later batches of chapters land in the same folders."""
+    title = _central_name(series_title, series_dir)
+    old = os.path.join(series_dir, folder)
+    if os.path.isdir(old):
+        shutil.rmtree(old)   # a chapter folder from another layout: this chapter is made again
+    dev = os.path.join(work_root, device_folder) if device_folder else None
+    if dev and os.path.isdir(dev):
+        for f in sorted(os.listdir(dev)):
+            ext = os.path.splitext(f)[1]
+            kind = ext.lstrip(".").upper()
+            kdir = os.path.join(series_dir, f"{title} {kind}")
+            os.makedirs(kdir, exist_ok=True)
+            os.replace(os.path.join(dev, f), os.path.join(kdir, f"{title} {kind} {folder}{ext}"))
+        shutil.rmtree(dev, ignore_errors=True)
+    pics, kind = None, "WEBP"
+    for g in range(math.ceil(total / size)):
+        gf = os.path.join(work_root, core.group_folder_name(name, g * size + 1, total, size))
+        if not os.path.isdir(gf):
+            continue
+        files = sorted(f for f in os.listdir(gf)
+                       if f.lower().endswith(core.IMG_EXT) and f.lower() != covers.COVER_NAME)
+        if not files:
+            continue
+        if pics is None:
+            ext0 = os.path.splitext(files[0])[1].lower().lstrip(".")
+            kind = "JPEG" if ext0 in ("jpg", "jpeg") else ext0.upper()
+            kdir = os.path.join(series_dir, f"{title} {kind}")
+            pics = os.path.join(kdir, f"{title} {kind} {folder}")
+            if os.path.isdir(pics):
+                shutil.rmtree(pics)
+            os.makedirs(pics)
+        for f in files:
+            os.replace(os.path.join(gf, f), os.path.join(pics, f))
+        shutil.rmtree(gf, ignore_errors=True)
+    if pics and cover:
+        try:
+            covers.save_folder_cover(pics, cover)
+            covers.set_folder_icon(pics, cover)
+        except Exception:
+            pass
+    try:
+        os.rmdir(work_root)
+    except OSError:
+        pass
+    return pics
 
 
 _DOUBLE_EXT = re.compile(r"(\.(?:webp|avif|png|jpe?g|gif))\.(?:webp|avif|png|jpe?g|gif)$", re.I)
@@ -527,12 +619,16 @@ def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series
         target = device if device != "images" else ("epub_only" if opts.get("epub") else None)
         device_folder = None
         if target:
-            import fitpage                # snug fit is ALWAYS used: whole scenes per screen
-            _made, bad = fitpage.build_files_fit(work, name, total, size, target, progress, stop,
-                                                 opts.get("custom"), cover, epub=bool(opts.get("epub")))
-            n_pages, n_edge = fitpage.LAST_AUDIT
-            say(f"  Snug-fit check: {n_pages - n_edge} of {n_pages} screens are clean"
-                + (f"; {n_edge} have art touching the screen edge." if n_edge else "."))
+            build = core.build_device_files   # "Previous (v4)": the backup page style
+            if opts.get("fit", "new") == "new":
+                import fitpage            # snug fit (the normal way): whole scenes per screen
+                build = fitpage.build_files_fit
+            _made, bad = build(work, name, total, size, target, progress, stop,
+                               opts.get("custom"), cover, epub=bool(opts.get("epub")))
+            if opts.get("fit", "new") == "new":
+                n_pages, n_edge = fitpage.LAST_AUDIT
+                say(f"  Snug-fit check: {n_pages - n_edge} of {n_pages} screens are clean"
+                    + (f"; {n_edge} have art touching the screen edge." if n_edge else "."))
             device_folder = core.resolve_device(target, opts.get("custom"))["folder"]
             if bad:
                 say(f"  {len(bad)} image(s) could not be used and were skipped.")

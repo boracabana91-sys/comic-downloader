@@ -76,7 +76,8 @@ class SeriesApp:
         row = ttk.Frame(root)
         row.pack(fill="x", padx=14)
         self.url = tk.StringVar()
-        ttk.Entry(row, textvariable=self.url).pack(side="left", fill="x", expand=True)
+        self.url_entry = ttk.Entry(row, textvariable=self.url)
+        self.url_entry.pack(side="left", fill="x", expand=True)
         ttk.Button(row, text="Paste", command=self.paste).pack(side="left", padx=(8, 0))
         self.btn_find = ttk.Button(row, text="Find chapters", command=self.find)
         self.btn_find.pack(side="left", padx=(8, 0))
@@ -110,7 +111,8 @@ class SeriesApp:
         row2.pack(fill="x", padx=14)
         self.folder = tk.StringVar(
             value=os.path.join(os.path.expanduser("~"), "Downloads", "Comic Series"))
-        ttk.Entry(row2, textvariable=self.folder).pack(side="left", fill="x", expand=True)
+        self.folder_entry = ttk.Entry(row2, textvariable=self.folder)
+        self.folder_entry.pack(side="left", fill="x", expand=True)
         ttk.Button(row2, text="Choose folder", command=self.choose).pack(side="left", padx=(8, 0))
 
         send = ttk.Frame(root)
@@ -148,13 +150,16 @@ class SeriesApp:
                         variable=self.layout, command=self.update_preview).pack(side="left", padx=(8, 0))
         ttk.Radiobutton(lay, text="Sample 2: files in parts of N pages", value="parts",
                         variable=self.layout, command=self.update_preview).pack(side="left", padx=(8, 0))
-        ttk.Radiobutton(lay, text="Layout C: all EPUBs in one folder", value="central",
+        ttk.Radiobutton(lay, text="Layout C: EPUBs, CBZs and pictures each in one folder", value="central",
                         variable=self.layout, command=self.update_preview).pack(side="left", padx=(8, 0))
         fitrow = ttk.Frame(root)
         fitrow.pack(fill="x", padx=14, pady=(6, 0))
-        self.fit = tk.StringVar(value="new")   # snug fit is always on
-        ttk.Label(fitrow, text="Page fit: snug fit, always on (whole scenes, not zoomed, "
-                               "checked after every chapter)").pack(side="left")
+        ttk.Label(fitrow, text="Page fit:").pack(side="left")
+        self.fit = tk.StringVar(value="new")   # snug fit every time the program opens
+        ttk.Radiobutton(fitrow, text="Snug fit: whole scenes, not zoomed (checked after every chapter)",
+                        value="new", variable=self.fit).pack(side="left", padx=(8, 0))
+        ttk.Radiobutton(fitrow, text="Previous (v4) - backup", value="old",
+                        variable=self.fit).pack(side="left", padx=(8, 0))
         self.preview = tk.Label(root, justify="left", anchor="w", font=("Menlo", 11),
                                 relief="groove", borderwidth=1, padx=8, pady=4)
         self.preview.pack(fill="x", padx=14, pady=(4, 0))
@@ -202,7 +207,7 @@ class SeriesApp:
         cover_row = ttk.Frame(root)
         cover_row.pack(fill="x", padx=14, pady=(8, 0))
         self.zone = tk.Label(cover_row, text="Drop your cover picture here\n(or click to choose)",
-                             relief="groove", borderwidth=2, width=30, height=4,
+                             relief="groove", borderwidth=2, width=30, height=5,
                              cursor="hand2", justify="center")
         self.zone.pack(side="left")
         self.zone.bind("<Button-1>", lambda e: self.choose_cover())
@@ -216,11 +221,19 @@ class SeriesApp:
         self.badge = tk.BooleanVar(value=True)
         ttk.Checkbutton(side, text="Put the chapter number on each chapter's cover",
                         variable=self.badge).pack(anchor="w", pady=(4, 0))
+        ttk.Label(root, text="Tip: you can drop a series link (or a .url / .webloc shortcut), a folder "
+                  "or a cover picture anywhere in this window.", foreground="#555").pack(
+            anchor="w", padx=14, pady=(6, 0))
+        self.drop_on = False
         if dnd:
             try:
-                from tkinterdnd2 import DND_FILES
-                self.zone.drop_target_register(DND_FILES)
-                self.zone.dnd_bind("<<Drop>>", self.on_drop)
+                from tkinterdnd2 import DND_FILES, DND_TEXT
+                for w in (self.root, self.canvas, self.url_entry, self.folder_entry, self.lb, self.zone):
+                    w.drop_target_register(DND_FILES, DND_TEXT)
+                    w.dnd_bind("<<Drop>>", self.on_drop)
+                    w.dnd_bind("<<DropEnter>>", lambda e: self.zone.config(relief="solid"))
+                    w.dnd_bind("<<DropLeave>>", lambda e: self.zone.config(relief="groove"))
+                self.drop_on = True
             except Exception:
                 pass
 
@@ -291,11 +304,26 @@ class SeriesApp:
             self.set_cover(path)
 
     def on_drop(self, event):
-        for p in self.root.tk.splitlist(event.data):
-            if covers.is_cover_file(p):
-                self.set_cover(p)
-                return
-        self.cover_note.set("That is not a picture I can use. Drop a JPG, PNG or WebP picture.")
+        self.zone.config(relief="groove")
+        data = event.data or ""
+        items = list(self.root.tk.splitlist(data)) if "{" in data or os.path.exists(data) else [data]
+        kind, val = series.classify_drop(items)
+        if kind == "cover":
+            self.set_cover(val)
+        elif kind == "folder":
+            self.folder.set(val)
+            self.cover_note_hint(f"Saving to: {val}")
+        elif kind == "link":
+            self.url.set(val)
+            self.find()
+        else:
+            self.cover_note.set("I could not use what you dropped. Drop a series link, a folder "
+                                "or a JPG, PNG or WebP cover picture.")
+        return event.action
+
+    def cover_note_hint(self, text):
+        if self.cover_path is None:
+            self.cover_note.set(text)
 
     def set_cover(self, path):
         if not covers.is_cover_file(path):

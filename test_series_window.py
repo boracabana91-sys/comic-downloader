@@ -41,6 +41,7 @@ root.geometry('760x420')
 root.update()
 assert a.btn_go.winfo_ismapped()  # even a short window keeps the buttons
 assert a.fit.get() == "new"
+a.fit.set("old")
 a.layout.set("central")
 a.update_preview()
 assert "EPUB" in a.preview.cget("text") and str(a.size_spin.cget("state")) == "disabled"

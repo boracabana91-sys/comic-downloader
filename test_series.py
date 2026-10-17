@@ -122,23 +122,53 @@ def main():
         assert sorted(os.listdir(os.path.join(sd, "Chapter 001"))) == [
             "001.png", "002.png", "003.png", "Demo Comic - Chapter 001.pdf"]
 
-        # --- Layout C: every EPUB of the title in ONE folder, the rest stays in the chapter folder ---
-        optsC = dict(opts, layout="central")
+        # --- Layout C: EPUBs, CBZs and pictures each in ONE folder for the whole title ---
+        optsC = dict(opts, layout="central", fit="new")
         resC = series.run_series("Demo Comic", info["chapters"][:2], d, optsC, say=logs.append, pause=0)
         assert len(resC["done"]) == 2, resC
-        ed = os.path.join(sd, "Demo Comic EPUB")
-        assert sorted(os.listdir(ed)) == ["Demo Comic EPUB Chapter 001.epub",
-                                          "Demo Comic EPUB Chapter 002.epub"], os.listdir(ed)
-        assert sorted(os.listdir(os.path.join(sd, "Chapter 001"))) == [
-            "001.png", "002.png", "003.png", "Demo Comic - Chapter 001.cbz"]
-        # a later batch of chapters goes into the SAME epub folder
+        top = sorted(x for x in os.listdir(sd) if not x.startswith(".") and x != "Chapter 003")
+        assert top == ["Demo Comic CBZ", "Demo Comic EPUB", "Demo Comic PNG"] or \
+            top == ["Demo Comic CBZ", "Demo Comic EPUB", "Demo Comic WEBP"], top
+        pk = [x for x in top if x.endswith(("PNG", "WEBP"))][0]
+        assert sorted(os.listdir(os.path.join(sd, "Demo Comic EPUB"))) == [
+            "Demo Comic EPUB Chapter 001.epub", "Demo Comic EPUB Chapter 002.epub"]
+        assert sorted(os.listdir(os.path.join(sd, "Demo Comic CBZ"))) == [
+            "Demo Comic CBZ Chapter 001.cbz", "Demo Comic CBZ Chapter 002.cbz"]
+        assert sorted(os.listdir(os.path.join(sd, pk))) == [f"Demo Comic {pk[11:]} Chapter 001",
+                                                           f"Demo Comic {pk[11:]} Chapter 002"]
+        assert sorted(os.listdir(os.path.join(sd, pk, f"Demo Comic {pk[11:]} Chapter 001")))[:3] == [
+            "001.png", "002.png", "003.png"]
+        assert not os.path.exists(os.path.join(sd, "Chapter 001")), "old chapter folder is replaced"
+        # a later batch of chapters goes into the SAME folders
         resC2 = series.run_series("Demo Comic", info["chapters"][2:], d, optsC, say=logs.append, pause=0)
         assert len(resC2["done"]) == 1, resC2
-        assert len(os.listdir(ed)) == 3, os.listdir(ed)
+        assert len(os.listdir(os.path.join(sd, "Demo Comic EPUB"))) == 3
+        assert len(os.listdir(os.path.join(sd, "Demo Comic CBZ"))) == 3
+        assert len(os.listdir(os.path.join(sd, pk))) == 3
         assert any("Snug-fit check" in m for m in logs)
         assert all(series.is_current(r) for r in series.load_state(sd)["done"].values())
-        # state written by an older engine counts as out of date
         assert not series.is_current({"sig": "{\"layout\": \"one\"}"})
+        # "Previous (v4)" still works as the backup
+        optsB = dict(optsC, fit="old")
+        resB = series.run_series("Demo Comic", info["chapters"][:1], d, optsB, say=logs.append, pause=0)
+        assert len(resB["done"]) == 1, resB
+        # layout preview
+        assert "Demo CBZ/" in series.layout_preview("central", "Demo", ".cbz", True, 5)
+
+        # --- what can be dropped on the window ---
+        os.makedirs(os.path.join(d, "dropme"))
+        assert series.classify_drop([os.path.join(d, "dropme")]) == ("folder", os.path.join(d, "dropme"))
+        assert series.classify_drop(["https://luacomic.org/series/x"]) == ("link", "https://luacomic.org/series/x")
+        with open(os.path.join(d, "a.url"), "w") as f:
+            f.write("[InternetShortcut]\nURL=https://luacomic.org/series/y\n")
+        assert series.classify_drop([os.path.join(d, "a.url")]) == ("link", "https://luacomic.org/series/y")
+        with open(os.path.join(d, "a.webloc"), "w") as f:
+            f.write("<plist><dict><key>URL</key><string>https://luacomic.org/series/z</string></dict></plist>")
+        assert series.classify_drop([os.path.join(d, "a.webloc")])[1] == "https://luacomic.org/series/z"
+        from PIL import Image as _I
+        _I.new("RGB", (40, 60), (9, 9, 9)).save(os.path.join(d, "c.png"))
+        assert series.classify_drop([os.path.join(d, "c.png")])[0] == "cover"
+        assert series.classify_drop(["nonsense"]) == (None, None)
 
         # --- Sample 2: pictures in Pages/, files in parts of 2 pages, all inside the chapter folder ---
         opts3 = dict(opts, layout="parts")
