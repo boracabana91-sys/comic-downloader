@@ -87,6 +87,17 @@ def fit(path: str, out_w: int, out_h: int, info: dict | None = None) -> Image.Im
     Transparent where the photo ends (the team colour shows through)."""
     info = info or analyse(path)
     im, _ = _bg(path)
+    if "eyes" not in info:                                  # no face found at all: fill the panel with the top of the picture
+        box = im.getchannel("A").point(lambda a: 255 if a > 16 else 0).getbbox()
+        if box:
+            im = im.crop(box)
+        k = max(out_w / im.width, 0.0) if im.width * out_h >= im.height * out_w else out_h / im.height
+        k = min(k, out_h / im.height * 1.0) if im.height * k > out_h else k
+        im = im.resize((max(1, int(im.width * k)), max(1, int(im.height * k))), Image.LANCZOS)
+        canvas = Image.new("RGBA", (out_w, out_h), (0, 0, 0, 0))
+        canvas.alpha_composite(im.crop((max(0, (im.width - out_w) // 2), 0, max(0, (im.width - out_w) // 2) + out_w, out_h)),
+                               (max(0, (out_w - im.width) // 2), 0))
+        return canvas
     (ex1, ey1), (ex2, ey2) = info["eyes"]
     cx, cy = (ex1 + ex2) / 2, (ey1 + ey2) / 2
     scale = (FACE_SHARE * out_w) / info["box"][2]

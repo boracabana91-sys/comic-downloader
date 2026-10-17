@@ -73,7 +73,7 @@ class V091(unittest.TestCase):
             json.dump({"config_version": 9, "resolutions": [2160, 1080, 720], "encoder": "libx264"}, open(p, "w"))
             c = config.load(p)
             self.assertEqual(c["resolutions"], [1080, 720])
-            self.assertEqual(c["config_version"], 10)
+            self.assertEqual(c["config_version"], 11)
             json.dump({"config_version": 10, "resolutions": [2160, 1080]}, open(p, "w"))
             self.assertEqual(config.load(p)["resolutions"], [2160, 1080])      # ticked again on purpose: kept
 
