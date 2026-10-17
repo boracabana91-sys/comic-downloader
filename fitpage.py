@@ -27,6 +27,9 @@ MARGIN = 0.025     # thin frame of background round the art, like a printed page
 SPACE = 0.015      # background between two scenes on the same screen
 
 
+LAST_AUDIT = (0, 0)   # (screens made, screens whose art touches the top/bottom edge)
+
+
 def _quiet_runs(std, min_len):
     runs, y, n = [], 0, len(std)
     while y < n:
@@ -227,11 +230,31 @@ class FitPager:
         self.flush()
         self.hold = im   # a normal page, unless the next picture turns out to continue it
 
+def _audit(paths, width, height):
+    """Check every finished screen: right size, and no art running off the top or bottom edge
+    (that would mean a scene was cut). The counts are read by the program for its log."""
+    global LAST_AUDIT
+    bad = 0
+    for p in paths:
+        with Image.open(p) as im:
+            im.load()
+            if im.size != (width, height):
+                bad += 1
+                continue
+            g = im.convert("L")
+            if (core._rows(g.crop((0, 0, width, 3))).max() >= core.QUIET
+                    or core._rows(g.crop((0, height - 3, width, height))).max() >= core.QUIET):
+                bad += 1
+    LAST_AUDIT = (LAST_AUDIT[0] + len(paths), LAST_AUDIT[1] + bad)
+
+
 def build_files_fit(out_root, title, total, size, device_key, progress=None, stop=None,
                     custom=None, cover=None, epub=False):
     """Same as core.build_device_files, but with the snug-fit pages."""
     if not core.HAS_PIL:
         raise RuntimeError("The picture tools are missing from this copy of the program.")
+    global LAST_AUDIT
+    LAST_AUDIT = (0, 0)
     stop = stop or threading.Event()
     dev = core.resolve_device(device_key, custom)
     width, height = dev["size"]
@@ -264,6 +287,7 @@ def build_files_fit(out_root, title, total, size, device_key, progress=None, sto
                 except Exception:
                     problems.append(f"{name}/{f}")
             pager.flush()
+            _audit(pager.pages[1:] if cover else pager.pages, width, height)
             if not pager.pages:
                 continue
             for ext in exts:

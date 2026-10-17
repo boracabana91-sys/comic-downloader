@@ -232,10 +232,21 @@ def save_state(series_dir, state):
     os.replace(tmp, os.path.join(series_dir, STATE_NAME))
 
 
+ENGINE = 2   # raise when the page engine improves: older finished chapters are then made again
+
+
+def is_current(rec):
+    """True when a finished chapter was made by the current snug-fit engine."""
+    try:
+        return json.loads(rec.get("sig", "{}")).get("engine") == ENGINE
+    except Exception:
+        return False
+
+
 def signature(opts):
     """What the finished files depend on. If it changes, the chapter is made again."""
     return json.dumps({
-        "layout": opts.get("layout", "one"), "badge": bool(opts.get("badge")), "fit": opts.get("fit", "new"), "device": opts.get("device"), "epub": bool(opts.get("epub")), "size": opts.get("size"),
+        "engine": ENGINE, "layout": opts.get("layout", "one"), "badge": bool(opts.get("badge")), "fit": opts.get("fit", "new"), "device": opts.get("device"), "epub": bool(opts.get("epub")), "size": opts.get("size"),
         "convert": bool(opts.get("convert")), "custom": opts.get("custom"),
         "cover": os.path.basename(opts["cover"]) if opts.get("cover") else None,
         "words": sorted(opts.get("words") or [])}, sort_keys=True)
@@ -351,7 +362,8 @@ def stamp_cover(cover_path, text, out_path):
     return out_path
 
 
-LAYOUTS = {"one": "Sample 1", "parts": "Sample 2"}
+LAYOUTS = {"one": "Sample 1", "parts": "Sample 2", "central": "Layout C"}
+PAGES_IN_FOLDER = ("one", "central")   # pictures sit directly in the chapter folder
 
 
 def chapter_folder(name, series_title):
@@ -365,6 +377,15 @@ def layout_preview(layout, series_title, ext, epub, size):
     t = series_title or "Series name"
     files = ([f"{{n}}{ext}"] if ext else []) + ([f"{{n}}.epub"] if epub and ext != ".epub" else [])
     one = layout != "parts"
+    central = layout == "central"
+    if central:
+        gadget = [f for f in files if not f.endswith(".epub")]
+        lines = [f"{t}/", f"  {t} EPUB/   (every EPUB of this title, all chapters together)",
+                 f"    {t} EPUB Chapter 001.epub", f"    {t} EPUB Chapter 002.epub", "    ...",
+                 "  Chapter 001/", "    001.webp  002.webp  003.webp ..."]
+        lines += ["    " + f.format(n=f"{t} - Chapter 001") for f in gadget]
+        lines += ["  Chapter 002/", "    ...", "  Chapter 003/ ..."]
+        return "\n".join(lines)
     lines = [f"{t}/", "  Chapter 001/"]
     if one:
         lines.append("    001.webp  002.webp  003.webp ...")
@@ -379,13 +400,14 @@ def layout_preview(layout, series_title, ext, epub, size):
     return "\n".join(lines)
 
 
-def _finish_layout(work_root, name, total, size, series_dir, folder, layout, device_folder, cover):
+def _finish_layout(work_root, name, total, size, series_dir, folder, layout, device_folder, cover,
+                   series_title=""):
     """Move the finished work out of the hidden work area into the chapter's own folder."""
     final = os.path.join(series_dir, folder)
     if os.path.isdir(final):
         shutil.rmtree(final)  # an older copy of this chapter made by this program
     os.makedirs(final)
-    pages_dir = final if layout == "one" else os.path.join(final, "Pages")
+    pages_dir = final if layout in PAGES_IN_FOLDER else os.path.join(final, "Pages")
     os.makedirs(pages_dir, exist_ok=True)
     for g in range(math.ceil(total / size)):
         gf = os.path.join(work_root, core.group_folder_name(name, g * size + 1, total, size))
@@ -399,10 +421,17 @@ def _finish_layout(work_root, name, total, size, series_dir, folder, layout, dev
     if dev and os.path.isdir(dev):
         for f in sorted(os.listdir(dev)):
             base, ext = os.path.splitext(f)
-            if layout == "one" and base == core.group_folder_name(name, 1, total, total):
+            if layout in PAGES_IN_FOLDER and base == core.group_folder_name(name, 1, total, total):
                 f2 = name + ext  # one file per chapter: no "Pages 1-40" in its name
             else:
                 f2 = f
+            if layout == "central" and ext.lower() == ".epub":
+                # every EPUB of this title lives in ONE folder, whatever batch of chapters it came from
+                title = series_title or os.path.basename(series_dir)
+                epub_dir = os.path.join(series_dir, f"{title} EPUB")
+                os.makedirs(epub_dir, exist_ok=True)
+                os.replace(os.path.join(dev, f), os.path.join(epub_dir, f"{title} EPUB {folder}{ext}"))
+                continue
             os.replace(os.path.join(dev, f), os.path.join(final, f2))
         shutil.rmtree(dev, ignore_errors=True)
     if cover:
@@ -462,7 +491,7 @@ def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series
     say(f"  {len(imgs)} pages found.")
     layout = opts.get("layout", "one")
     total = len(imgs)
-    size = total if layout == "one" else max(1, opts["size"])   # Sample 1: the whole chapter is one part
+    size = total if layout in PAGES_IN_FOLDER else max(1, opts["size"])   # Sample 1: the whole chapter is one part
     work = os.path.join(series_dir, ".work")                    # hidden work area, tidied afterwards
     failed = _download_with_retry(imgs, name, work, url, progress, stop, size,
                                   opts.get("convert", False), say)
@@ -498,17 +527,17 @@ def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series
         target = device if device != "images" else ("epub_only" if opts.get("epub") else None)
         device_folder = None
         if target:
-            build = core.build_device_files
-            if opts.get("fit", "new") == "new":
-                import fitpage            # TEST: snug fit, whole scenes per screen
-                build = fitpage.build_files_fit
-            _made, bad = build(work, name, total, size, target, progress, stop,
-                               opts.get("custom"), cover, epub=bool(opts.get("epub")))
+            import fitpage                # snug fit is ALWAYS used: whole scenes per screen
+            _made, bad = fitpage.build_files_fit(work, name, total, size, target, progress, stop,
+                                                 opts.get("custom"), cover, epub=bool(opts.get("epub")))
+            n_pages, n_edge = fitpage.LAST_AUDIT
+            say(f"  Snug-fit check: {n_pages - n_edge} of {n_pages} screens are clean"
+                + (f"; {n_edge} have art touching the screen edge." if n_edge else "."))
             device_folder = core.resolve_device(target, opts.get("custom"))["folder"]
             if bad:
                 say(f"  {len(bad)} image(s) could not be used and were skipped.")
         _finish_layout(work, name, total, size, series_dir, chapter_folder(name, series_title),
-                       layout, device_folder, cover)
+                       layout, device_folder, cover, series_title)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return total

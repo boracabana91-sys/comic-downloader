@@ -87,6 +87,9 @@ def main():
         print("slices: pages", len(pg2), w2)
         for i in range(6):
             assert len(w2[i]) == 1, f"panel {i} cut across pages: {w2}"
+        fitpage.LAST_AUDIT = (0, 0)
+        fitpage._audit(r.pages, W, H)
+        assert fitpage.LAST_AUDIT == (len(r.pages), 0), fitpage.LAST_AUDIT
 
         # normal (book-shaped) page still fitted whole
         Image.new("RGB", (900, 1300), (10, 10, 10)).save(os.path.join(d, "book.png"))

@@ -122,6 +122,24 @@ def main():
         assert sorted(os.listdir(os.path.join(sd, "Chapter 001"))) == [
             "001.png", "002.png", "003.png", "Demo Comic - Chapter 001.pdf"]
 
+        # --- Layout C: every EPUB of the title in ONE folder, the rest stays in the chapter folder ---
+        optsC = dict(opts, layout="central")
+        resC = series.run_series("Demo Comic", info["chapters"][:2], d, optsC, say=logs.append, pause=0)
+        assert len(resC["done"]) == 2, resC
+        ed = os.path.join(sd, "Demo Comic EPUB")
+        assert sorted(os.listdir(ed)) == ["Demo Comic EPUB Chapter 001.epub",
+                                          "Demo Comic EPUB Chapter 002.epub"], os.listdir(ed)
+        assert sorted(os.listdir(os.path.join(sd, "Chapter 001"))) == [
+            "001.png", "002.png", "003.png", "Demo Comic - Chapter 001.cbz"]
+        # a later batch of chapters goes into the SAME epub folder
+        resC2 = series.run_series("Demo Comic", info["chapters"][2:], d, optsC, say=logs.append, pause=0)
+        assert len(resC2["done"]) == 1, resC2
+        assert len(os.listdir(ed)) == 3, os.listdir(ed)
+        assert any("Snug-fit check" in m for m in logs)
+        assert all(series.is_current(r) for r in series.load_state(sd)["done"].values())
+        # state written by an older engine counts as out of date
+        assert not series.is_current({"sig": "{\"layout\": \"one\"}"})
+
         # --- Sample 2: pictures in Pages/, files in parts of 2 pages, all inside the chapter folder ---
         opts3 = dict(opts, layout="parts")
         res = series.run_series("Demo Comic", info["chapters"], d, opts3, say=logs.append, pause=0)

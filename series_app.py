@@ -101,7 +101,7 @@ class SeriesApp:
         srow.pack(fill="x", padx=14, pady=(4, 0))
         ttk.Button(srow, text="Select all", command=self.sel_all).pack(side="left")
         ttk.Button(srow, text="Select none", command=self.sel_none).pack(side="left", padx=6)
-        ttk.Button(srow, text="Only new ones", command=self.sel_new).pack(side="left")
+        ttk.Button(srow, text="New + out-of-date", command=self.sel_new).pack(side="left")
         ttk.Label(srow, text="  (click a chapter; Shift-click for a range; Cmd/Ctrl-click to add)",
                   foreground="#555").pack(side="left")
 
@@ -148,14 +148,13 @@ class SeriesApp:
                         variable=self.layout, command=self.update_preview).pack(side="left", padx=(8, 0))
         ttk.Radiobutton(lay, text="Sample 2: files in parts of N pages", value="parts",
                         variable=self.layout, command=self.update_preview).pack(side="left", padx=(8, 0))
+        ttk.Radiobutton(lay, text="Layout C: all EPUBs in one folder", value="central",
+                        variable=self.layout, command=self.update_preview).pack(side="left", padx=(8, 0))
         fitrow = ttk.Frame(root)
         fitrow.pack(fill="x", padx=14, pady=(6, 0))
-        ttk.Label(fitrow, text="Page fit:").pack(side="left")
-        self.fit = tk.StringVar(value=series.load_settings(settings_path).get("fit", "new"))
-        ttk.Radiobutton(fitrow, text="New snug fit (test): whole scenes, not zoomed", value="new",
-                        variable=self.fit, command=self.remember_fit).pack(side="left", padx=(8, 0))
-        ttk.Radiobutton(fitrow, text="Previous (v4)", value="old",
-                        variable=self.fit, command=self.remember_fit).pack(side="left", padx=(8, 0))
+        self.fit = tk.StringVar(value="new")   # snug fit is always on
+        ttk.Label(fitrow, text="Page fit: snug fit, always on (whole scenes, not zoomed, "
+                               "checked after every chapter)").pack(side="left")
         self.preview = tk.Label(root, justify="left", anchor="w", font=("Menlo", 11),
                                 relief="groove", borderwidth=1, padx=8, pady=4)
         self.preview.pack(fill="x", padx=14, pady=(4, 0))
@@ -262,11 +261,6 @@ class SeriesApp:
         except Exception:
             pass
 
-    def remember_fit(self):
-        data = series.load_settings(self.settings_path)
-        data["fit"] = self.fit.get()
-        series.save_settings(data, self.settings_path)
-
     def on_close(self):
         self.save_geometry()
         self.root.destroy()
@@ -341,7 +335,7 @@ class SeriesApp:
             size = 5
         name = core.clean_title(self.sname.get(), "") or "Series name"
         lay = self.layout.get()
-        self.size_spin.config(state="disabled" if lay == "one" else "normal")
+        self.size_spin.config(state="disabled" if lay in series.PAGES_IN_FOLDER else "normal")
         self.preview.config(text=series.layout_preview(lay, name, ext, self.epub.get() == "Yes", size))
 
     def update_custom(self):
@@ -402,7 +396,7 @@ class SeriesApp:
                                                core.clean_title(self.sname.get(), "Series")))
         self.lb.selection_clear(0, "end")
         for i, u in enumerate(self.chapters):
-            if u not in state["done"]:
+            if u not in state["done"] or not series.is_current(state["done"][u]):
                 self.lb.selection_set(i)
         self.update_count()
 
