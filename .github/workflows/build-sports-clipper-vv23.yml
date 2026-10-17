@@ -1,0 +1,70 @@
+name: Build Sports Clipper vv23 (Mac)
+
+# Separate from the older Sports Clipper builds: this only builds the sports-clipper-vv23 folder and
+# publishes its own release, so the older releases are never touched.
+on:
+  push:
+    branches: [sports-clipper-vv23]
+    paths: ["sports-clipper-vv23/**", ".github/workflows/build-sports-clipper-vv23.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: sports-clipper-vv23
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tools
+        run: python -m pip install --upgrade pip pyinstaller -r requirements.txt
+      - name: Self-tests
+        run: |
+          set +e
+          python -m unittest discover -s tests > ../test-out.txt 2>&1
+          rc=$?
+          cat ../test-out.txt
+          if [ $rc -ne 0 ]; then
+            MSG="$(grep -v '^$' ../test-out.txt | tail -40 | cut -c1-300 | awk '{printf "%s%%0A", $0}')"
+            echo "::error title=self-tests failed::${MSG}"
+          fi
+          exit $rc
+      - name: Build Mac app
+        run: |
+          pyinstaller --windowed --collect-data certifi --collect-all imageio_ffmpeg --collect-data cv2 --add-data "sportsclipper/fonts:sportsclipper/fonts" --add-data "sportsclipper/models:sportsclipper/models" --add-data "players:players" --collect-all yt_dlp --collect-all googleapiclient --collect-all google_auth_oauthlib --collect-all tkinterdnd2 --name SportsClipper sports_clipper_app.py
+          dist/SportsClipper.app/Contents/MacOS/SportsClipper --selftest selftest.txt || true
+          echo "Built app self-test: $(cat selftest.txt)"
+          grep -qx OK selftest.txt
+          ditto -c -k --sequesterRsrc --keepParent dist/SportsClipper.app SportsClipper-Mac.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SportsClipper-vv23
+          path: sports-clipper-vv23/SportsClipper-Mac.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SportsClipper-vv23
+          path: files
+      - uses: actions/checkout@v4
+        with:
+          path: src
+      - name: Publish download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="sports-clipper-$(tr -d '[:space:]' < src/sports-clipper-vv23/VERSION)"
+          gh release delete "$V" --repo "${{ github.repository }}" --cleanup-tag --yes || true
+          gh release create "$V" files/SportsClipper-Mac.zip \
+            --repo "${{ github.repository }}" --target "${{ github.sha }}" \
+            --title "Sports Clipper $(tr -d '[:space:]' < src/sports-clipper-vv23/VERSION)" \
+            --notes "Sports Clipper vv23 - fixes the false \"channel is not in your list\" error on Reclip: a video now counts as yours when its channel id, channel name or the list it came from is in your channels; a video from an unknown channel asks to add it in one click; adding a channel is the permission statement (box starts ticked). Mac: download SportsClipper-Mac.zip (steps in sports-clipper-vv23/README.md)."
