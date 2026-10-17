@@ -12,7 +12,7 @@ from sportsclipper import config, pipeline, sources, wake  # noqa: E402
 
 
 def vid(i):
-    return sources.Video(f"id{i}", f"Game {i}", datetime(2026, 10, 17, 10 - i, tzinfo=timezone.utc))
+    return sources.Video(f"id{i}", f"Nuggets vs Heat FULL GAME HIGHLIGHTS {i}", datetime(2026, 10, 17, 10 - i, tzinfo=timezone.utc))
 
 
 def make(cfg_extra, logs):
@@ -52,7 +52,7 @@ class Scan(unittest.TestCase):
         pl.db.set("B", "base", "x", "baseline")
         done = []
         with mock.patch.object(sources, "list_videos", side_effect=lambda s: [vid(i) for i in range(6)]), \
-             mock.patch.object(pl, "process", side_effect=lambda s, v, u=True: done.append((s.name, v.id))):
+             mock.patch.object(pl, "process", side_effect=lambda s, v, u=True, enforce=False: done.append((s.name, v.id)) or {}):
             n = pl.scan_once()
         self.assertEqual(n, 3)
         self.assertEqual(done, [("A", "id2"), ("A", "id1"), ("A", "id0")])    # newest three, oldest of them first
