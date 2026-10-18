@@ -50,6 +50,9 @@ def test_where_am_i():
 
 
 def test_mac_update_from_zip():
+    if os.name == "nt":
+        print("   (skipped on Windows: a Mac test; the Mac build tests the real program)")
+        return
     with tempfile.TemporaryDirectory() as d:
         apps = os.path.join(d, "Applications")
         os.makedirs(apps)
