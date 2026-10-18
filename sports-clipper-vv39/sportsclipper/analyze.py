@@ -462,6 +462,362 @@ def best_plays(segs: list, rz: np.ndarray, mz: np.ndarray, hype: np.ndarray, mot
     return out
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+# vv39: Best Clips cut into PLAY UNITS. A unit only ends where the play is over: the whistle (clock stops), the broadcaster's
+# edit to another possession (the clock jumps), a cutaway/replay, or the end of the game. A camera cut while the clock keeps
+# running is an angle switch inside the play, never an end. Long running stretches are split only in a calm walk-up (lull).
+# ---------------------------------------------------------------------------------------------------------------------
+CLK_U, CLK_F, CLK_R, CLK_J = 0, 1, 2, 3      # vv39: per-second clock state: unreadable, frozen, running, jumped (an edit)
+_CONT = _RESULT = _REPLAY = None
+
+
+def _cue_res():
+    import re
+    global _CONT, _RESULT, _REPLAY
+    if _CONT is None:
+        # vv39: words that mean the play is still going (a block, a miss, a loose ball ...)
+        _CONT = re.compile(r"\b(?:block(?:ed|s)?|swat(?:ted|s)?|reject(?:ed|s)?|sent (?:it )?back|miss(?:es|ed)?|no good|"
+                           r"off the (?:rim|iron|mark|glass)|rebound(?:s|ed)?|loose ball|tip(?:s|ped)? (?:it|out|in)|"
+                           r"deflect(?:ed|ion|s)?|steal|stolen|picks? (?:his|the) pocket|kicks? it out|second chance|scramble|"
+                           r"still alive|saves? it)\b", re.I)
+        # vv39: words that mean the play is over (made, fouled, buzzer)
+        _RESULT = re.compile(r"\b(?:good|count it|for three|from downtown|slam(?:s|med)?|jam(?:s|med)?|dunk(?:s|ed)?|"
+                             r"throws? it down|puts? it back|putback|and[- ]one|and the foul|finish(?:es|ed)?|lays? it in|"
+                             r"scor(?:e|es|ed)|buzzer|at the horn|beats? the buzzer)\b", re.I)
+        _REPLAY = re.compile(r"\b(?:another look|look at (?:that|this|it) again|replay|watch (?:that|this|it) again|"
+                             r"slow (?:it down|motion)|from (?:this|another) angle|one more time)\b", re.I)
+    return _CONT, _RESULT, _REPLAY
+
+
+def cue_events(cues: list, n: int) -> dict:
+    """vv39: per second, True where the commentators say the play goes on ("cont"), is over ("res") or show a replay ("rep")."""
+    cont_re, res_re, rep_re = _cue_res()
+    out = {k: np.zeros(max(n, 1), bool) for k in ("cont", "res", "rep")}
+    for t, text in cues or []:
+        i = int(t)
+        if 0 <= i < n and text:
+            out["cont"][i] |= bool(cont_re.search(text))
+            out["res"][i] |= bool(res_re.search(text))
+            out["rep"][i] |= bool(rep_re.search(text))
+    return out
+
+
+def clock_states(clk: np.ndarray, secs: int) -> np.ndarray:
+    """vv39: per-second clock state (CLK_U/F/R/J) from the 2 fps clock crop. J = the digits changed far more than a normal
+    tick (several digits at once): the broadcaster spliced to another moment of the game. Compared with the ticks around it,
+    so the tenths shown in the last minute are not taken for jumps."""
+    st = np.zeros(secs, np.int8)
+    if secs <= 0 or len(clk) < 3:
+        return st
+    M = clk > 150
+    white = M.mean(1)
+    dark = (clk < 70).mean(1)
+    present = (white > 0.03) & (white < 0.45) & (dark > 0.25)
+    n = len(clk)
+    change = np.zeros(n)
+    change[:n - 2] = (M[:-2] ^ M[2:]).mean(1)
+    mag = np.zeros(secs); pres = np.zeros(secs, bool)
+    for s in range(secs):
+        a, b = s * CLOCK_FPS, min(n, s * CLOCK_FPS + CLOCK_FPS)
+        if a >= n:
+            break
+        mag[s] = change[a:b].max(); pres[s] = present[a:b].mean() > 0.5
+    tick = mag > 0.02
+    st[:] = np.where(pres, np.where(tick, CLK_R, CLK_F), CLK_U)
+    run = np.where(st == CLK_R)[0]
+    for s in run:
+        w = mag[max(0, s - 10):s + 11][st[max(0, s - 10):s + 11] == CLK_R]
+        if len(w) >= 8 and mag[s] >= max(2.5 * float(np.median(w)), 0.06):
+            st[s] = CLK_J
+    return st
+
+
+def _fit(x, n, fill=0.0):
+    x = np.asarray(x if x is not None else [], dtype=np.float64)
+    return x[:n] if len(x) >= n else np.r_[x, np.full(n - len(x), fill)]
+
+
+def _last_true(mask: np.ndarray) -> np.ndarray:
+    """For every second, the latest second <= it where mask is True (-1e9 if none)."""
+    idx = np.where(mask, np.arange(len(mask)), -10 ** 9)
+    return np.maximum.accumulate(idx) if len(idx) else idx
+
+
+def _next_true(mask: np.ndarray) -> np.ndarray:
+    """For every second, the first second >= it where mask is True (+1e9 if none)."""
+    idx = np.where(mask, np.arange(len(mask)), 10 ** 9)
+    return np.minimum.accumulate(idx[::-1])[::-1] if len(idx) else idx
+
+
+def play_units(motion, rz, n: int | None = None, cues: list | None = None, clock=None, bug=None, start_s: float = 0.0,
+               end_s: float | None = None, dead=None, max_play_s: float = 45.0, hard_max_s: float = 60.0,
+               min_play_s: float = 8.0) -> dict:
+    """vv39: cut the game into whole PLAYS. Returns {"units": [{"a", "b", "end"}...], "replays": [[a, b]...], "readable"}.
+    motion = per-second picture change (camera cuts are 1 s spikes), rz = crowd loudness z-score, clock = CLK_* per second
+    (None = the clock could not be read at all), bug = score bug on screen per second (None = unknown), dead = seconds never
+    used (stats card). "end" says why a unit ends: dead (whistle / cutaway / replay / game end), edit, lull or forced."""
+    n = int(n if n is not None else len(motion))
+    if n <= 0:
+        return {"units": [], "replays": [], "readable": clock is not None}
+    motion = _fit(motion, n); rz = _fit(rz, n)
+    readable = clock is not None
+    st = _fit(clock, n, CLK_U).astype(int) if readable else np.full(n, CLK_U)
+    lo_t = max(0, int(np.ceil(start_s - 1e-6)))
+    hi_t = n if end_s is None else max(0, min(n, int(np.ceil(end_s - 1e-6))))
+    ev = cue_events(cues, n)
+    hold = 4 if readable else 6              # vv39: after "blocked" / "misses" the play goes on at least this long
+    lead = 5 if readable else 6              # vv39: a play is shown from at least this long before its first big moment
+    lull_min = 3 if readable else 4
+
+    # camera cuts: a 1 s spike, 3x the local level and 2x both neighbours
+    pad = np.pad(motion, 10, mode="edge")
+    locmed = np.median(np.lib.stride_tricks.sliding_window_view(pad, 21), axis=1)
+    nb = np.maximum(np.r_[0.0, motion[:-1]], np.r_[motion[1:], 0.0])
+    cut = (motion >= 3 * locmed) & (motion >= 2 * nb) & (motion > 0)
+    cut_idx = np.where(cut)[0]
+
+    run_clock = (st == CLK_R) | (st == CLK_J)
+    if readable:                             # between running seconds: a 1 s frozen read, or up to 4 s with no scoreboard
+        for a, b in _runs(~run_clock):       # (a misread or a short insert) is still running clock; 2 s+ frozen = a dead ball
+            if a > 0 and b < n and run_clock[a - 1] and run_clock[b] and (b - a <= 1 or (b - a <= 4 and (st[a:b] == CLK_U).all())):
+                run_clock[a:b] = True
+    ref = (run_clock if readable else np.ones(n, bool)) & ~cut
+    base = float(np.median(motion[ref])) if ref.any() else 0.0
+    base = base if base > 1e-6 else 1.0
+    low = (motion < 0.5 * base) & ~cut
+
+    blocked = np.zeros(n, bool)
+    blocked[:lo_t] = True; blocked[hi_t:] = True
+    if dead is not None:
+        blocked |= _fit(dead, n).astype(bool)
+    bugN = np.zeros(n, bool)
+    if bug is not None:
+        bb = _fit(bug, n, 1.0).astype(bool)
+        if hi_t > lo_t and bb[lo_t:hi_t].mean() >= 0.6:      # only trust the bug when it is on screen most of the game
+            bugN = ~bb
+    replay_like = bugN | ev["rep"] | (st == CLK_U if readable else np.zeros(n, bool))
+
+    def shot_of(t):
+        k = np.searchsorted(cut_idx, t, side="right")
+        a = int(cut_idx[k - 1]) if k > 0 else 0
+        b = int(cut_idx[k]) if k < len(cut_idx) else n
+        return a, b
+
+    unplay = blocked | bugN
+    if not readable:
+        # cutaways (crowd, bench, close-ups): >= 2 s of low motion right next to a cut, or a shot that is mostly low motion
+        for a, b in _runs(low):
+            if b - a < 2:
+                continue
+            s0 = a - 1 if a - 1 >= 0 and cut[a - 1] else None
+            e0 = b if b < n and cut[b] else None
+            if s0 is None and e0 is None:
+                sa, sb = shot_of(a)
+                if (b - a) < 0.5 * (sb - sa):
+                    continue
+                s0, e0 = sa, sb
+            unplay[(s0 if s0 is not None else a):(e0 if e0 is not None else b)] = True
+        for t in np.where(ev["rep"])[0]:                     # "let's take another look": that shot is a replay
+            sa, sb = shot_of(int(t))
+            if sb - sa <= 20:
+                unplay[sa:sb] = True
+    play = ~unplay & (run_clock if readable else np.ones(n, bool))
+
+    last_cont = _last_true(ev["cont"])
+    peaks = ev["res"] | (rz >= 2.0)
+    last_peak = _last_true(peaks)
+    last_word = _last_true(ev["cont"] | ev["res"])
+    big = ev["cont"] | ev["res"] | (rz >= 1.0)
+    next_big = _next_true(big)
+
+    def ok_end(b):                           # H2 + H3: not right after "blocked"/"misses", not while the crowd still roars
+        if b <= 0 or b >= n:
+            return True
+        if b - last_cont[min(b, n - 1)] <= hold:
+            return False
+        p = last_peak[b - 1]
+        if b - p < 2 or (rz[b - 1] > 1.0 and b - p < 3):
+            return False
+        return True
+
+    def ok_start(b):                         # the next play's first big moment is at least `lead` seconds away
+        return b >= n or next_big[b] - b >= lead
+
+    lull = play & (motion <= 1.5 * base) & ~cut & (rz <= 1.0) & (np.arange(n) - last_word > 6)
+
+    # stretches of play, bounded by whistles / cutaways / replays / the game's start and end
+    stretches: list = []
+    replays: list = []
+    prev_end = float(lo_t)
+    for r, f in _runs(play):
+        if readable:
+            s = max(r - 2, lo_t)
+            prior = cut_idx[(cut_idx > r - 2) & (cut_idx <= r)]
+            if len(prior):
+                s = max(s, int(prior[-1]))   # never show the frames before a cut (the end of a replay / cutaway)
+            if f >= hi_t:
+                e = float(hi_t)
+            else:
+                w0, w1 = max(0, f - 2), min(n, f + 3)
+                tail = 3 if (ev["cont"][w0:w1].any() or ev["res"][w0:w1].any() or rz[w0:w1].max() >= 1.0) else 2
+                e = f + tail                 # vv39: the whistle + 2-3 s so the result shows
+                after = cut_idx[(cut_idx >= f + 1) & (cut_idx < e)]
+                if len(after):
+                    e = int(after[0])        # ... but not into the replay / close-up that follows
+                gone = np.where((st[f:int(e)] == CLK_U) | bugN[f:int(e)] | blocked[f:int(e)])[0]
+                if len(gone):
+                    e = f + int(gone[0])
+                e = float(max(e, f))
+        else:
+            s, e = r, float(f)
+        s = float(max(s, prev_end))
+        if e - s <= 0:
+            continue
+        stretches.append([s, e])
+        prev_end = e
+        if e < hi_t:                         # what follows the play, if it looks like a replay of it
+            k = int(e)
+            j = k
+            while j < min(n, k + 15) and not play[j]:
+                j += 1
+            if j > k and replay_like[k:j].mean() >= 0.5:
+                replays.append([float(k), float(j)])
+    # a 4 s+ jump-ball play is kept even when shorter than a normal play (every clip opens at the jump ball)
+    keep_first = stretches and stretches[0][0] <= lo_t + 3 and lo_t > 0 and stretches[0][1] - stretches[0][0] >= 4
+
+    def lull_cands(S, E):
+        out = []
+        mid = (S + E) / 2
+        for a, b in _runs(lull[S:E]):
+            a += S; b += S
+            if b - a < lull_min:
+                continue
+            q0 = 0.0 + min(1.5, max(0.0, (1.5 * base - float(motion[a:b].mean())) / base)) + min(1.0, max(0.0, -float(rz[a:b].mean())))
+            pts = [(b - 1, 2.0 + q0), ] + ([(b, 2.5 + q0)] if b < n and cut[b] else [])        # S3: where the walk-up ends
+            pts = [(t, q + (1.5 if 0 <= next_big[t] - lead - t <= 4 else 0.0)) for t, q in pts]  # ... right before the next play
+            pts += [(t, 1.5 + q0 - 0.05 * min(t - a - 2, 6)) for t in range(a + 2, b)]          # E5: lull start + 2 (or later)
+            for t, q in pts:
+                if S + min_play_s <= t <= E - min_play_s and ok_end(t) and ok_start(t):
+                    out.append((q - 0.04 * abs(t - mid), t))
+        return out
+
+    def split_long(S, E, end_kind):
+        if E - S <= max_play_s:
+            return [[S, E, end_kind]]
+        c = lull_cands(S, E)
+        if c:
+            t = max(c)[1]
+            return split_long(S, t, "lull") + split_long(t, E, end_kind)
+        if E - S <= hard_max_s:
+            return [[S, E, end_kind]]
+        mid = (S + E) / 2
+        opts = [(float(motion[max(0, t - 1):t + 1].mean()) + 0.02 * abs(t - mid), t) for t in range(S + int(min_play_s), E - int(min_play_s) + 1)
+                if not cut[t] and ok_end(t)]
+        if not opts:
+            return [[S, E, end_kind]]
+        t = min(opts)[1]
+        return split_long(S, t, "forced") + split_long(t, E, end_kind)
+
+    units = []
+    for si, (s, e) in enumerate(stretches):
+        if e - s < min_play_s and not (si == 0 and keep_first):
+            continue
+        S, E = int(np.floor(s)), int(np.ceil(e))
+        # mandatory ends inside a stretch: the broadcaster's edit (clock jump at a cut); with no clock, a cut 2-4 s after "good!"
+        marks = []
+        for c in cut_idx[(cut_idx > S) & (cut_idx < E)]:
+            c = int(c)
+            if readable:
+                if (st[max(0, c - 1):c + 2] == CLK_J).any() and ok_end(c):
+                    marks.append(c)
+            elif ev["res"][max(0, c - 4):max(0, c - 1)].any() and rz[c - 1] <= 1.0 and ok_end(c):
+                marks.append(c)
+        pieces, a = [], S
+        for c in marks + [E]:
+            pieces.append([a, c, "edit" if c != E else "dead"]); a = c
+        for k, (a, b, kind) in enumerate(pieces):
+            if b - a < min_play_s and not (si == 0 and keep_first and k == 0):
+                continue
+            for u in split_long(a, b, kind):
+                units.append({"a": float(max(u[0], s)), "b": float(min(u[1], e)), "end": u[2]})
+    return {"units": units, "replays": replays, "readable": readable, "base": base}
+
+
+def best_play_units(units: list, motion, rz, mz, hype, max_s: float, start_s: float = 0.0, end_s: float | None = None,
+                    share: float = 0.5, end_known: bool = False, replays: list | None = None, keep_replays: bool = False,
+                    clock=None) -> tuple:
+    """vv39: pick whole play units (never a slice of one), best first, until about `share` of the playing time.
+    The jump-ball unit opens the clip and, when the game end is known, the final unit closes it. Units that are mostly crowd /
+    bench / interview shots are left out. A unit that had to be split with no sign of the play's end takes the next unit too.
+    Returns (segments, info)."""
+    info = {"units": len(units), "picked": 0, "appended": 0}
+    if not units:
+        return [], info
+    n = max(len(motion), int(max(u["b"] for u in units)) + 1)
+    z = lambda x: (x - x.mean()) / (x.std() + 1e-6) if len(x) and x.std() > 0 else np.zeros(len(x))
+    sc = np.zeros(n, np.float32)
+    for arr, w in ((rz, 0.5), (mz, 0.2), (z(np.asarray(hype, np.float32)), 0.3)):
+        m = min(n, len(arr))
+        sc[:m] += w * np.asarray(arr[:m], np.float32)
+    live = np.ones(n, bool)
+    if clock is not None:                     # crowd noise while the clock is stopped (music, timeouts) is not scored
+        c = _fit(clock, n, CLK_U).astype(int)
+        live = (c == CLK_R) | (c == CLK_J)
+    motion = _fit(motion, n)
+    L = [u["b"] - u["a"] for u in units]
+    vals, mots = [], []
+    for u in units:
+        a, b = int(u["a"]), max(int(u["a"]) + 1, int(np.ceil(u["b"])))
+        m = live[a:b]
+        vals.append(float(sc[a:b][m].max()) if m.any() else float(sc[a:b].max()))
+        mots.append(float(motion[a:b].mean()))
+    floor = 0.5 * float(np.median(mots))
+    calm = [mots[i] < floor for i in range(len(units))]
+    forced = {0}
+    last = len(units) - 1
+    if end_known and end_s is not None and units[last]["b"] >= end_s - 120 and (not calm[last] or units[last]["b"] >= end_s - 3):
+        forced.add(last)                      # the final play always closes the clip
+    eligible = sum(L[i] for i in range(len(units)) if not calm[i])
+    target = min(float(max_s), max(share, 0.05) * max(eligible, 1.0))
+
+    def group(i):
+        g = [i]
+        if units[i]["end"] == "forced" and i + 1 < len(units) and abs(units[i + 1]["a"] - units[i]["b"]) < 0.01:
+            g.append(i + 1)                   # no sign the play ended: keep the next unit too
+        return g
+
+    picked = set()
+    for i in sorted(forced):
+        picked.update(group(i))
+    total = sum(L[i] for i in picked)
+    for v, i in sorted(((vals[i], i) for i in range(len(units))), reverse=True):
+        if total >= target:
+            break
+        if i in picked or calm[i]:
+            continue
+        g = [j for j in group(i) if j not in picked]
+        add = sum(L[j] for j in g)
+        if total + add > max_s * 1.02:
+            continue
+        picked.update(g); total += add
+        info["appended"] += len(g) - 1
+    info["picked"] = len(picked)
+    out: list = []
+    for i in sorted(picked):
+        a, b = units[i]["a"], units[i]["b"]
+        if keep_replays:
+            for ra, rb in replays or []:
+                if abs(ra - b) < 1.01 and (end_s is None or rb <= end_s):
+                    b = rb
+        if out and a <= out[-1][1] + 0.01:
+            out[-1][1] = max(out[-1][1], b)
+        else:
+            out.append([a, b])
+    if end_known and end_s is not None:
+        out = clamp_to_end(out, end_s, True)
+    return out, info
+
+
 def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
     progress.set("analysing the video")
     info = media.probe(path)
@@ -535,6 +891,7 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
         else:
             log("WARNING: could not find the jump ball (the scoreboard clock was not readable, or no running clock was seen) "
                 "- the clip is not shortened at the start")
+    card = np.zeros(secs, bool)
     try:                                                  # vv26: the channel's own 'GAMETIME HIGHLIGHTS' stats card is never kept
         card = gametime_card(thumbs)[:secs]
         cut = _cut_runs(live, np.r_[card, np.zeros(max(0, secs - len(card)), bool)])
@@ -586,9 +943,22 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
 
     if cfg.get("best_clips"):                           # vv24: Best Clips - the loudest moments, not the normal reclip
         hz = hype_track(cues or [], secs)
-        final = best_plays(segs, rz, mz, hz, motion, max_s, start_s, end_s, float(cfg.get("best_clips_share", 0.5)))   # vv37: whole plays; always opens at the jump ball
-        if start_s > 0 and live[int(start_s):int(start_s) + 6].any() and (not final or final[0][0] > start_s + 0.01):
-            final.insert(0, [start_s, min(start_s + 6.0, final[0][0] if final else start_s + 6.0, float(secs))])   # vv32: always opens at the jump ball
+        # vv39: whole PLAYS (play units), not the 6-30 s camera-cut chunks: a unit never ends while the clock keeps running
+        # (block -> recovery, miss -> rebound stay together); it ends at the whistle, an edit, a cutaway / replay or the game end.
+        # vv32: always opens at the jump ball (the jump-ball play unit, not a 6 s fragment), and the final play closes it.
+        clock = clock_states(clk, secs) if clock_ok else None
+        bug = track["present"][:secs] if track is not None else None
+        pu = play_units(motion[:secs], rz[:secs], secs, cues, clock, bug, start_s, end_s if end_known else None, card[:secs],
+                        float(cfg.get("best_clips_play_s", 45)), float(cfg.get("best_clips_play_max_s", 60)))
+        final, binfo = best_play_units(pu["units"], motion, rz, mz, hz, max_s, start_s, end_s, float(cfg.get("best_clips_share", 0.5)),
+                                       end_known, pu["replays"], bool(cfg.get("best_clips_replays", False)), clock)
+        if not final:                                   # nothing usable as play units: the vv37 chunks
+            final = best_plays(segs, rz, mz, hz, motion, max_s, start_s, end_s, float(cfg.get("best_clips_share", 0.5)))
+        log(f"Best Clips: {len(pu['units'])} whole plays found ({'scoreboard clock' if clock_ok else 'NO readable clock: camera cuts, motion and crowd only'})"
+            + (f"; {binfo['appended']} play(s) kept together with the next one (no clear end)" if binfo.get("appended") else ""))
+        game_end_s = end_s
+        if final and end_known and final[-1][1] < end_s - 0.75:
+            end_s = final[-1][1]                        # vv39: the final play ends the clip: no extra tail piece of dead time after it
         final, added = ensure_ending(final, end_s, end_known)
         if added:
             log(f"the clip is closed with the last {added:.0f}s up to the final score (Best Clips always ends at the finish)")
@@ -596,7 +966,7 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
         log(f"Best Clips: {total:.0f}s source -> {len(final)} plays, {kept_s:.0f}s ({kept_s / 60:.1f} min; limit {max_s / 60:.0f} min)"
             + (" - picked by crowd noise, motion and the commentators' words" if cues else " - picked by crowd noise and motion (no captions)"))
         return {"info": info, "segments": final, "kept_s": kept_s, "source_s": total, "after_dead_s": after_dead,
-                "game_end_s": end_s, "interview_cut_s": interview_cut, "start_s": start_s}
+                "game_end_s": game_end_s, "interview_cut_s": interview_cut, "start_s": start_s}
     kept = list(range(len(segs)))
     cur = sum(b - a for a, b in segs)
     if cur > max_s:                                     # too long: drop whole stretches down to your maximum

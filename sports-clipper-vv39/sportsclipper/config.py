@@ -46,6 +46,9 @@ DEFAULTS = {
     "cookies_file": "",                   # vv33: or a cookies.txt file
     "zoom_pct": 110,                      # vv38: every reclip is zoomed to this % of the original (100 = no zoom): focus on the players
     "best_clips_share": 0.5,              # vv37: Best Clips keeps about this share of the playing time (whole plays, best first)
+    "best_clips_play_s": 45,              # vv39: Best Clips: a long running stretch is split (in a calm walk-up only) above this many seconds
+    "best_clips_play_max_s": 60,          # vv39: ... and kept whole up to this when there is no calm moment to split at
+    "best_clips_replays": False,          # vv39: Best Clips: keep the replay that follows a kept play (off: replays are left out)
     "tip_lead_s": 1,                      # vv32: the clip starts this many seconds before the jump ball
     "start_at_tipoff": True,              # vv14: the clip starts at the jump ball (vv19: ticked by default; untick to keep the opening)
     "player_choice": {},                  # {"DEN": "Jamal Murray"}: the player picked in the window's drop-down for a team
