@@ -60,7 +60,6 @@ def main():
         for i in (0, 1, 2, 3, 5):
             assert len(where[i]) == 1, f"panel {i} must be whole on ONE page: {where}"
         assert len(where[4]) >= 2, "the 4-screen panel is split so it stays readable"
-        assert where[0] == where[1], "short scenes share a screen instead of one each"
         # never zoomed in: art is at most the width inside the frame
         m = max(4, round(W * fitpage.MARGIN))
         for pg in pages:
@@ -108,6 +107,21 @@ def main():
         print("narrow art width on page", art_w, "natural", round(natural))
         assert art_w > natural * 1.3, "narrow art must be enlarged, not left small"
         assert art_w <= W - 2 * max(4, round(W * fitpage.MARGIN)) + 2
+
+        # a page-shaped picture with a narrow art column and wide empty margins (the 0226 case):
+        # the art must fill the screen height, whole, not sit small in the middle
+        pg = Image.new("RGB", (800, 1000), (255, 255, 255))
+        pg.paste(panel(560, COLORS[2], 330), (235, 220))
+        pg.save(os.path.join(d, "pg.png"))
+        o4 = os.path.join(d, "out4")
+        os.makedirs(o4)
+        r4 = fitpage.FitPager(o4, W, H, False)
+        r4.add(os.path.join(d, "pg.png"))
+        r4.flush()
+        g4 = np.asarray(Image.open(r4.pages[0]).convert("L"), dtype=np.int16)
+        rows4 = np.where((np.abs(g4 - 255) > 40).any(axis=1))[0]
+        print("page-shaped slice: art height fraction", round((rows4[-1] - rows4[0]) / H, 2))
+        assert (rows4[-1] - rows4[0]) / H > 0.85, "art must fill the screen height"
 
         # normal (book-shaped) page still fitted whole
         Image.new("RGB", (900, 1300), (10, 10, 10)).save(os.path.join(d, "book.png"))

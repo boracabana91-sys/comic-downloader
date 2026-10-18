@@ -21,7 +21,7 @@ import core
 import covers
 
 GAP = 24           # empty rows in a row that separate two scenes
-MAX_GROUP = 1.45   # several scenes may share a screen if they fit shrunk to ~69%
+MAX_GROUP = 1.0    # scenes share a screen only if they fit together at full size (no shrinking to squeeze)
 MIN_SCALE = 0.45   # one scene alone may be shrunk to 45%; a taller one is split
 MAX_UP = 2.2       # a scene with a narrow art column may be enlarged this much (never more)
 MARGIN = 0.025     # thin frame of background round the art, like a printed page
@@ -97,13 +97,17 @@ class FitPager:
     # ----- one screen -----
     @staticmethod
     def _art_cols(im):
-        """First and last column that holds real art (not just the plain strip background)."""
+        """First and last column that holds real art: anything that differs from the plain
+        strip background (taken from the left and right edges of the scene)."""
         import numpy as np
         a = np.asarray(im.convert("L"), dtype=np.float32)
-        cols = np.where(a.std(axis=0) >= core.QUIET)[0]
+        edge = np.concatenate([a[:, :4].ravel(), a[:, -4:].ravel()])
+        bg = float(np.median(edge))
+        cols = np.where((np.abs(a - bg) > 24).sum(axis=0) >= 3)[0]
         if len(cols) == 0:
             return 0, im.width
-        return int(cols[0]), int(cols[-1]) + 1
+        pad = max(2, im.width // 200)
+        return max(0, int(cols[0]) - pad), min(im.width, int(cols[-1]) + 1 + pad)
 
     def _compose(self, group):
         bg = self._bg()
@@ -201,10 +205,49 @@ class FitPager:
             self._scene(self.buf.crop((0, 0, self.buf.width, cut)))
             self.buf = self.buf.crop((0, cut, self.buf.width, self.buf.height))
 
+    @staticmethod
+    def _art_box(im):
+        """Box (l, t, r, b) round the real art: everything that differs from the plain
+        background seen at the picture's edges. None if the picture is (nearly) blank."""
+        import numpy as np
+        a = np.asarray(im.convert("L"), dtype=np.float32)
+        edge = np.concatenate([a[:4].ravel(), a[-4:].ravel(), a[:, :4].ravel(), a[:, -4:].ravel()])
+        bg = float(np.median(edge))
+        m = np.abs(a - bg) > 24
+        rows = np.where(m.sum(axis=1) >= 3)[0]
+        cols = np.where(m.sum(axis=0) >= 3)[0]
+        if len(rows) < 8 or len(cols) < 8:
+            return None
+        pad = max(2, im.width // 200)
+        return (max(0, int(cols[0]) - pad), max(0, int(rows[0]) - pad),
+                min(im.width, int(cols[-1]) + 1 + pad), min(im.height, int(rows[-1]) + 1 + pad))
+
+    def _fit_page(self, im):
+        """A normal-shaped picture: cut away the empty margins round the art, then show the
+        art as big as the screen allows, whole, on the page's own background colour (like
+        KCC's margin cropping). Full-bleed pages are fitted whole exactly as before."""
+        box = self._art_box(im)
+        if box is None or ((box[2] - box[0]) >= im.width * 0.97 and (box[3] - box[1]) >= im.height * 0.97):
+            return core._fit_single(im, self.w, self.h)
+        natural = min(self.w / im.width, self.h / im.height)
+        art = im.crop(box)
+        scale = min(natural * MAX_UP, self.cw / art.width, self.ch / art.height)
+        scale = max(scale, natural * 0.999) if scale >= natural else scale
+        import numpy as np
+        a = np.asarray(im.convert("RGB" if im.mode != "L" else "L"), dtype=np.float32)
+        edge = np.concatenate([a[:4].reshape(-1, *a.shape[2:]), a[-4:].reshape(-1, *a.shape[2:]),
+                               a[:, :4].reshape(-1, *a.shape[2:]), a[:, -4:].reshape(-1, *a.shape[2:])])
+        v = np.median(edge, axis=0)
+        bg = int(round(float(v))) if im.mode == "L" else tuple(int(round(x)) for x in v)
+        art = art.resize((max(1, round(art.width * scale)), max(1, round(art.height * scale))), Image.LANCZOS)
+        page = Image.new(im.mode, (self.w, self.h), bg)
+        page.paste(art, ((self.w - art.width) // 2, (self.h - art.height) // 2))
+        return page
+
     def _commit_hold(self):
         if self.hold is not None:
             h, self.hold = self.hold, None
-            self._save(core._fit_single(h, self.w, self.h))
+            self._save(self._fit_page(h))
 
     def flush(self):
         self._commit_hold()
