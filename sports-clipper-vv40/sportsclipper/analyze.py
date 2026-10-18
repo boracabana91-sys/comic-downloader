@@ -316,13 +316,30 @@ def _card_frames(th: np.ndarray, chunk: int = 1200):
         edge = np.abs(np.diff(f, axis=2)) > 20
         edges_left = edge[:, :, : int(w * 0.50) - 1].mean((1, 2))
         text_left2 = (left.std((1, 2)) > 8) & (edges_left > 0.02)
-        lay = dark & empty_right & (text_left | text_left2) & still     # vv40: and it stands still (not a moving graphic)
+        # vv40: and it stands still (not a moving graphic) - apart from one moving band of rows (a highlight bar moving down
+        # the table, a row sliding in), which the real card may have
+        lay = dark & empty_right & (text_left | text_left2) & (still | _still_but_band(f))
         rows = (edge.mean(2) > 0.04).mean(1)                         # share of picture rows that hold text-like detail
         cnd = dark & (edge.mean((1, 2)) >= 0.012) & (rows >= 0.15) & still
         k = s0 - a
         layout[s0:min(T, s0 + chunk)] = lay[k:k + chunk]
         cand[s0:min(T, s0 + chunk)] = cnd[k:k + chunk]
     return layout, cand
+
+
+def _still_but_band(f: np.ndarray, max_frac: float = 0.08, max_rows: int = 12) -> np.ndarray:
+    """vv40: per picture, True when the change to the picture before or after it is confined to ONE horizontal band of
+    at most `max_rows` rows (of 72) and at most `max_frac` of the pixels: a moving highlight row on a still table. A panel
+    sliding sideways, or live play, changes the picture over many rows."""
+    T = len(f)
+    if T < 2:
+        return np.ones(T, bool)
+    ch = np.abs(np.diff(f, axis=0)) > 20
+    frac = ch.mean((1, 2))
+    rows = ch.any(2)
+    span = np.array([(np.ptp(np.where(r)[0]) + 1) if r.any() else 0 for r in rows])
+    ok = (frac <= max_frac) & (span <= max_rows)
+    return np.r_[False, ok] | np.r_[ok, False]
 
 
 def _still(f: np.ndarray) -> np.ndarray:
@@ -336,17 +353,42 @@ def _still(f: np.ndarray) -> np.ndarray:
     return np.r_[False, same] | np.r_[same, False]
 
 
-def end_card(card: np.ndarray, secs: int, live_after=None, min_s: int = 3):
-    """vv40: the second the closing stats / text card starts (the usable video ends there), or None. A card counts as the
-    closing one when it starts in the last quarter of the video and either little video is left after it (<= 2 min, or 10%)
-    or the game clock hardly runs after it (live_after = per-second running clock; < 30 s of it after the card)."""
+def end_card(card: np.ndarray, secs: int, live_after=None, min_s: int = 3, bug=None, play_like=None):
+    """vv40: the second the closing stats / text card starts (the usable video ends there), or None. The card must start in
+    the last quarter of the video, and the game must really be over after it:
+      * readable clock (live_after = per-second running clock): little video is left (<= 2 min, or 10%) AND the clock runs
+        less than 30 s after the card (a stats graphic at 4:00 left in the 4th quarter is followed by running clock);
+      * no clock, score bug known (bug = per second on screen): the bug is (almost) never back after the card;
+      * neither: little video is left AND less than 15 s after the card looks like play (play_like, when given)."""
     for a, b in _runs(np.asarray(card[:secs], bool)):
         if b - a < min_s or a < 0.75 * secs:
             continue
-        left = secs - a
-        if left <= max(120.0, 0.10 * secs) or (live_after is not None and int(np.sum(live_after[b:secs])) < 30):
+        little_left = secs - a <= max(120.0, 0.10 * secs)
+        if live_after is not None:
+            over = little_left and int(np.sum(live_after[b:secs])) < 30
+        elif bug is not None:
+            after = np.asarray(bug[b:secs], bool)
+            over = len(after) == 0 or after.mean() < 0.2
+        else:
+            over = little_left and (play_like is None or int(np.sum(play_like[b:secs])) < 15)
+        if over:
             return float(a)
     return None
+
+
+def _minus_mask(segs: list, mask: np.ndarray) -> list:
+    """vv40: the segments with every second where `mask` is True taken out (a segment may split in two)."""
+    out = []
+    for a, b in segs:
+        t = a
+        for r0, r1 in _runs(np.asarray(mask[int(a):int(np.ceil(b))], bool)):
+            x, y = int(a) + r0, int(a) + r1
+            if x > t:
+                out.append([t, float(x)])
+            t = max(t, float(y))
+        if b > t:
+            out.append([t, b])
+    return out
 
 
 def _cut_runs(live: np.ndarray, mask: np.ndarray, min_s: int = 3) -> int:
@@ -770,6 +812,9 @@ def play_units(motion, rz, n: int | None = None, cues: list | None = None, clock
             prior = cut_idx[(cut_idx > r - 2) & (cut_idx <= r)]
             if len(prior):
                 s = max(s, int(prior[-1]))   # never show the frames before a cut (the end of a replay / cutaway)
+            lead_blk = np.where(blocked[max(0, r - 2):r])[0]
+            if len(lead_blk):
+                s = max(s, max(0, r - 2) + int(lead_blk[-1]) + 1)   # vv40: nor a cut card / stats graphic
             if f >= hi_t:
                 e = float(hi_t)
             else:
@@ -1053,11 +1098,23 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
             log("WARNING: could not find the jump ball (the scoreboard clock was not readable, or no running clock was seen) "
                 "- the clip is not shortened at the start")
     card = np.zeros(secs, bool)
+    card_cut = np.zeros(secs, bool)
     try:                                                  # vv26: the channel's own 'GAMETIME HIGHLIGHTS' stats card is never kept
         card = gametime_card(thumbs)[:secs]
         card = np.r_[card, np.zeros(max(0, secs - len(card)), bool)]
-        # vv40: a stats / text card near the end ENDS the usable video: it and everything after it are cut (both modes)
-        ec = end_card(card, secs, clock_live if clock_ok else None)
+        card |= np.r_[card[1:], False]                    # vv40: one more second before it (the card fades in)
+        # vv40: a stats / text card near the end ENDS the usable video: it and everything after it are cut (both modes) -
+        # but only when the game is really over after it (no running clock / no score bug / no play after it)
+        bug_sec = None
+        if not clock_ok and track is not None:
+            bug_sec = np.r_[track["present"][:secs], np.zeros(max(0, secs - len(track["present"])), bool)]
+        play_like = None
+        if not clock_ok and bug_sec is None and len(thumbs) > 1:
+            wide = wide_shots(thumbs, secs)
+            mv = np.r_[0, np.abs(np.diff(thumbs[:secs].astype(np.float32), axis=0)).mean((1, 2))] if len(thumbs) else np.zeros(0)
+            mv = np.r_[mv, np.zeros(max(0, secs - len(mv)))][:secs]
+            play_like = (wide if wide is not None else np.ones(secs, bool)) & (mv > 0.5 * float(np.median(mv)))
+        ec = end_card(card, secs, clock_live if clock_ok else None, bug=bug_sec, play_like=play_like)
         if ec is not None:
             stop = max(1.0, ec - 1.0)
             card[int(stop):] = True
@@ -1068,6 +1125,9 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
                 interview_cut = secs - end_s
             live[int(stop):] = False
         cut = _cut_runs(live, card)
+        for a0, b0 in _runs(card):                        # vv40: what is cut for the card (with its 1 s margins)
+            if b0 - a0 >= 3:
+                card_cut[max(0, a0 - 1):b0 + 1] = True
         if cut:
             log(f"'GAMETIME HIGHLIGHTS' stats card found and cut ({cut}s)")
     except Exception as e:                                # noqa: BLE001 - never let this stop a clip
@@ -1076,7 +1136,7 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
     if hl:
         # highlights: short gaps in the scoreboard read are kept as play
         for r in _runs(~live):
-            if r[1] - r[0] <= 8 and r[0] > 0 and r[1] < secs:
+            if r[1] - r[0] <= 8 and r[0] > 0 and r[1] < secs and not card[max(0, r[0] - 1):r[1] + 1].any():   # vv40: never a card
                 live[r[0]:r[1]] = True
         # start a few seconds before tip-off (first stretch of running clock), like the reference reclip
         tip = next((a for a, b in _runs(live) if b - a >= 20), None) if start_s <= 0 else None   # 20 s of running clock = game on
@@ -1096,6 +1156,7 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
             merged.append(s)
     if start_s > 0 and merged:                           # vv18: padding must not pull in the shot before the jump ball
         merged[0][0] = max(merged[0][0], start_s)
+    merged = _minus_mask(merged, card_cut)                # vv40: the padding never reaches into a cut card
     segs = [s for s in merged if s[1] - s[0] >= cfg["min_clip_s"]]
     after_dead = sum(b - a for a, b in segs)
     motion = np.r_[0, np.abs(np.diff(mot, axis=0)).mean(1)] if len(mot) > 1 else np.zeros(secs)
@@ -1127,7 +1188,7 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
                 wide = wide_shots(thumbs, secs, int(start_s), int(end_s))
             except Exception as e:                      # noqa: BLE001 - never let this stop a clip
                 log(f"(wide-camera check skipped: {e})")
-        pu = play_units(motion[:secs], rz[:secs], secs, cues, clock, bug, start_s, end_s if end_known else None, card[:secs],
+        pu = play_units(motion[:secs], rz[:secs], secs, cues, clock, bug, start_s, end_s if end_known else None, card_cut[:secs],
                         float(cfg.get("best_clips_play_s", 45)), float(cfg.get("best_clips_play_max_s", 60)), wide=wide)
         final, binfo = best_play_units(pu["units"], motion, rz, mz, hz, max_s, start_s, end_s, float(cfg.get("best_clips_share", 0.5)),
                                        end_known, pu["replays"], bool(cfg.get("best_clips_replays", False)), clock)
@@ -1141,6 +1202,7 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
         final, added = ensure_ending(final, end_s, end_known)
         if added:
             log(f"the clip is closed with the last {added:.0f}s up to the final score (Best Clips always ends at the finish)")
+        final = _minus_mask(final, card_cut)            # vv40: never any second of a stats card
         kept_s = sum(b - a for a, b in final)
         log(f"Best Clips: {total:.0f}s source -> {len(final)} plays, {kept_s:.0f}s ({kept_s / 60:.1f} min; limit {max_s / 60:.0f} min)"
             + (" - picked by crowd noise, motion and the commentators' words" if cues else " - picked by crowd noise and motion (no captions)"))
@@ -1176,7 +1238,8 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
     if kept_s < min_s * 0.97:                           # too short to follow: add the most active stretches that were cut
         final = _top_up(final, secs, motion, interest, min_s, max_s, end_s, start_s)
         final, _ = ensure_ending(final, end_s, end_known)
-        kept_s = sum(b - a for a, b in final)
+    final = [x for x in _minus_mask(final, card_cut) if x[1] - x[0] >= 1.0]   # vv40: never any second of a stats card
+    kept_s = sum(b - a for a, b in final)
     log(("highlights mode - " if hl else "") + f"analysis: {total:.0f}s source -> live play {after_dead:.0f}s -> final {kept_s:.0f}s "
         f"({kept_s / 60:.1f} min; you asked for {min_s / 60:.0f}-{max_s / 60:.0f} min) in {len(final)} clips")
     if not end_known and not cfg.get("include_interview", False):
