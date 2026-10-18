@@ -139,6 +139,15 @@ class EndCard(unittest.TestCase):
         bug[710:880] = True
         self.assertIsNone(analyze.end_card(card, 900, bug=bug))                     # the game goes on after it
 
+    def test_owner_rule_a_card_at_the_very_end_ends_the_clip_even_without_clock_evidence(self):
+        n = 1200
+        card = np.zeros(n, bool); card[1040:1080] = True                  # 160 s left (13%): only the end screen after it
+        bug = np.ones(n, bool)                                              # a score-bug track that (wrongly) says it is back
+        self.assertEqual(analyze.end_card(card, n, bug=bug, play_like=np.zeros(n, bool)), 1040.0)
+        self.assertEqual(analyze.end_card(card, n, np.zeros(n, bool)), 1040.0)            # readable clock, none after it
+        live = np.zeros(n, bool); live[1085:1180] = True
+        self.assertIsNone(analyze.end_card(card, n, live))                  # ... but never while the clock still runs
+
     def test_no_clock_no_bug_play_after_it(self):
         card = np.zeros(600, bool); card[500:505] = True
         play = np.zeros(600, bool); play[506:590] = True
@@ -234,8 +243,8 @@ class Plan(unittest.TestCase):
             cv2.putText(ts, f"{45 - r}%", (880, y), cv2.FONT_HERSHEY_SIMPLEX, 1.0, 230, 2)
         ts = cv2.resize(ts, (128, 72), interpolation=cv2.INTER_AREA)
         self.assertTrue(analyze.gametime_card(np.repeat(ts[None], 4, 0)).all())     # it IS a card (cut) ...
-        for best in (False, True):
-            clk, m, a, th = fake_game(600)
+        for best, clock_ok in ((False, True), (True, True), (False, False), (True, False)):
+            clk, m, a, th = fake_game(600, clock_ok=clock_ok)
             th = th.copy(); th[500:505] = ts; m = m.copy(); m[500:505] = m[500]
             res = self.run_plan(best, (clk, m, a, th))
             self.assertGreater(max(b for _, b in res["segments"]), 585, (best, res["segments"]))   # ... but the game goes on

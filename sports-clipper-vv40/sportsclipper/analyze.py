@@ -354,23 +354,23 @@ def _still(f: np.ndarray) -> np.ndarray:
 
 
 def end_card(card: np.ndarray, secs: int, live_after=None, min_s: int = 3, bug=None, play_like=None):
-    """vv40: the second the closing stats / text card starts (the usable video ends there), or None. The card must start in
-    the last quarter of the video, and the game must really be over after it:
-      * readable clock (live_after = per-second running clock): little video is left (<= 2 min, or 10%) AND the clock runs
+    """vv40: the second the closing stats / text card starts (the usable video ends there), or None. The owner's channel shows
+    it right after the final score, so it is a strong end anchor - but only when the game is really over after it. The card
+    must start in the last quarter of the video, and:
+      * readable clock (live_after = per-second running clock): little video is left (<= 2 min, or 15%) AND the clock runs
         less than 30 s after the card (a stats graphic at 4:00 left in the 4th quarter is followed by running clock);
-      * no clock, score bug known (bug = per second on screen): the bug is (almost) never back after the card;
-      * neither: little video is left AND less than 15 s after the card looks like play (play_like, when given)."""
+      * no clock: the score bug (bug = per second on screen, when known) is (almost) never back after the card, OR little
+        video is left and less than 15 s after the card looks like play (play_like: end screen / silence is not play)."""
     for a, b in _runs(np.asarray(card[:secs], bool)):
         if b - a < min_s or a < 0.75 * secs:
             continue
-        little_left = secs - a <= max(120.0, 0.10 * secs)
+        little_left = secs - a <= max(120.0, 0.15 * secs)
         if live_after is not None:
             over = little_left and int(np.sum(live_after[b:secs])) < 30
-        elif bug is not None:
-            after = np.asarray(bug[b:secs], bool)
-            over = len(after) == 0 or after.mean() < 0.2
         else:
-            over = little_left and (play_like is None or int(np.sum(play_like[b:secs])) < 15)
+            after = np.asarray(bug[b:secs], bool) if bug is not None else None
+            over = (after is not None and (len(after) == 0 or after.mean() < 0.2)) or \
+                (little_left and (play_like is None or int(np.sum(play_like[b:secs])) < 15))
         if over:
             return float(a)
     return None
@@ -1109,7 +1109,7 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
         if not clock_ok and track is not None:
             bug_sec = np.r_[track["present"][:secs], np.zeros(max(0, secs - len(track["present"])), bool)]
         play_like = None
-        if not clock_ok and bug_sec is None and len(thumbs) > 1:
+        if not clock_ok and len(thumbs) > 1:
             wide = wide_shots(thumbs, secs)
             mv = np.r_[0, np.abs(np.diff(thumbs[:secs].astype(np.float32), axis=0)).mean((1, 2))] if len(thumbs) else np.zeros(0)
             mv = np.r_[mv, np.zeros(max(0, secs - len(mv)))][:secs]
