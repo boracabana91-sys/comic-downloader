@@ -232,7 +232,7 @@ def save_state(series_dir, state):
     os.replace(tmp, os.path.join(series_dir, STATE_NAME))
 
 
-ENGINE = 2   # raise when the page engine improves: older finished chapters are then made again
+ENGINE = 3   # raise when the page engine improves: older finished chapters are then made again
 
 
 def is_current(rec):

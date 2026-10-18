@@ -23,7 +23,7 @@ import covers
 GAP = 24           # empty rows in a row that separate two scenes
 MAX_GROUP = 1.45   # several scenes may share a screen if they fit shrunk to ~69%
 MIN_SCALE = 0.45   # one scene alone may be shrunk to 45%; a taller one is split
-MAX_UP = 1.5       # a scene with a narrow art column may be enlarged this much (never more)
+MAX_UP = 2.2       # a scene with a narrow art column may be enlarged this much (never more)
 MARGIN = 0.025     # thin frame of background round the art, like a printed page
 SPACE = 0.015      # background between two scenes on the same screen
 
