@@ -228,11 +228,15 @@ def extract_epub(path, tmp, width=1600):
                     shutil.copyfileobj(src, f)
             try:
                 with Image.open(dest) as im:
-                    if max(im.size) < MIN_PICTURE:
-                        os.remove(dest)
-                        continue
+                    small = max(im.size) < MIN_PICTURE
             except Exception:
-                pass   # the page engine reports pictures it cannot read
+                small = False   # the page engine reports pictures it cannot read
+            if small:   # removed only after the file is closed (Windows refuses otherwise)
+                try:
+                    os.remove(dest)
+                except OSError:
+                    pass
+                continue
             out.append(dest)
     if not out:
         raise BookError("there are no full-size pictures in this EPUB")
