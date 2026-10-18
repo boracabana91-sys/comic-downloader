@@ -11,6 +11,8 @@ on:
       - "SERIES_VERSION"
       - "SERIES_README.md"
       - ".github/workflows/build-series.yml"
+      - "ebz/**"
+      - ".github/workflows/build-ebz.yml"
   workflow_dispatch:
 
 permissions:

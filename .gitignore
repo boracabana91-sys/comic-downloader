@@ -3,3 +3,9 @@ build/
 dist/
 *.spec
 *.pyc
+ebz/__pycache__/
+ebz/build/
+ebz/dist/
+ebz/*.spec
+ebz/selftest*.txt
+ebz/selftest_settings.json
