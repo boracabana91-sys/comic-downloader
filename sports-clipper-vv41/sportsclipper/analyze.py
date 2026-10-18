@@ -277,9 +277,16 @@ def gametime_card(th: np.ndarray) -> np.ndarray:
     """vv26: per second, True where the picture is a 'GAMETIME HIGHLIGHTS' stats card (the channel's own box-score card
     shown at the start or the end): a dark, flat screen with the text packed on the left side and the right side empty.
     th = per-second grey pictures (T x H x W). Live play never looks like this (the court and the crowd fill the frame).
-    vv40: also any still text / table card (see still_text_card)."""
-    layout, cand = _card_frames(th)
-    return layout | _long_runs(cand, 3)
+    vv40: also any still text / table card (see still_text_card).
+    vv41: also while the table SCROLLS (the box score is taller than the screen and scrolls up under its fixed header), and a
+    found card is grown over the card-looking pictures next to it (fade, scrolling, a row animation), so it is cut whole."""
+    layout, cand, loose = _card_frames(th, with_loose=True)
+    seed = layout | _long_runs(cand, 3)
+    out = seed.copy()
+    for a, b in _runs(loose | seed):                  # vv41: a card-looking stretch that holds a found card is all card
+        if seed[a:b].any():
+            out[a:b] = True
+    return out
 
 
 def still_text_card(th: np.ndarray, min_s: int = 3) -> np.ndarray:
@@ -287,6 +294,25 @@ def still_text_card(th: np.ndarray, min_s: int = 3) -> np.ndarray:
     detail that does not change at all for `min_s` seconds or more. Live play is never still for 3 s (players and the
     camera move: in real broadcasts the picture changes by > 2 grey levels every second, even on the intro graphics)."""
     return _long_runs(_card_frames(th)[1], min_s)
+
+
+def _vertical_scroll(a: np.ndarray, b: np.ndarray, max_dy: int = 24) -> bool:
+    """vv41: True when picture b is picture a with its content moved up or down by one common amount (a scrolling table;
+    rows that stay put, like a fixed header, are allowed). A panel sliding sideways, or live play, does not fit."""
+    H = a.shape[0]
+    e0 = np.abs(b - a).mean(1)
+    if e0.mean() < 0.5:
+        return False                                   # not moving at all (the still tests handle that)
+    for dy in list(range(1, max_dy + 1)) + list(range(-max_dy, 0)):
+        e = np.full(H, np.inf, np.float32)
+        if dy > 0:
+            e[:H - dy] = np.abs(b[:H - dy] - a[dy:]).mean(1)
+        else:
+            e[-dy:] = np.abs(b[-dy:] - a[:H + dy]).mean(1)
+        err = np.minimum(e0, e).mean()
+        if err < 2.5 and err < 0.6 * e0.mean() and (e + 0.5 < e0).mean() >= 0.2:
+            return True
+    return False
 
 
 def _long_runs(mask: np.ndarray, min_s: int) -> np.ndarray:
@@ -297,10 +323,10 @@ def _long_runs(mask: np.ndarray, min_s: int) -> np.ndarray:
     return out
 
 
-def _card_frames(th: np.ndarray, chunk: int = 1200):
+def _card_frames(th: np.ndarray, chunk: int = 1200, with_loose: bool = False):
     """vv40: per picture (layout_card, still_text_candidate), worked out in chunks so a 4-hour video does not need GBs."""
     T = len(th)
-    layout = np.zeros(T, bool); cand = np.zeros(T, bool)
+    layout = np.zeros(T, bool); cand = np.zeros(T, bool); loose = np.zeros(T, bool)
     for s0 in range(0, T, chunk):
         a, b = max(0, s0 - 1), min(T, s0 + chunk + 1)                 # one picture of overlap: stillness needs neighbours
         f = th[a:b].astype(np.float32)
@@ -318,13 +344,18 @@ def _card_frames(th: np.ndarray, chunk: int = 1200):
         text_left2 = (left.std((1, 2)) > 8) & (edges_left > 0.02)
         # vv40: and it stands still (not a moving graphic) - apart from one moving band of rows (a highlight bar moving down
         # the table, a row sliding in), which the real card may have
-        lay = dark & empty_right & (text_left | text_left2) & (still | _still_but_band(f))
+        lse = dark & empty_right & (text_left | text_left2)            # looks like the card (any motion)
+        scroll = np.zeros(len(f), bool)                                # vv41: ... or its table scrolls (only checked there)
+        for t in np.where(lse)[0]:
+            scroll[t] = any(0 <= u < len(f) and lse[u] and _vertical_scroll(f[u], f[t]) for u in (t - 1, t + 1))
+        lay = lse & (still | _still_but_band(f) | scroll)
         rows = (edge.mean(2) > 0.04).mean(1)                         # share of picture rows that hold text-like detail
         cnd = dark & (edge.mean((1, 2)) >= 0.012) & (rows >= 0.15) & still
         k = s0 - a
         layout[s0:min(T, s0 + chunk)] = lay[k:k + chunk]
         cand[s0:min(T, s0 + chunk)] = cnd[k:k + chunk]
-    return layout, cand
+        loose[s0:min(T, s0 + chunk)] = lse[k:k + chunk]
+    return (layout, cand, loose) if with_loose else (layout, cand)
 
 
 def _still_but_band(f: np.ndarray, max_frac: float = 0.08, max_rows: int = 12) -> np.ndarray:
@@ -356,13 +387,18 @@ def _still(f: np.ndarray) -> np.ndarray:
 def end_card(card: np.ndarray, secs: int, live_after=None, min_s: int = 3, bug=None, play_like=None):
     """vv40: the second the closing stats / text card starts (the usable video ends there), or None. The owner's channel shows
     it right after the final score, so it is a strong end anchor - but only when the game is really over after it. The card
-    must start in the last quarter of the video, and:
+    must start in the last quarter of the video, and (vv41: a card that lasts to the very end of the video, starting in its
+    second half, always closes it - there is no clock, play or score bug after it):
       * readable clock (live_after = per-second running clock): little video is left (<= 2 min, or 15%) AND the clock runs
         less than 30 s after the card (a stats graphic at 4:00 left in the 4th quarter is followed by running clock);
       * no clock: the score bug (bug = per second on screen, when known) is (almost) never back after the card, OR little
         video is left and less than 15 s after the card looks like play (play_like: end screen / silence is not play)."""
     for a, b in _runs(np.asarray(card[:secs], bool)):
-        if b - a < min_s or a < 0.75 * secs:
+        if b - a < min_s or a < 0.5 * secs:
+            continue
+        if b >= secs - 2:
+            return float(a)                            # vv41: the card runs to the very end of the video: nothing follows it
+        if a < 0.75 * secs:
             continue
         little_left = secs - a <= max(120.0, 0.15 * secs)
         if live_after is not None:

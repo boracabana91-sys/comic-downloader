@@ -5,6 +5,12 @@ low-interest plays), renders every resolution in one pass, and uploads to your Y
 
 Clips stay in game order at normal speed. Audio is only trimmed in sync and re-encoded - never re-mixed or changed.
 
+## vv41 - a scrolling stats card is cut too
+
+- **Why ~11 s of the card were still at the end:** the channel's box score is taller than the screen, so after the final score it **scrolls up** (the second team's bench and the TOTALS row come into view) and only then stands still. vv40 recognised the card only when it stood still, so it cut just the last still seconds and kept the scrolling part before them.
+- **Now:** a scrolling table under the fixed card header is recognised as the card, and once any part of the card is found, the whole card-looking stretch around it (fade-in, scrolling, a highlighted row moving) is cut. After the final score, the clip ends - the stats card is never kept, in the normal reclip and in Best Clips.
+- **A card that lasts to the very end of the video always ends the clip** (nothing can follow it). A stats graphic in the middle of the game still never ends the clip early while the game clock keeps running after it.
+
 ## vv40 - the closing stats card is always cut
 
 - **Why it got through:** the app looks for the channel's 'GAMETIME HIGHLIGHTS' box-score card on small 128x72 pictures. At that size the card's thin table text turns dull grey, and the old check looked for bright text, so it never recognised the card. The card was then treated like play: its music could make it a 'best play', and when the clock area of the card looked like a running clock the game's end landed after the card - and Best Clips always keeps the final play.
