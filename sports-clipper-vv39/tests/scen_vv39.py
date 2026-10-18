@@ -21,7 +21,8 @@ SCEN = {
                     (16, 20, "U", "high", "L"), (21, 23, "U", "high", "R"), (24, 27, "U", "med", "n"), (28, 31, "U", "low", "L"),
                     (32, 45, "U", "med", "n")],
               cuts=[4, 15, 27, 32], caps=[(14, "blocked by Turner!"), (18, "kicks it out"), (21, "puts it back, good!")],
-              keep=(5, 24), start=(4, 6), end=(24, 28), nobnd=[(5, 24)], excl=[(29, 31)]),
+              keep=(5, 24), start=(4, 6), end=(24, 28), nobnd=[(5, 24)], excl=[(29, 31)], wideN=[(0, 3), (28, 31)],
+              cutaway=[(28, 31)]),
     "C": dict(rows=[(0, 2, "F", "low", "q"), (3, 9, "R", "med", "n"), (10, 11, "R", "high", "n"), (12, 12, "R", "med", "n"),
                     (13, 16, "R", "high", "L"), (17, 19, "R", "high", "R"), (20, 23, "R", "med", "n"), (24, 24, "J", "med", "n"),
                     (25, 40, "R", "med", "n")],
@@ -31,36 +32,39 @@ SCEN = {
                     (16, 16, "U", "med", "L", "N"), (17, 22, "U", "low", "n", "N"), (23, 23, "F", "med", "n"),
                     (24, 27, "F", "low", "q"), (28, 29, "F", "low", "n"), (30, 45, "R", "med", "n")],
               cuts=[16, 23], caps=[(12, "slam! and one!"), (17, "let's take another look")],
-              keep=(3, 15), start=(0, 3), end=(15, 16), excl_play=[(17, 29)]),
+              keep=(3, 15), start=(0, 3), end=(15, 16), excl=[(17, 27)], cutaway=[(17, 22)]),
     "E": dict(rows=[(0, 2, "F", "low", "q"), (3, 12, "R", "med", "n"), (13, 14, "R", "high", "L"), (15, 16, "F", "med", "L"),
                     (17, 17, "F", "med", "n"), (18, 24, "F", "low", "q"), (25, 25, "F", "med", "L"), (26, 29, "F", "med", "R"),
                     (30, 30, "F", "med", "n"), (31, 33, "F", "low", "q"), (34, 50, "R", "med", "n")],
               cuts=[17, 25, 30], caps=[(13, "for three!"), (46, "good")],
-              keep=(3, 16), start=(1, 3), end=(16, 17), excl=[(18, 32)], next_start=(31, 34)),
+              keep=(3, 16), start=(1, 3), end=(16, 17), excl=[(18, 32)], next_start=(31, 34), wideN=[(18, 24), (26, 29)],
+              cutaway=[(18, 24), (26, 29)]),
     "F": dict(post=False, end_s=20,
               rows=[(0, 3, "F", "low", "q"), (4, 15, "R", "med", "L"), (16, 17, "R", "high", "R"), (18, 20, "F", "high", "R"),
                     (21, 21, "F", "med", "R"), (22, 25, "F", "med", "L"), (26, 29, "U", "med", "n", "N"),
                     (30, 30, "U", "med", "n", "N"), (31, 90, "U", "low", "n", "N")],
               cuts=[21, 30], caps=[(17, "at the buzzer... good! wins it!"), (24, "Pacers win the ball game")],
-              keep=(4, 19), start=(2, 4), end=(19, 21), excl=[(22, 90)]),
+              keep=(4, 19), start=(2, 4), end=(19, 21), excl=[(22, 90)], cutaway=[(31, 90)]),
     "G": dict(rows=[(0, 2, "F", "low", "q"), (3, 13, "R", "med", "n"), (14, 14, "R", "high", "L"), (15, 17, "F", "high", "R"),
                     (18, 18, "U", "med", "L", "N"), (19, 25, "U", "low", "n", "N"), (26, 26, "U", "med", "q", "N"),
                     (27, 40, "U", "low", "q", "N"), (41, 44, "F", "low", "q"), (45, 60, "R", "med", "n")],
               cuts=[18, 26], caps=[(15, "beats the buzzer!")],
-              keep=(3, 17), start=(1, 3), end=(17, 18), excl=[(19, 42)], next_start=(43, 45)),
+              keep=(3, 17), start=(1, 3), end=(17, 18), excl=[(19, 42)], next_start=(43, 45), cutaway=[(19, 25)]),
     "H": dict(rows=[(0, 1, "F", "low", "q"), (2, 8, "R", "med", "n"), (9, 9, "R", "high", "L"), (10, 10, "R", "med", "L"),
                     (11, 14, "R", "high", "L"), (15, 17, "F", "high", "R"), (18, 18, "F", "med", "L"), (19, 21, "F", "low", "n"),
                     (22, 22, "U", "med", "n", "N"), (23, 28, "U", "low", "n", "N"), (29, 29, "F", "med", "q"),
                     (30, 37, "F", "low", "q"), (38, 50, "R", "med", "n")],
               cuts=[10, 18, 22, 29], caps=[(9, "stolen by White!"), (15, "and one!")],
-              keep=(4, 17), start=(0, 4), end=(17, 18), nobnd=[(4, 17)], excl_play=[(19, 37)]),
+              keep=(4, 17), start=(0, 4), end=(17, 18), nobnd=[(4, 17)], excl=[(19, 35)], wideN=[(19, 21)],
+              cutaway=[(19, 21), (23, 28)]),
     "I": dict(readable=False,
               rows=[(0, 5, "U", "med", "n"), (6, 6, "U", "med", "n"), (7, 9, "U", "med", "n"), (10, 11, "U", "high", "n"),
                     (12, 13, "U", "high", "R"), (14, 14, "U", "high", "n"), (15, 15, "U", "med", "L"), (16, 17, "U", "high", "n"),
                     (18, 20, "U", "high", "L"), (21, 21, "U", "high", "n"), (22, 23, "U", "med", "n"), (24, 24, "U", "med", "n"),
                     (25, 28, "U", "low", "q"), (29, 29, "U", "med", "n"), (30, 45, "U", "med", "n")],
               cuts=[6, 15, 24, 29], caps=[(12, "swatted away by Wemby!"), (18, "finishes at the rim")],
-              keep=(7, 22), start=(6, 7), end=(22, 25), nobnd=[(7, 22)], excl=[(26, 28)]),
+              keep=(7, 22), start=(6, 7), end=(22, 25), nobnd=[(7, 22)], excl=[(26, 28)], wideN=[(25, 28)],
+              cutaway=[(25, 28)]),
     "J": dict(rows=[(0, 1, "F", "low", "q"), (2, 19, "R", "med", "n"), (20, 24, "F", "low", "q"), (25, 29, "R", "med", "n"),
                     (30, 30, "R", "med", "n"), (31, 37, "R", "med", "n"), (38, 39, "R", "high", "L"), (40, 42, "F", "low", "q"),
                     (43, 60, "R", "med", "n")],
@@ -81,9 +85,9 @@ SCEN = {
 }
 
 
-def build(name):
+def build(name, sc=None):
     """Per-second arrays for a scenario, shifted by PAD seconds of neutral play before (and after, unless post=False)."""
-    sc = SCEN[name]
+    sc = sc or SCEN[name]
     readable = sc.get("readable", True)
     last = max(r[1] for r in sc["rows"]) + 1
     post = PAD if sc.get("post", True) else 0
@@ -105,21 +109,25 @@ def build(name):
         motion[PAD + c] = 60.0
     cues = [(PAD + t, txt) for t, txt in sc["caps"]]
     end_s = PAD + sc["end_s"] if "end_s" in sc else None
-    return dict(n=n, motion=motion, rz=rz, bug=bug, clock=clock if readable else None, cues=cues, end_s=end_s)
+    wide = np.ones(n, bool)
+    for a, b in sc.get("wideN", []):
+        wide[PAD + a:PAD + b + 1] = False
+    return dict(n=n, motion=motion, rz=rz, bug=bug, clock=clock if readable else None, cues=cues, end_s=end_s, wide=wide)
 
 
-def run(name, **kw):
+def run(name, d=None, sc=None, **kw):
     """(units, segments) for a scenario: the play under test is the loudest unit and the share is set so only it
-    (plus the always-kept opening unit, and the final unit when the game end is known) is picked."""
-    d = build(name)
-    res = A.play_units(d["motion"], d["rz"], d["n"], d["cues"], d["clock"], d["bug"], 0.0, d["end_s"], **kw)
+    (plus the always-kept opening unit, and the final unit when the game end is known) is picked.
+    d = prebuilt (modified) arrays, sc = a modified scenario dict."""
+    sc = sc or SCEN[name]
+    d = d or build(name, sc)
+    res = A.play_units(d["motion"], d["rz"], d["n"], d["cues"], d["clock"], d["bug"], 0.0, d["end_s"], wide=d.get("wide"), **kw)
     units = res["units"]
     hz = np.zeros(d["n"])
     for t, _ in d["cues"]:
         hz[int(t)] = 3.0
-    k = SCEN[name]["keep"]
+    k = sc["keep"]
     hz[PAD + k[0]:PAD + k[1] + 1] += 5.0                 # the play under test is the best one
-    k = SCEN[name]["keep"]
     target = next((u for u in units if u["a"] <= PAD + k[0] + 1 and u["b"] >= PAD + k[1] - 1), None)
     forced = units[0]["b"] - units[0]["a"] if units else 0
     if d["end_s"] is not None and units and units[-1] is not target:
@@ -132,14 +140,14 @@ def run(name, **kw):
     return [{"a": u["a"] - PAD, "b": u["b"] - PAD, "end": u["end"]} for u in units], shift(segs)
 
 
-def problems(name, units, segs, tol=1.0):
+def problems(name, units, segs, tol=1.0, sc=None, d=None):
     """The scenario's assertions; returns a list of failures (empty = pass). Inclusive second ranges, +-1 s tolerance."""
-    sc = SCEN[name]
+    sc = sc or SCEN[name]
     bad = []
     bnds = sorted({x for s in segs for x in s})
 
     def holder(k):
-        return next((s for s in segs if s[0] <= k[0] + tol and s[1] >= k[1] - tol + 1 - 1), None)
+        return next((s for s in segs if s[0] <= k[0] + tol and s[1] >= k[1]), None)
     k = sc["keep"]
     seg = holder(k)
     if seg is None:
@@ -187,4 +195,38 @@ def problems(name, units, segs, tol=1.0):
     for s in segs:
         if s[1] - s[0] < 8 - 1e-6:
             bad.append(f"segment shorter than 8 s: {s}")
+    for a, b in sc.get("cutaway", []):                 # checklist 7: no cutaway in a segment's first or last 2 s
+        for s in segs:
+            for x, y in ((s[0], s[0] + 2), (s[1] - 2, s[1])):
+                if x < b + 1 and y > a:
+                    bad.append(f"segment {s} has the cutaway {a}-{b} in its first/last 2 s")
+    bad += unsafe_bounds(d or build(name, sc), units)
+    return bad
+
+
+def unsafe_bounds(d, units):
+    """Checklist 1-4: no unit ends near a 'play goes on' cue ([c-3, c+hold]), right around a 'made it' cue ([p-3, p+2)) or
+    a roar ([p, p+2)); with a readable clock no boundary sits in running clock on all of [t-3, t+3] unless it is a clock
+    jump (edit) or a lull split."""
+    bad = []
+    n = d["n"]
+    ev = A.cue_events(d["cues"], n)
+    readable = d["clock"] is not None
+    hold = 4 if readable else 6
+    cont = np.where(ev["cont"])[0]; res = np.where(ev["res"])[0]; roar = np.where(d["rz"] >= 2.0)[0]
+    last = max(u["b"] for u in units) if units else 0
+    for k, u in enumerate(units):
+        b = int(round(u["b"] + PAD))
+        if u["b"] < last and not (d["end_s"] is not None and b >= d["end_s"]):
+            if any(c - 3 <= b <= c + hold for c in cont):
+                bad.append(f"unit {u} ends within [c-3, c+{hold}] of a 'goes on' cue")
+            roar_hit = u["end"] != "dead" and any(p <= b < p + 2 for p in roar)    # a dead ball (E1) may end on the roar
+            if any(p - 3 <= b < p + 2 for p in res) or roar_hit:
+                bad.append(f"unit {u} ends right at a 'made it' cue / roar")
+        if readable:
+            for t, ok_kind in ((b, u["end"] in ("lull", "edit")), (int(round(u["a"] + PAD)), k > 0 and units[k - 1]["end"] in ("lull", "edit")
+                                                                       and abs(units[k - 1]["b"] - u["a"]) < 0.01)):
+                w = d["clock"][max(0, t - 3):t + 4]
+                if 3 <= t <= n - 4 and np.isin(w, (A.CLK_R, A.CLK_J)).all() and not ok_kind:
+                    bad.append(f"boundary {t - PAD} inside running clock (unit {u})")
     return bad

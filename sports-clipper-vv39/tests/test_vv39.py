@@ -176,6 +176,161 @@ def fake_video(secs, clock_runs, motion, loud, cw=64):
     return clk, np.array(frames), a, np.zeros((0, 72, 128), np.uint8)
 
 
+def mod(name, **changes):
+    """A copy of scenario `name` with some rows / checks changed (editor review probes)."""
+    sc = deepcopy(S.SCEN[name]); sc.update(changes)
+    return sc
+
+
+class Review(unittest.TestCase):
+    """vv39 review: the editor's probe inputs, kept as regressions."""
+
+    def units(self, d, **kw):
+        r = analyze.play_units(d["motion"], d["rz"], d["n"], d["cues"], d["clock"], d["bug"], 0.0, d.get("end_s"),
+                               wide=d.get("wide"), **kw)
+        return [{"a": u["a"] - S.PAD, "b": u["b"] - S.PAD, "end": u["end"]} for u in r["units"]]
+
+    def one_unit(self, us, a, b):
+        self.assertTrue(any(u["a"] <= a and u["b"] >= b for u in us), us)
+
+    def test_J_seen_as_running_still_keeps_the_play(self):            # no clock-jump detection: A, C, L still whole
+        for name in "ACL":
+            sc = S.SCEN[name]
+            d = S.build(name); d["clock"] = d["clock"].copy(); d["clock"][d["clock"] == analyze.CLK_J] = analyze.CLK_R
+            units, segs = S.run(name, d=d)
+            self.one_unit(units, *sc["keep"])
+            for a, b in sc["nobnd"]:
+                self.assertFalse(any(a + 1 < x < b for u in units for x in (u["a"], u["b"])), (name, units))
+            self.assertEqual(S.unsafe_bounds(d, units), [], name)
+
+    def test_frozen_misread_mid_play_does_not_split(self):           # review #3
+        for k in (1, 2, 3):
+            d = S.build("A"); d["clock"] = d["clock"].copy(); d["clock"][S.PAD + 16:S.PAD + 16 + k] = analyze.CLK_F
+            self.one_unit(self.units(d), 2, 24)
+
+    def test_slow_reset_after_the_block_no_clock(self):              # review #1 (+ 3 s caption lag)
+        d = S.build("B"); d["motion"] = d["motion"].copy(); d["motion"][S.PAD + 16:S.PAD + 18] = S.MOT["low"]
+        self.one_unit(self.units(d), 4, 24)
+        d["cues"] = [(S.PAD + 17, "blocked by Turner!"), (S.PAD + 20, "kicks it out"), (S.PAD + 22, "puts it back, good!")]
+        self.one_unit(self.units(d), 4, 24)
+
+    def test_a_live_shot_with_a_walk_up_is_not_deleted(self):        # review #2
+        d = S.build("I"); d["motion"] = d["motion"].copy()
+        d["motion"][S.PAD + 16:S.PAD + 20] = S.MOT["low"]; d["motion"][S.PAD + 20:S.PAD + 24] = S.MOT["high"]
+        self.one_unit(self.units(d), 7, 22)
+
+    def test_caption_lag_protects_before_the_cue(self):              # review #4
+        n = 200
+        rng = np.random.default_rng(3)
+        motion = 20 + 2 * rng.random(n); rz = np.full(n, 1.5)
+        cues = [(79.0, "blocked by Turner!"), (85.0, "puts it back, good!")]
+        pu = analyze.play_units(motion, rz, n, cues, None, None, 0.0, 150.0)
+        self.assertFalse(any(76 <= u["b"] <= 85 for u in pu["units"]), pu["units"])
+
+    def test_a_forced_split_keeps_both_sides(self):                  # review #5
+        n = 200
+        rng = np.random.default_rng(3)
+        motion = 20 + 2 * rng.random(n); rz = np.full(n, 1.5)
+        for t in (77, 30):
+            cues = [(t + 2.0, "blocked by Turner!"), (t + 8.0, "puts it back, good!")]
+            pu = analyze.play_units(motion, rz, n, cues, None, None, 0.0, 150.0)
+            hz = np.zeros(n); hz[t + 6:t + 10] = 9                     # the putback is the loudest moment
+            segs, _ = analyze.best_play_units(pu["units"], motion, rz, np.zeros(n), hz, 600, 0.0, 150.0, 0.01)
+            self.assertTrue(any(a <= t - 3 and b >= t + 9 for a, b in segs), (t, pu["units"], segs))
+
+    def test_crowd_shot_with_medium_motion_no_clock(self):           # review #6 (needs the wide-camera check)
+        d = S.build("B"); d["motion"] = d["motion"].copy(); d["rz"] = d["rz"].copy()
+        d["motion"][S.PAD + 28:S.PAD + 32] = S.MOT["med"]; d["rz"][S.PAD + 28:S.PAD + 32] = S.CROWD["R"]
+        us = self.units(d)
+        self.one_unit(us, 4, 24)
+        self.assertFalse(any(u["a"] < 31 and u["b"] > 29 for u in us), us)
+
+    def test_short_replay_between_cuts_with_no_bug_track(self):      # review #7
+        d = S.build("A"); d["clock"] = d["clock"].copy(); d["motion"] = d["motion"].copy()
+        d["clock"][S.PAD + 24:S.PAD + 27] = analyze.CLK_U; d["motion"][S.PAD + 24] = 60; d["motion"][S.PAD + 27] = 60
+        d["bug"] = None
+        us = self.units(d)
+        self.one_unit(us, 2, 23)
+        self.assertFalse(any(u["a"] < 26 and u["b"] > 25 for u in us), us)
+
+    def test_post_buzzer_celebration_when_the_end_is_unknown(self):  # review #9
+        n = 300
+        motion = np.full(n, 10.0); rz = np.zeros(n)
+        for c in (20, 45, 70, 95, 120, 150, 175, 200, 230):
+            motion[c] = 60
+        rz[150:175] = 2.5; motion[151:175] = 12; motion[176:230] = 3.0; rz[60:63] = 1.5
+        pu = analyze.play_units(motion, rz, n, [(148.0, "at the buzzer, good!")], None, None, 0.0, None)
+        segs, _ = analyze.best_play_units(pu["units"], motion, rz, np.zeros(n), np.zeros(n), 600, 0.0, None, 0.3)
+        self.assertFalse(any(a < 170 and b > 155 for a, b in segs), segs)
+        self.assertTrue(any(u["a"] <= 125 and u["b"] >= 148 for u in pu["units"]))   # the buzzer play itself stays
+
+    def test_F_without_a_known_end(self):
+        sc = mod("F"); sc.pop("end_s")
+        units, segs = S.run("F", sc=sc)
+        self.assertEqual(S.problems("F", units, segs, sc=sc), [])
+
+    def test_short_jump_ball_play_needs_a_real_dead_ball(self):
+        n = 200
+        clock = np.full(n, analyze.CLK_R, np.int8); clock[:20] = analyze.CLK_F
+        clock[26:28] = analyze.CLK_U                                     # 6 s after the tip: a 2 s drop-out, not a whistle
+        clock[26] = analyze.CLK_F; clock[27] = analyze.CLK_F; clock[28:33] = analyze.CLK_R; clock[33:40] = analyze.CLK_F
+        motion = np.full(n, 10.0); motion[30] = 60; motion[26] = 60
+        us = analyze.play_units(motion, np.zeros(n), n, None, clock, None, 19.0)["units"]
+        self.assertFalse(any(u["b"] - u["a"] < 8 and u["b"] <= 30 for u in us), us)
+        clock = np.full(n, analyze.CLK_R, np.int8); clock[:20] = analyze.CLK_F; clock[26:34] = analyze.CLK_F   # tip, foul
+        us = analyze.play_units(np.full(n, 10.0), np.zeros(n), n, None, clock, None, 19.0)["units"]
+        self.assertTrue(us and us[0]["a"] <= 20 and us[0]["b"] <= 30, us)
+
+
+def digits(txt, shot=None):
+    import cv2
+    img = np.full((24, 96), 30, np.uint8)
+    cv2.putText(img, txt, (2, 19), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 255, 2)
+    if shot is not None:
+        cv2.putText(img, f"{shot:2d}", (70, 19), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 255, 2)
+    return img.reshape(-1)
+
+
+def clock_video(start, secs, with_shot=False, resets=(), jump_at=None):
+    fmt = lambda t: f"{int(t) // 60}:{int(t) % 60:02d}" if t >= 60 else f"{t:4.1f}"
+    frames, shot = [], 24.0
+    for k in range(secs * 2):
+        t = start - k / 2 - (207 if jump_at is not None and k / 2 >= jump_at else 0)
+        sh = None
+        if with_shot:
+            if any(abs(k / 2 - r) < 1e-9 for r in resets):
+                shot = 24.0
+            sh = max(0, int(np.ceil(shot))); shot -= 0.5
+        frames.append(digits(fmt(t), sh))
+    return analyze.clock_states(np.array(frames), secs)
+
+
+class RealDigits(unittest.TestCase):
+    """Rendered clock digits (review #8): rollovers, the switch to tenths and shot-clock resets are not edits."""
+
+    def test_minute_rollovers(self):
+        self.assertFalse((clock_video(205, 90) == analyze.CLK_J).any())
+
+    def test_switch_to_tenths(self):
+        self.assertFalse((clock_video(80, 40) == analyze.CLK_J).any())
+
+    def test_shot_clock_reset(self):
+        self.assertFalse((clock_video(400, 50, True, (14, 33)) == analyze.CLK_J).any())
+
+    def test_a_real_edit_is_a_jump(self):
+        st = clock_video(500, 60, jump_at=30)       # 7:51 -> 4:23: spliced 3:27 on (a 1-2 digit jump is missed: the play goes on)
+        self.assertTrue((st[28:31] == analyze.CLK_J).any(), list(np.where(st == analyze.CLK_J)[0]))
+
+
+class WideCamera(unittest.TestCase):
+    def test_crowd_pictures_are_not_wide(self):
+        rng = np.random.default_rng(0)
+        th = rng.integers(150, 190, (100, 72, 128)).astype(np.uint8)    # the court
+        th[40:45] = rng.integers(0, 255, (5, 72, 128))                  # a crowd shot
+        self.assertEqual(list(np.where(~analyze.wide_shots(th, 100))[0]), [40, 41, 42, 43, 44])
+        self.assertIsNone(analyze.wide_shots(th[:10], 10))
+
+
 class Plan(unittest.TestCase):
     def run_plan(self, clock_ok=True):
         secs = 600
@@ -208,7 +363,8 @@ class Plan(unittest.TestCase):
             self.assertTrue(any(a <= 185 and b >= 207 for a, b in segs), (ok, segs))
             for a, b in segs:
                 self.assertFalse(185 < b < 207, (ok, segs))
-            self.assertGreaterEqual(min(b - a for a, b in segs), 4.0)
+            for k, (a, b) in enumerate(segs):                             # only the jump-ball play may be shorter than 8 s
+                self.assertGreaterEqual(b - a, 4.0 if k == 0 else 8.0, (ok, segs))
 
     def test_plan_ends_at_the_game_end(self):
         res = self.run_plan(True)
