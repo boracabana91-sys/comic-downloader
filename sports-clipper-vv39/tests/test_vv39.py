@@ -239,7 +239,8 @@ class Review(unittest.TestCase):
             self.assertTrue(any(a <= t - 3 and b >= t + 9 for a, b in segs), (t, pu["units"], segs))
             u = next(u for u in pu["units"] if u["a"] <= t + 7 < u["b"])          # the unit holding the putback ...
             g, _ = analyze.best_play_units([dict(x) for x in pu["units"]], motion, rz, np.zeros(n), hz, 600, 0.0, None, 0.01)
-            self.assertTrue(any(a <= t - 3 and b >= u["b"] for a, b in g) or u["a"] <= t - 3, (t, g))
+            hit = [x for x in g if x[0] <= t + 7 < x[1]]                          # ... is picked at a tiny share, and its pick holds the block too
+            self.assertTrue(hit and hit[0][0] <= t - 3 and hit[0][1] >= u["b"], (t, g))
 
     def test_crowd_shot_with_medium_motion_no_clock(self):           # review #6 (needs the wide-camera check)
         d = S.build("B"); d["motion"] = d["motion"].copy(); d["rz"] = d["rz"].copy()
