@@ -23,6 +23,7 @@ import covers
 GAP = 24           # empty rows in a row that separate two scenes
 MAX_GROUP = 1.45   # several scenes may share a screen if they fit shrunk to ~69%
 MIN_SCALE = 0.45   # one scene alone may be shrunk to 45%; a taller one is split
+MAX_UP = 1.5       # a scene with a narrow art column may be enlarged this much (never more)
 MARGIN = 0.025     # thin frame of background round the art, like a printed page
 SPACE = 0.015      # background between two scenes on the same screen
 
@@ -94,20 +95,40 @@ class FitPager:
         self.bg_samples.append(list(np.median(a, axis=0)))
 
     # ----- one screen -----
+    @staticmethod
+    def _art_cols(im):
+        """First and last column that holds real art (not just the plain strip background)."""
+        import numpy as np
+        a = np.asarray(im.convert("L"), dtype=np.float32)
+        cols = np.where(a.std(axis=0) >= core.QUIET)[0]
+        if len(cols) == 0:
+            return 0, im.width
+        return int(cols[0]), int(cols[-1]) + 1
+
     def _compose(self, group):
         bg = self._bg()
         sp = max(6, round(self.ch * SPACE))
+        # Webtoon strips often have wide empty side margins. Measure only the real art, so a
+        # scene with a narrow art column is shown as big as the screen allows (like KCC),
+        # instead of tiny in the middle of a wide empty strip.
+        x0 = min(self._art_cols(s)[0] for s in group)
+        x1 = max(self._art_cols(s)[1] for s in group)
+        if x1 - x0 < 16:
+            x0, x1 = 0, group[0].width
+        group = [s.crop((x0, 0, x1, s.height)) for s in group]
+        gw = x1 - x0
         gh = sum(s.height for s in group) + sp * (len(group) - 1)
         mode = group[0].mode
-        img = Image.new(mode, (self.cw, gh), bg)
+        img = Image.new(mode, (gw, gh), bg)
         y = 0
         for s in group:
-            img.paste(s, ((self.cw - s.width) // 2, y))
+            img.paste(s, (0, y))
             y += s.height + sp
-        scale = min(1.0, self.ch / gh)
-        if scale < 1.0:
-            img = img.resize((max(1, round(self.cw * scale)), max(1, round(gh * scale))),
-                             Image.LANCZOS)
+        # as large as fits inside the frame, whole (never cut); up to MAX_UP times bigger than
+        # its natural size, and always smaller if it does not fit
+        scale = min(MAX_UP, self.cw / gw, self.ch / gh)
+        if abs(scale - 1.0) > 0.005:
+            img = img.resize((max(1, round(gw * scale)), max(1, round(gh * scale))), Image.LANCZOS)
         page = Image.new(mode, (self.w, self.h), bg)
         page.paste(img, ((self.w - img.width) // 2, (self.h - img.height) // 2))
         self._save(page)

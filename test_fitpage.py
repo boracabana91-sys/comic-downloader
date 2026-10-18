@@ -91,6 +91,24 @@ def main():
         fitpage._audit(r.pages, W, H)
         assert fitpage.LAST_AUDIT == (len(r.pages), 0), fitpage.LAST_AUDIT
 
+        # a scene whose art is a NARROW column in a wide empty strip is shown bigger, not tiny
+        nar = Image.new("RGB", (800, 1500), (255, 255, 255))
+        nar.paste(panel(600, COLORS[0], 280), (260, 300))
+        nar.save(os.path.join(d, "n0.png"))
+        o3 = os.path.join(d, "out3")
+        os.makedirs(o3)
+        r3 = fitpage.FitPager(o3, W, H, False)
+        r3.add(os.path.join(d, "n0.png"))
+        r3.flush()
+        assert len(r3.pages) == 1
+        g = np.asarray(Image.open(r3.pages[0]).convert("L"), dtype=np.int16)
+        cols = np.where((np.abs(g - 255) > 40).any(axis=0))[0]
+        art_w = cols[-1] - cols[0]
+        natural = 280 * (W - 2 * max(4, round(W * fitpage.MARGIN))) / 800
+        print("narrow art width on page", art_w, "natural", round(natural))
+        assert art_w > natural * 1.3, "narrow art must be enlarged, not left small"
+        assert art_w <= W - 2 * max(4, round(W * fitpage.MARGIN)) + 2
+
         # normal (book-shaped) page still fitted whole
         Image.new("RGB", (900, 1300), (10, 10, 10)).save(os.path.join(d, "book.png"))
         q = fitpage.FitPager(out, W, H, True)
