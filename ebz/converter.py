@@ -15,6 +15,8 @@ import numpy as np
 
 from PIL import Image, ImageOps
 
+import bookfiles
+import coverart
 import devices
 import fitpage
 import pagecore
@@ -31,8 +33,9 @@ except Exception:
 IMG_EXT = (".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff",
            ".avif", ".heic", ".heif")
 PDF_EXT = (".pdf",)
+EPUB_EXT = (".epub",)
 ARCHIVE_EXT = (".cbz", ".zip")
-ALL_EXT = IMG_EXT + PDF_EXT + ARCHIVE_EXT
+ALL_EXT = IMG_EXT + PDF_EXT + ARCHIVE_EXT + EPUB_EXT
 FORMATS = (".cbz", ".epub", ".pdf")
 PLAIN_TYPES = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff")
 MAX_PDF_PIXELS = 60_000_000   # one rendered PDF page is kept below this many pixels
@@ -43,8 +46,8 @@ class Book:
 
     def __init__(self, name, kind, items):
         self.name = name            # file name of the result (without .cbz/.epub)
-        self.kind = kind            # 'images', 'pdf' or 'archive'
-        self.items = items          # list of picture paths, or [the pdf / cbz path]
+        self.kind = kind            # 'images', 'pdf', 'archive' or 'epub'
+        self.items = items          # list of picture paths, or [the pdf / cbz / epub path]
 
     def describe(self):
         if self.kind == "images":
@@ -97,6 +100,8 @@ def books_from_folder(folder):
             out.append(Book(safe_name(os.path.splitext(e)[0]), "pdf", [p]))
         elif _ext(e) in ARCHIVE_EXT:
             out.append(Book(safe_name(os.path.splitext(e)[0]), "archive", [p]))
+        elif _ext(e) in EPUB_EXT:
+            out.append(Book(safe_name(os.path.splitext(e)[0]), "epub", [p]))
     if pics:
         out.insert(0, Book(safe_name(os.path.basename(os.path.normpath(folder))), "images", pics))
     return out
@@ -120,6 +125,8 @@ def collect(paths):
                 books.append(Book(safe_name(os.path.splitext(os.path.basename(p))[0]), "pdf", [p]))
             elif e in ARCHIVE_EXT:
                 books.append(Book(safe_name(os.path.splitext(os.path.basename(p))[0]), "archive", [p]))
+            elif e in EPUB_EXT:
+                books.append(Book(safe_name(os.path.splitext(os.path.basename(p))[0]), "epub", [p]))
             else:
                 skipped.append(p)
         else:
@@ -210,6 +217,8 @@ def page_sources(book, tmp, target_width, stop=None):
         return render_pdf(book.items[0], tmp, target_width, stop)
     if book.kind == "archive":
         files = extract_archive(book.items[0], tmp)
+    elif book.kind == "epub":
+        files = bookfiles.extract_epub(book.items[0], tmp)
     else:
         files = list(book.items)
     return [_plain_picture(f, tmp, i) for i, f in enumerate(files)]
@@ -237,6 +246,13 @@ class Pager(fitpage.FitPager):
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self._prev = None   # the last picture added, as it arrived (for the seam check)
+        self.whole = set()  # screens that show one whole page (not cut from a strip)
+
+    def _commit_hold(self):
+        if self.hold is not None:
+            h, self.hold = self.hold, None
+            self._save(pagecore._fit_single(h, self.w, self.h))
+            self.whole.add(self.pages[-1])
 
     @staticmethod
     def _edge_rows(im, top, width):
@@ -261,6 +277,12 @@ class Pager(fitpage.FitPager):
             opened.load()
             im = pagecore._page_to_rgb_or_gray(opened, self.gray)
         prev, self._prev = self._prev, im
+        if im.size == (self.w, self.h):
+            # already made for exactly this screen (an EPUB/CBZ from EBZ CNVRTR): kept as it is
+            self.flush()
+            self._save(im)
+            self.whole.add(self.pages[-1])
+            return
         tall = im.height / im.width > pagecore.STRIP
         cont = False
         if self._busy(im, True) and self._continues(prev, im):
@@ -289,8 +311,10 @@ def _blank(path):
     return hi - lo < pagecore.QUIET
 
 
-def fit_pages(sources, tmp, width, height, gray, stop=None, problems=None, on_page=None):
-    """The snug-fit pages for one screen size. Returns (page paths, screens, screens not clean)."""
+def fit_pages(sources, tmp, width, height, gray, stop=None, problems=None, on_page=None, cover=None):
+    """The snug-fit pages for one screen size, with the cover (if any) as page 1.
+    Returns (page paths, strip screens checked, strip screens not clean). Only screens cut from
+    a webtoon strip are checked for cut art: a whole page or photo touches its edges on purpose."""
     pager = Pager(tmp, width, height, gray)
     for i, src in enumerate(sources):
         if stop is not None and stop.is_set():
@@ -309,14 +333,115 @@ def fit_pages(sources, tmp, width, height, gray, stop=None, problems=None, on_pa
         pages.pop()
     while len(pages) > 1 and _blank(pages[0]):
         pages.pop(0)
-    pager.pages[:] = pages
     fitpage.LAST_AUDIT = (0, 0)
-    fitpage._audit(pager.pages, width, height)
+    fitpage._audit([p for p in pages if p not in pager.whole], width, height)
     screens, bad = fitpage.LAST_AUDIT
-    return pager.pages, screens, bad
+    if cover:   # also when the book was only its cover page
+        pages.insert(0, pagecore.fit_cover(cover, width, height, gray,
+                                           os.path.join(tmp, "cover_page.jpg")))
+    return pages, screens, bad
 
 
-def convert(books, device_keys, formats, out_root, custom=None, progress=None, log=None, stop=None):
+# ---------------------------------------------------------------------------
+# Covers
+# ---------------------------------------------------------------------------
+def make_cover(opts, names, sources, tmp, log=None):
+    """The cover picture to use (with the number on it if wanted), or None.
+    Returns (cover path or None, whether the book's own first page was used as the cover)."""
+    opts = opts or {}
+    mode = opts.get("mode", "none")
+    if mode == "picture" and opts.get("path") and os.path.isfile(opts["path"]):
+        src, used_first = opts["path"], False
+    elif mode == "first" and sources:
+        try:
+            with Image.open(sources[0]) as im:
+                tall = im.height / im.width > pagecore.STRIP
+        except Exception:
+            tall = True
+        if tall:
+            if log:
+                log(f"   {names[0]}: the first page is part of a long strip, so it was not used as "
+                    "the cover.")
+            return None, False
+        src, used_first = sources[0], True
+    else:
+        return None, False
+    if opts.get("number", True):
+        text = coverart.badge_text(names)
+        if text:
+            try:
+                src = coverart.stamp_cover(src, text, os.path.join(tmp, f"cover_{len(os.listdir(tmp))}.png"),
+                                           opts.get("corner", "ur"), opts.get("size", 0.07),
+                                           opts.get("style", "dark"))
+            except Exception as e:
+                if log:
+                    log(f"   Could not put the number on the cover ({e}).")
+    return src, used_first
+
+
+# ---------------------------------------------------------------------------
+# The conversion
+# ---------------------------------------------------------------------------
+def _check(formats, device_keys, need_devices=True):
+    if need_devices and not device_keys:
+        raise ValueError("Tick at least one device.")
+    if not any(f in formats for f in FORMATS):
+        raise ValueError("Tick at least one file type (CBZ, EPUB or PDF).")
+
+
+def _profiles(device_keys, custom):
+    """Devices with the same screen share the same pages (made once)."""
+    profiles = {}
+    for d in (devices.info(k, custom) for k in device_keys):
+        profiles.setdefault((d["size"], d["gray"]), []).append(d)
+    return profiles
+
+
+def _read(book, tmp, target_w, stop, log):
+    """The pictures of a book in order, or None (with the reason in the log)."""
+    os.makedirs(tmp, exist_ok=True)
+    try:
+        sources = page_sources(book, tmp, target_w, stop)
+    except pagecore.Stopped:
+        raise
+    except bookfiles.BookError as e:
+        log(f"✗ {book.name}: {e}.")
+        return None
+    except Exception as e:
+        log(f"✗ {book.name}: could not be read ({e}).")
+        return None
+    if not sources:
+        log(f"✗ {book.name}: no pictures found inside.")
+        return None
+    return sources
+
+
+def _write_all(pages, folder, name, exts, toc=None, tmp=None):
+    os.makedirs(folder, exist_ok=True)
+    made = []
+    for ext in exts:
+        dest = os.path.join(folder, name + ext)
+        bookfiles.write_book(pages, dest, ext, name, toc, tmp)
+        made.append(dest)
+    return made
+
+
+def clean_note(screens, bad):
+    if not screens:
+        return "pages fitted whole"
+    return f"{screens - bad} of {screens} strip screens are clean"
+
+
+def _report(log, name, label, made, screens, bad, problems):
+    log(f"✓ {name} for {label}: {', '.join(os.path.basename(m) for m in made)}"
+        f"  ({clean_note(screens, bad)})")
+    if problems:
+        log(f"   {len(problems)} picture(s) could not be used: {', '.join(problems[:5])}"
+            + (" ..." if len(problems) > 5 else ""))
+
+
+def convert(books, device_keys, formats, out_root, custom=None, progress=None, log=None, stop=None,
+            cover=None):
     """Make the files. progress(fraction 0..1, text); log(text).
     Files go to out_root/<device folder>/<book name>.cbz|.epub|.pdf
     Returns a list of dicts, one per book and device: book, device, files, screens, bad, problems."""
@@ -324,17 +449,10 @@ def convert(books, device_keys, formats, out_root, custom=None, progress=None, l
     log = log or (lambda t: None)
     progress = progress or (lambda f, t: None)
     if not books:
-        raise ValueError("There is nothing to convert yet. Drop some pictures, PDFs or folders first.")
-    if not device_keys:
-        raise ValueError("Tick at least one device.")
-    if not any(f in formats for f in FORMATS):
-        raise ValueError("Tick at least one file type (CBZ, EPUB or PDF).")
-    devs = [devices.info(k, custom) for k in device_keys]
-    # devices with the same screen share the same pages (made once)
-    profiles = {}
-    for d in devs:
-        profiles.setdefault((d["size"], d["gray"]), []).append(d)
-    target_w = max(d["size"][0] for d in devs)
+        raise ValueError("There is nothing to convert yet. Drop some pictures, PDFs, EPUBs or folders first.")
+    _check(formats, device_keys)
+    profiles = _profiles(device_keys, custom)
+    target_w = max(size[0] for size, _g in profiles)
     unique_names(books)
     steps = len(books) * (1 + len(profiles))
     step = 0
@@ -344,21 +462,16 @@ def convert(books, device_keys, formats, out_root, custom=None, progress=None, l
             raise pagecore.Stopped()
         progress(step / steps, f"Reading {b.name}")
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-            src_dir = os.path.join(tmp, "src")
-            os.makedirs(src_dir)
-            try:
-                sources = page_sources(b, src_dir, target_w, stop)
-            except pagecore.Stopped:
-                raise
-            except Exception as e:
-                log(f"✗ {b.name}: could not be read ({e}).")
-                step += 1 + len(profiles)
-                continue
+            sources = _read(b, os.path.join(tmp, "src"), target_w, stop, log)
             step += 1
-            if not sources:
-                log(f"✗ {b.name}: no pictures found inside.")
+            if sources is None:
                 step += len(profiles)
                 continue
+            cdir = os.path.join(tmp, "cover")
+            os.makedirs(cdir)
+            cov, used_first = make_cover(cover, [b.name], sources, cdir, log)
+            if used_first:
+                sources = sources[1:]
             for (size, gray), group in profiles.items():
                 if stop.is_set():
                     raise pagecore.Stopped()
@@ -371,38 +484,147 @@ def convert(books, device_keys, formats, out_root, custom=None, progress=None, l
                 def on_page(i, n, base=base, name=b.name):
                     progress((base + i / max(1, n)) / steps, f"Fitting {name}: page {i} of {n}")
 
-                pages, screens, bad = fit_pages(sources, page_dir, w, h, gray, stop, problems, on_page)
+                pages, screens, bad = fit_pages(sources, page_dir, w, h, gray, stop, problems, on_page, cov)
                 step += 1
                 if not pages:
                     log(f"✗ {b.name}: none of its pictures could be used.")
                     continue
                 for d in group:
                     folder = os.path.join(out_root, safe_name(d["folder"]))
-                    os.makedirs(folder, exist_ok=True)
-                    made = []
-                    for ext in formats_for(d, formats):
-                        dest = os.path.join(folder, b.name + ext)
-                        pagecore._write_device_file(pages, dest, ext, b.name)
-                        made.append(dest)
-                    results.append({"book": b.name, "device": d["label"], "folder": d["folder"],
+                    made = _write_all(pages, folder, b.name, formats_for(d, formats))
+                    results.append({"book": b.name, "device": d["label"], "folder": folder,
                                     "kind": d["kind"], "files": made, "screens": screens,
-                                    "bad": bad, "problems": list(problems)})
-                    clean = screens - bad
-                    note = f"{clean} of {screens} screens are clean"
-                    log(f"✓ {b.name} for {d['label']}: {', '.join(os.path.basename(m) for m in made)}"
-                        f"  ({note})")
-                    if problems:
-                        log(f"   {len(problems)} picture(s) could not be used: {', '.join(problems[:5])}"
-                            + (" ..." if len(problems) > 5 else ""))
+                                    "bad": bad, "problems": list(problems), "pages": len(pages)})
+                    _report(log, b.name, d["label"], made, screens, bad, problems)
+    progress(1.0, "Done.")
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Combining several books into one
+# ---------------------------------------------------------------------------
+_NUM = re.compile(r"(\d+(?:\.\d+)?)(?!.*\d)")
+
+
+def combined_name(names):
+    """'Series Chapter 001' ... 'Series Chapter 006' -> 'Series Chapter 001-006'.
+    Names without numbers -> 'First name + 5 more'."""
+    if not names:
+        return "Combined"
+    found = [_NUM.search(n) for n in names]
+    if len(names) > 1 and all(found):
+        first, last = found[0], found[-1]
+        return safe_name(f"{names[0][:first.start()]}{first.group(1)}-{last.group(1)}"
+                         f"{names[0][first.end():]}")
+    if len(names) == 1:
+        return safe_name(names[0])
+    return safe_name(f"{names[0]} + {len(names) - 1} more")
+
+
+def combine(books, name, fit, device_keys, formats, out_root, custom=None, progress=None, log=None,
+            stop=None, cover=None):
+    """Join several books into one, in the order given, with a contents entry per book.
+    fit=True: the pages are snug-fitted for each ticked device -> out_root/<device>/<name>.*
+    fit=False: the pages are kept as they are -> out_root/Combined/<name>.*
+    The original files are never changed. Returns a list of dicts like convert()."""
+    stop = stop or threading.Event()
+    log = log or (lambda t: None)
+    progress = progress or (lambda f, t: None)
+    if len(books) < 2:
+        raise ValueError("Add at least two books to combine.")
+    _check(formats, device_keys, need_devices=fit)
+    name = safe_name(name or combined_name([b.name for b in books]))
+    profiles = _profiles(device_keys, custom) if fit else {}
+    target_w = max([size[0] for size, _g in profiles] or [1600])
+    steps = len(books) * (1 + max(1, len(profiles)))
+    step = 0
+    results = []
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        parts = []
+        for i, b in enumerate(books):
+            if stop.is_set():
+                raise pagecore.Stopped()
+            progress(step / steps, f"Reading {b.name} ({i + 1} of {len(books)})")
+            sources = _read(b, os.path.join(tmp, f"src{i:04d}"), target_w, stop, log)
+            step += 1
+            if sources is not None:
+                parts.append((b.name, sources))
+        if not parts:
+            raise ValueError("None of the books could be read, so nothing was combined.")
+        if len(parts) < len(books):
+            log(f"   {len(books) - len(parts)} book(s) were left out of {name} (see above).")
+        cdir = os.path.join(tmp, "cover")
+        os.makedirs(cdir)
+        cov, used_first = make_cover(cover, [p[0] for p in parts], parts[0][1], cdir, log)
+        if used_first:
+            parts[0] = (parts[0][0], parts[0][1][1:])
+        if fit:
+            for (size, gray), group in profiles.items():
+                w, h = size
+                pages, toc, screens, bad, problems = [], [], 0, 0, []
+                if cov:
+                    pages.append(pagecore.fit_cover(cov, w, h, gray,
+                                                    os.path.join(tmp, f"cover_{w}x{h}{int(gray)}.jpg")))
+                for k, (pname, sources) in enumerate(parts):
+                    if stop.is_set():
+                        raise pagecore.Stopped()
+                    page_dir = os.path.join(tmp, f"p{w}x{h}{'g' if gray else 'c'}_{k:04d}")
+                    os.makedirs(page_dir)
+                    base = step
+
+                    def on_page(i, n, base=base, pname=pname):
+                        progress(min(0.99, (base + i / max(1, n)) / steps),
+                                 f"Fitting {pname}: page {i} of {n}")
+
+                    pp, s, bd = fit_pages(sources, page_dir, w, h, gray, stop, problems, on_page)
+                    step += 1
+                    if pp:
+                        toc.append((pname, len(pages) if (pages and k) else 0))
+                        pages.extend(pp)
+                        screens += s
+                        bad += bd
+                if not pages:
+                    log(f"✗ {name}: none of the pictures could be used.")
+                    continue
+                for d in group:
+                    folder = os.path.join(out_root, safe_name(d["folder"]))
+                    made = _write_all(pages, folder, name, formats_for(d, formats), toc)
+                    results.append({"book": name, "device": d["label"], "folder": folder,
+                                    "kind": d["kind"], "files": made, "screens": screens,
+                                    "bad": bad, "problems": list(problems), "parts": len(parts),
+                                    "pages": len(pages)})
+                    _report(log, name, d["label"], made, screens, bad, problems)
+        else:
+            pages, toc = [], []
+            first = next((src[0] for _n, src in parts if src), cov)   # the size to give the cover
+            with Image.open(first) as im:
+                w, h = im.size
+            if cov:
+                pages.append(pagecore.fit_cover(cov, w, h, False, os.path.join(tmp, "cover_keep.jpg")))
+            for k, (pname, sources) in enumerate(parts):
+                if sources or k == 0:
+                    toc.append((pname, len(pages) if (pages and k) else 0))
+                pages.extend(sources)
+            conv = os.path.join(tmp, "conv")
+            os.makedirs(conv)
+            folder = os.path.join(out_root, "Combined")
+            progress(0.9, f"Writing {name}")
+            exts = [f for f in FORMATS if f in formats]
+            made = _write_all(pages, folder, name, exts, toc, conv)
+            results.append({"book": name, "device": "pages kept as they are", "folder": folder,
+                            "kind": "combined", "files": made, "screens": 0, "bad": 0,
+                            "problems": [], "parts": len(parts), "pages": len(pages)})
+            log(f"✓ {name} ({len(parts)} books, {len(pages)} pages, sizes kept as they were): "
+                + ", ".join(os.path.basename(m) for m in made))
     progress(1.0, "Done.")
     return results
 
 
 def selftest():
-    """Used by the build to prove the packaged app can read pictures, a PDF and a CBZ and
-    make every file type with clean, correctly sized screens."""
+    """Used by the build to prove the packaged app can read pictures, a PDF, a CBZ and an EPUB,
+    make every file type with clean, correctly sized screens, add a numbered cover and combine."""
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
-        pics = os.path.join(d, "My Comic")
+        pics = os.path.join(d, "My Comic Chapter 3")
         os.makedirs(pics)
         for i in range(3):
             im = Image.new("RGB", (800, 1100), "white")
@@ -420,11 +642,20 @@ def selftest():
         books, _ = collect([pics, pdf, cbz])
         assert len(books) == 3, books
         out = os.path.join(d, "out")
-        res = convert(books, ["kobo_clara", "kindle_basic"], (".cbz", ".epub"), out)
+        cov = os.path.join(d, "cover.png")
+        Image.new("RGB", (600, 900), (200, 180, 40)).save(cov)
+        res = convert(books, ["kobo_clara", "kindle_basic"], (".cbz", ".epub"), out,
+                      cover={"mode": "picture", "path": cov, "number": True})
         assert len(res) == 6, res
         for r in res:
-            assert r["screens"] > 0 and r["bad"] == 0, r
+            assert r["pages"] > 0 and r["bad"] == 0, r
             for f in r["files"]:
                 assert os.path.getsize(f) > 0, f
         assert any(f.endswith(".pdf") for r in res if r["kind"] == "kindle" for f in r["files"])
+        epubs = sorted(f for r in res if r["kind"] == "kobo" for f in r["files"] if f.endswith(".epub"))
+        parts, _ = collect(epubs)
+        res2 = combine(parts, "", True, ["kobo_clara"], (".epub", ".cbz"), out)
+        assert res2 and all(os.path.getsize(f) > 0 for f in res2[0]["files"]), res2
+        res3 = combine(parts, "Kept", False, [], (".epub",), out)
+        assert res3 and os.path.isfile(res3[0]["files"][0]), res3
     return True
