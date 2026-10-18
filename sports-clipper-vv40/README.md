@@ -5,6 +5,12 @@ low-interest plays), renders every resolution in one pass, and uploads to your Y
 
 Clips stay in game order at normal speed. Audio is only trimmed in sync and re-encoded - never re-mixed or changed.
 
+## vv40 - the closing stats card is always cut
+
+- **Why it got through:** the app looks for the channel's 'GAMETIME HIGHLIGHTS' box-score card on small 128x72 pictures. At that size the card's thin table text turns dull grey, and the old check looked for bright text, so it never recognised the card. The card was then treated like play: its music could make it a 'best play', and when the clock area of the card looked like a running clock the game's end landed after the card - and Best Clips always keeps the final play.
+- **Now:** the card is also recognised as a still, dark picture full of text that does not change for 3 seconds or more (live play always moves), and by its layout (text on the left, empty dark right side) without needing bright text. Moving graphics (timeouts, lineups) and dark live play are not mistaken for it.
+- **A card near the end ends the video:** the clip stops 1 second before the card, and nothing after it is kept (end screens, other videos) - in the normal reclip and in Best Clips, also when 'Include post-game interview' is ticked. A card before the jump ball is cut too; a card in the middle of the game is cut but does not end the clip.
+
 ## vv39 - Best Clips never cuts a play in the middle
 
 - **Why plays were cut off:** Best Clips cut the game into short pieces (6-30 s) at every camera cut, then picked the loudest pieces one by one. A block is loud and the TV often switches camera right after it, so the piece ended at the block and the piece with the recovery and the basket was often not picked. Without a readable scoreboard clock it was worse: every camera cut could be an end.

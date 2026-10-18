@@ -276,17 +276,77 @@ def _top_up(final: list, secs: int, motion: np.ndarray, interest, min_s: float, 
 def gametime_card(th: np.ndarray) -> np.ndarray:
     """vv26: per second, True where the picture is a 'GAMETIME HIGHLIGHTS' stats card (the channel's own box-score card
     shown at the start or the end): a dark, flat screen with the text packed on the left side and the right side empty.
-    th = per-second grey pictures (T x H x W). Live play never looks like this (the court and the crowd fill the frame)."""
+    th = per-second grey pictures (T x H x W). Live play never looks like this (the court and the crowd fill the frame).
+    vv40: also any still text / table card (see still_text_card)."""
+    layout, cand = _card_frames(th)
+    return layout | _long_runs(cand, 3)
+
+
+def still_text_card(th: np.ndarray, min_s: int = 3) -> np.ndarray:
+    """vv40: per second, True on a STILL text / table card (box score, stats or title card): a dark picture with text-like
+    detail that does not change at all for `min_s` seconds or more. Live play is never still for 3 s (players and the
+    camera move: in real broadcasts the picture changes by > 2 grey levels every second, even on the intro graphics)."""
+    return _long_runs(_card_frames(th)[1], min_s)
+
+
+def _long_runs(mask: np.ndarray, min_s: int) -> np.ndarray:
+    out = np.zeros(len(mask), bool)
+    for a, b in _runs(mask):
+        if b - a >= min_s:
+            out[a:b] = True
+    return out
+
+
+def _card_frames(th: np.ndarray, chunk: int = 1200):
+    """vv40: per picture (layout_card, still_text_candidate), worked out in chunks so a 4-hour video does not need GBs."""
     T = len(th)
-    if T == 0:
-        return np.zeros(0, bool)
-    w = th.shape[2]
-    f = th.astype(np.float32)
-    left, right = f[:, :, : int(w * 0.50)], f[:, :, int(w * 0.62):]
-    dark = f.mean((1, 2)) < 60
-    empty_right = (right.std((1, 2)) < 9) & (right.mean((1, 2)) < 60)
-    text_left = (left.std((1, 2)) > 14) & (((left > 110).mean((1, 2)) > 0.015) & ((left > 110).mean((1, 2)) < 0.30))
-    return dark & empty_right & text_left
+    layout = np.zeros(T, bool); cand = np.zeros(T, bool)
+    for s0 in range(0, T, chunk):
+        a, b = max(0, s0 - 1), min(T, s0 + chunk + 1)                 # one picture of overlap: stillness needs neighbours
+        f = th[a:b].astype(np.float32)
+        w = f.shape[2]
+        left, right = f[:, :, : int(w * 0.50)], f[:, :, int(w * 0.62):]
+        mean = f.mean((1, 2))
+        still = _still(f)
+        dark = mean < 60
+        empty_right = (right.std((1, 2)) < 9) & (right.mean((1, 2)) < 60)
+        text_left = (left.std((1, 2)) > 14) & (((left > 110).mean((1, 2)) > 0.015) & ((left > 110).mean((1, 2)) < 0.30))
+        # vv40: on the real card the thin table text is averaged to dull grey at 128x72 (only ~0.5% of the left half is
+        # brighter than 110), so the test above missed it. Text also shows as many sharp left-right steps: count those.
+        edge = np.abs(np.diff(f, axis=2)) > 20
+        edges_left = edge[:, :, : int(w * 0.50) - 1].mean((1, 2))
+        text_left2 = (left.std((1, 2)) > 8) & (edges_left > 0.02)
+        lay = dark & empty_right & (text_left | text_left2) & still     # vv40: and it stands still (not a moving graphic)
+        rows = (edge.mean(2) > 0.04).mean(1)                         # share of picture rows that hold text-like detail
+        cnd = dark & (edge.mean((1, 2)) >= 0.012) & (rows >= 0.15) & still
+        k = s0 - a
+        layout[s0:min(T, s0 + chunk)] = lay[k:k + chunk]
+        cand[s0:min(T, s0 + chunk)] = cnd[k:k + chunk]
+    return layout, cand
+
+
+def _still(f: np.ndarray) -> np.ndarray:
+    """vv40: per picture, True when it is (almost) the same as the picture before or after it: fewer than 0.5% of the
+    pixels change by more than 20 grey levels and the average change is under 3 (video noise stays below that)."""
+    T = len(f)
+    if T < 2:
+        return np.ones(T, bool)
+    d = np.abs(np.diff(f, axis=0))
+    same = ((d > 20).mean((1, 2)) < 0.005) & (d.mean((1, 2)) < 3.0)
+    return np.r_[False, same] | np.r_[same, False]
+
+
+def end_card(card: np.ndarray, secs: int, live_after=None, min_s: int = 3):
+    """vv40: the second the closing stats / text card starts (the usable video ends there), or None. A card counts as the
+    closing one when it starts in the last quarter of the video and either little video is left after it (<= 2 min, or 10%)
+    or the game clock hardly runs after it (live_after = per-second running clock; < 30 s of it after the card)."""
+    for a, b in _runs(np.asarray(card[:secs], bool)):
+        if b - a < min_s or a < 0.75 * secs:
+            continue
+        left = secs - a
+        if left <= max(120.0, 0.10 * secs) or (live_after is not None and int(np.sum(live_after[b:secs])) < 30):
+            return float(a)
+    return None
 
 
 def _cut_runs(live: np.ndarray, mask: np.ndarray, min_s: int = 3) -> int:
@@ -936,6 +996,7 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
     live, pres = live_mask(clk, secs, cfg["min_dead_s"], want_pres=True)
     seen = float(pres.mean()) if secs else 0.0
     log(f"scoreboard clock readable in {seen:.0%} of the video, running in {live.mean():.0%} of it")
+    clock_live = live.copy()                             # vv40: the running clock as read, before any cut (for the closing card)
     if seen < 0.30 or live.sum() < 0.12 * secs:
         # the clock was not found (different broadcast layout): do NOT trust it - choose by activity instead
         log("WARNING: could not read the scoreboard clock on this video - picking the most active stretches by motion and crowd sound "
@@ -994,7 +1055,19 @@ def plan(path: str, cfg: dict, log=print, cues: list | None = None) -> dict:
     card = np.zeros(secs, bool)
     try:                                                  # vv26: the channel's own 'GAMETIME HIGHLIGHTS' stats card is never kept
         card = gametime_card(thumbs)[:secs]
-        cut = _cut_runs(live, np.r_[card, np.zeros(max(0, secs - len(card)), bool)])
+        card = np.r_[card, np.zeros(max(0, secs - len(card)), bool)]
+        # vv40: a stats / text card near the end ENDS the usable video: it and everything after it are cut (both modes)
+        ec = end_card(card, secs, clock_live if clock_ok else None)
+        if ec is not None:
+            stop = max(1.0, ec - 1.0)
+            card[int(stop):] = True
+            log(f"stats card at {int(ec) // 60}:{int(ec) % 60:02d} - the clip ends before it; nothing from there on is kept")
+            if stop < end_s or not end_known:
+                end_s = min(end_s, stop)
+                end_known = True
+                interview_cut = secs - end_s
+            live[int(stop):] = False
+        cut = _cut_runs(live, card)
         if cut:
             log(f"'GAMETIME HIGHLIGHTS' stats card found and cut ({cut}s)")
     except Exception as e:                                # noqa: BLE001 - never let this stop a clip
