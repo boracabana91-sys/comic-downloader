@@ -74,6 +74,9 @@ def test_mac_update_from_zip():
 
 
 def test_windows_update():
+    if os.name == "nt":
+        print("   (skipped on Windows: the stand-in apps are scripts; the build tests the real program)")
+        return
     with tempfile.TemporaryDirectory() as d:
         desk = os.path.join(d, "Desktop")
         os.makedirs(desk)
@@ -91,6 +94,9 @@ def test_windows_update():
 
 
 def test_wrong_files_refused():
+    if os.name == "nt":
+        print("   (skipped on Windows: the stand-in apps are scripts; the build tests the real program)")
+        return
     with tempfile.TemporaryDirectory() as d:
         cur = fake_exe(os.path.join(d, "EBZ-CNVRBINE-02-Windows.exe"), ver="02")
         other = fake_exe(os.path.join(d, "Other-Program.exe"), name="Something Else", ver="5")
