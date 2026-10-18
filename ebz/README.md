@@ -1,4 +1,4 @@
-# EBZ CNVRTR
+# EBZ CNVRBINE (was EBZ CNVRTR)
 
 Turns pictures, PDFs and comics into **CBZ** and **EPUB** files whose pages are fitted snugly to
 your device's screen (Kobo, Kindle, PocketBook, Boox, reMarkable, iPad, Android tablet, phone, or a size you type),
@@ -6,10 +6,18 @@ and joins several books into one.
 
 The version number is shown in the window title and at the top right of the window.
 
+## Updating
+1. Click **Get updates** (top right) and download the newest `EBZ-CNVRBINE-NN-Mac.zip` or `-Windows.exe`.
+2. Drop it on the small **Drop an update here** box (or anywhere in the window).
+3. If the program is busy, it asks to stop first (finished files are kept).
+4. It checks the file really is EBZ CNVRBINE and which version it is, asks you, then swaps itself and reopens.
+   Mac: the old app goes to the Trash. Windows: the old file is removed the next time the program starts.
+Your settings (devices, output folder, cover) are kept.
+
 ## Two tabs
 - **Convert**: each folder, PDF, CBZ or EPUB you drop becomes its own book, fitted to every ticked device.
 - **Combine**: the books you drop are joined into ONE book in the order of the list (Move up / Move down /
-  Sort by name). The name is made for you ("Series Chapter 001-006") and can be changed.
+  Sort 1, 2, 3). The list is put in chapter order (1, 2, 3 ... 10) by default. The name is made for you ("Series Chapter 001-006") and can be changed.
   - "Also fit the pages for my devices" ticked: one joined book per ticked device, in that device's folder.
   - Unticked: the pages are kept exactly as they are, in the `Combined` folder.
   - The joined EPUB has a contents list with one entry per original book.
@@ -55,5 +63,6 @@ and **Open the folder just made**. Inside it: one folder per device → `Book na
 - `bookfiles.py` reading EPUBs from any program; writing CBZ, EPUB (with contents) and PDF
 - `coverart.py` cover and chapter number
 - `ebz_app.py` the window
-- `test_ebz.py`, `test_v02.py`, `test_ebz_window.py` tests, run by the automatic build
+- `updater.py` updating by dropping the new download
+- `test_ebz.py`, `test_v02.py`, `test_updater.py`, `test_ebz_window.py` tests, run by the automatic build
 - Build: `.github/workflows/build-ebz.yml`, releases are tagged `ebz-vNN`

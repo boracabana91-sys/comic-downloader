@@ -1,4 +1,4 @@
-"""Opens the real EBZ CNVRTR window and checks it (needs a screen; the build has one)."""
+"""Opens the real EBZ CNVRBINE window and checks it (needs a screen; the build has one)."""
 import os
 import sys
 import tempfile
@@ -42,7 +42,7 @@ root, dnd = ebz_app.make_root()
 assert dnd, "the drag-and-drop tool did not load"
 a = ebz_app.App(root, dnd, sp)
 root.update()
-assert root.title() == f"EBZ CNVRTR {version.VERSION}", root.title()
+assert root.title() == f"EBZ CNVRBINE {version.VERSION}", root.title()
 assert a.version_label.cget("text") == f"Version {version.VERSION}"
 assert a.drop_on
 assert a.dev_lb.size() == len(devices.DEVICE_KEYS)
@@ -59,7 +59,8 @@ pdf = os.path.join(d, "Guide.pdf")
 Image.new("RGB", (600, 900), (10, 120, 10)).save(pdf, "PDF")
 a.on_drop(Ev(root, src, pdf, os.path.join(d, "x.txt")))
 root.update()
-assert a.conv.lb.size() == 2 and "My Book" in a.conv.lb.get(0), a.conv.lb.get(0, "end")
+assert a.conv.lb.size() == 2 and "Guide" in a.conv.lb.get(0) and "My Book" in a.conv.lb.get(1), \
+    a.conv.lb.get(0, "end")   # sorted by name
 a.on_drop(Ev(root, src, pdf))   # the same things again are not added twice
 assert a.conv.lb.size() == 2 and a.comb.lb.size() == 0
 
@@ -111,7 +112,7 @@ for n in (10, 2, 1):
 a.on_drop(Ev(root, *chs))
 root.update()
 assert a.comb.lb.size() == 3 and a.conv.lb.size() == 2   # dropped on the tab that is showing
-a.comb.sort()
+# dropped as 10, 2, 1: in the list as 1, 2, 10 WITHOUT pressing Sort (the default)
 assert [b.name for b in a.comb.books] == ["Series Chapter 1", "Series Chapter 2", "Series Chapter 10"]
 assert a.cname.get() == "Series Chapter 1-10", a.cname.get()
 a.comb.lb.selection_set(2)

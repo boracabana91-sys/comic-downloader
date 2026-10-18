@@ -1,7 +1,7 @@
 """The one place the version number lives.
 The window title, the header, the self-test and the GitHub release (ebz-vNN) all read it,
 so changing this line is all an update needs."""
-APP_NAME = "EBZ CNVRTR"
+APP_NAME = "EBZ CNVRBINE"   # was EBZ CNVRTR up to the first 02
 VERSION = "02"
 
 

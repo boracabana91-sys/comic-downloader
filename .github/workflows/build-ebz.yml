@@ -1,4 +1,4 @@
-name: Build EBZ CNVRTR
+name: Build EBZ CNVRBINE
 
 on:
   push:
@@ -32,6 +32,8 @@ jobs:
         run: python test_ebz.py
       - name: Version 02 tests (EPUBs from other programs, DRM and text books refused, combine, covers)
         run: python test_v02.py
+      - name: Updater tests (drop the new download to update; wrong files refused)
+        run: python test_updater.py
       - name: Open the window, drop files, convert
         run: python test_ebz_window.py
       - name: Read the version number
@@ -42,27 +44,50 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          pyinstaller --onefile --windowed --collect-all tkinterdnd2 --collect-all pypdfium2 --collect-all pypdfium2_raw --collect-all pillow_heif --collect-all resvg_py --name EBZ-CNVRTR ebz_app.py
-          Move-Item dist/EBZ-CNVRTR.exe "../EBZ-CNVRTR-$env:V-Windows.exe"
-          Start-Process -FilePath "../EBZ-CNVRTR-$env:V-Windows.exe" -ArgumentList "--selftest","selftest.txt" -Wait
+          pyinstaller --onefile --windowed --collect-all tkinterdnd2 --collect-all pypdfium2 --collect-all pypdfium2_raw --collect-all pillow_heif --collect-all resvg_py --name EBZ-CNVRBINE ebz_app.py
+          Move-Item dist/EBZ-CNVRBINE.exe "../EBZ-CNVRBINE-$env:V-Windows.exe"
+          Start-Process -FilePath "../EBZ-CNVRBINE-$env:V-Windows.exe" -ArgumentList "--selftest","selftest.txt" -Wait
           Write-Host "Built app self-test: $(Get-Content selftest.txt)"
           if ((Get-Content selftest.txt) -ne "OK") { exit 1 }
+          # real update test: an older copy of the program updates itself to this build
+          $new = (Resolve-Path "../EBZ-CNVRBINE-$env:V-Windows.exe").Path
+          New-Item -ItemType Directory -Force upd | Out-Null
+          $old = Join-Path (Resolve-Path upd).Path "EBZ-CNVRBINE-00-Windows.exe"
+          Copy-Item $new $old
+          $res = Join-Path (Get-Location).Path "upd_result.txt"
+          Start-Process -FilePath $old -ArgumentList "--apply-update",$new,"--no-launch","--result",$res -Wait
+          Write-Host "Update test: $(Get-Content $res)"
+          Get-ChildItem upd | ForEach-Object { Write-Host "  upd/$($_.Name)" }
+          if (-not (Get-Content $res).StartsWith("OK")) { exit 1 }
+          if (-not (Test-Path "upd/EBZ-CNVRBINE-$env:V-Windows.exe")) { exit 1 }
+          if (-not (Test-Path "upd/EBZ-CNVRBINE-00-Windows.exe.old")) { exit 1 }
 
       - name: Build Mac app
         if: runner.os == 'macOS'
         run: |
-          pyinstaller --windowed --osx-bundle-identifier com.boracabana.ebzcnvrtr --collect-all tkinterdnd2 --collect-all pypdfium2 --collect-all pypdfium2_raw --collect-all pillow_heif --collect-all resvg_py --name "EBZ CNVRTR" ebz_app.py
-          "dist/EBZ CNVRTR.app/Contents/MacOS/EBZ CNVRTR" --selftest "$PWD/selftest.txt" || true
+          pyinstaller --windowed --osx-bundle-identifier com.boracabana.ebzcnvrtr --collect-all tkinterdnd2 --collect-all pypdfium2 --collect-all pypdfium2_raw --collect-all pillow_heif --collect-all resvg_py --name "EBZ CNVRBINE" ebz_app.py
+          "dist/EBZ CNVRBINE.app/Contents/MacOS/EBZ CNVRBINE" --selftest "$PWD/selftest.txt" || true
           echo "Built app self-test: $(cat selftest.txt)"
           grep -qx OK selftest.txt
-          ditto -c -k --sequesterRsrc --keepParent "dist/EBZ CNVRTR.app" "../EBZ-CNVRTR-$V-Mac.zip"
+          ditto -c -k --sequesterRsrc --keepParent "dist/EBZ CNVRBINE.app" "../EBZ-CNVRBINE-$V-Mac.zip"
+          # real update test: a copy of the app in an "Applications" folder updates itself from the zip
+          mkdir -p upd/Apps upd/Trash
+          ditto "dist/EBZ CNVRBINE.app" "upd/Apps/EBZ CNVRBINE.app"
+          EBZ_TRASH="$PWD/upd/Trash" "upd/Apps/EBZ CNVRBINE.app/Contents/MacOS/EBZ CNVRBINE" --apply-update "$(cd .. && pwd)/EBZ-CNVRBINE-$V-Mac.zip" --no-launch --result "$PWD/upd_result.txt" || true
+          echo "Update test: $(cat upd_result.txt)"
+          ls -la upd/Apps upd/Trash
+          grep -q '^OK' upd_result.txt
+          ls upd/Trash | grep -q "EBZ CNVRBINE"
+          "upd/Apps/EBZ CNVRBINE.app/Contents/MacOS/EBZ CNVRBINE" --version-file "$PWD/v.txt"
+          echo "The updated app answers: $(cat v.txt | tr '\n' ' ')"
+          grep -qx "EBZ CNVRBINE" v.txt
 
       - uses: actions/upload-artifact@v4
         with:
-          name: EBZ-CNVRTR-${{ runner.os }}
+          name: EBZ-CNVRBINE-${{ runner.os }}
           path: |
-            EBZ-CNVRTR-*-Windows.exe
-            EBZ-CNVRTR-*-Mac.zip
+            EBZ-CNVRBINE-*-Windows.exe
+            EBZ-CNVRBINE-*-Mac.zip
           if-no-files-found: error
 
   release:
@@ -87,5 +112,5 @@ jobs:
           gh release create "$V" files/* \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
-            --title "EBZ CNVRTR $N" \
-            --notes "Windows: download EBZ-CNVRTR-$N-Windows.exe. Mac: download EBZ-CNVRTR-$N-Mac.zip, double-click to unzip. A separate app from Comic Downloader and Comic Series Downloader. Help: ebz/README.md"
+            --title "EBZ CNVRBINE $N" \
+            --notes "EBZ CNVRBINE (was EBZ CNVRTR). Windows: download EBZ-CNVRBINE-$N-Windows.exe. Mac: download EBZ-CNVRBINE-$N-Mac.zip. To update: drop the downloaded file on the 'Drop an update here' box at the top right of the program. A separate app from Comic Downloader and Comic Series Downloader. Help: ebz/README.md"

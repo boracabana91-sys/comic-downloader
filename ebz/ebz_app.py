@@ -1,4 +1,4 @@
-"""EBZ CNVRTR - the window.
+"""EBZ CNVRBINE (was EBZ CNVRTR) - the window.
 
 Two tabs:
   Convert - drop pictures, PDFs, CBZ, EPUB files or folders; each becomes its own book,
@@ -14,16 +14,17 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog, messagebox, ttk
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import converter  # noqa: E402
 import coverart  # noqa: E402
 import devices  # noqa: E402
 import pagecore  # noqa: E402
+import updater  # noqa: E402
 import version  # noqa: E402
 
-SETTINGS_FILE = os.path.join(os.path.expanduser("~"), ".ebz_cnvrtr.json")
+SETTINGS_FILE = os.path.join(os.path.expanduser("~"), ".ebz_cnvrtr.json")   # kept: settings carry over
 _GEO = re.compile(r"^(\d+)x(\d+)(?:([+-]\d+)([+-]\d+))?$")
 CONVERT_TEXT = "Drop pictures, PDFs, CBZ, EPUB files or folders here\nor click to choose files"
 COMBINE_TEXT = "Drop the books to join here (EPUB, CBZ, PDF or folders)\nor click to choose files"
@@ -67,7 +68,7 @@ def fit_geometry(saved, screen_w, screen_h, default=(820, 920), minimum=(700, 56
 
 def default_out_dir():
     desk = os.path.join(os.path.expanduser("~"), "Desktop")
-    return os.path.join(desk if os.path.isdir(desk) else os.path.expanduser("~"), "EBZ CNVRTR")
+    return os.path.join(desk if os.path.isdir(desk) else os.path.expanduser("~"), "EBZ CNVRBINE")
 
 
 def open_in_finder(path):
@@ -80,14 +81,21 @@ def open_in_finder(path):
         subprocess.Popen(["xdg-open", path])
 
 
+def looks_like_update(path):
+    """The program's own download (EBZ-CNVRBINE-03-Mac.zip, ...-Windows.exe or the app)."""
+    n = re.split(r"[\\/]", path.rstrip("/\\"))[-1].lower().replace(" ", "-")
+    return n.startswith(("ebz-cnvrbine", "ebz-cnvrtr")) and n.endswith((".zip", ".exe", ".app"))
+
+
 class DropBox:
     """A dashed box you can drop files on or click."""
 
-    def __init__(self, parent, text, on_click, bg=None, height=90):
+    def __init__(self, parent, text, on_click, bg=None, height=90, font=("Helvetica", 13), width=None):
         self.text = text
+        self.font = font
         self.hot = False
         self.c = tk.Canvas(parent, height=height, highlightthickness=0, cursor="hand2",
-                           **({"bg": bg} if bg else {}))
+                           **({"bg": bg} if bg else {}), **({"width": width} if width else {}))
         self.c.bind("<Configure>", lambda e: self.draw())
         self.c.bind("<Button-1>", lambda e: on_click())
 
@@ -99,7 +107,7 @@ class DropBox:
         c.create_rectangle(3, 3, w - 3, h - 3, outline=color, width=2, dash=(8, 5),
                            fill="#e8f1fc" if self.hot else "")
         c.create_text(w // 2, h // 2, text=self.text, fill="#333", justify="center",
-                      font=("Helvetica", 13))
+                      font=self.font)
 
     def set_hot(self, on):
         self.hot = on
@@ -134,7 +142,7 @@ class BookList:
         if ordered:
             ttk.Button(rrow, text="Move up", command=lambda: self.move(-1)).pack(side="left")
             ttk.Button(rrow, text="Move down", command=lambda: self.move(1)).pack(side="left", padx=(6, 0))
-            ttk.Button(rrow, text="Sort by name", command=self.sort).pack(side="left", padx=(6, 12))
+            ttk.Button(rrow, text="Sort 1, 2, 3...", command=self.sort).pack(side="left", padx=(6, 12))
         ttk.Button(rrow, text="Remove selected", command=self.remove_selected).pack(side="left")
         ttk.Button(rrow, text="Clear all", command=self.clear).pack(side="left", padx=6)
         self.on_change = None
@@ -156,6 +164,8 @@ class BookList:
         known = {(b.kind, tuple(b.items)) for b in self.books}
         new = [b for b in books if (b.kind, tuple(b.items)) not in known]
         self.books.extend(new)
+        if new:
+            self.sort_books()   # Chapter 1, 2, 3 ... 10 by default, whatever order they were dropped in
         self.update()
         say = self.app.say
         if new:
@@ -195,8 +205,11 @@ class BookList:
             self.lb.selection_set(i)
         self.lb.see(sel[0])
 
-    def sort(self):
+    def sort_books(self):
         self.books.sort(key=lambda b: converter.natural_key(b.name))
+
+    def sort(self):
+        self.sort_books()
         self.update()
 
     def remove_selected(self):
@@ -222,6 +235,7 @@ class App:
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         root.bind("<Configure>", self._on_configure)
         self._save_job = None
+        self._wraps = []
         self.q = queue.Queue()
         self.stop = threading.Event()
         self.worker = None
@@ -239,10 +253,21 @@ class App:
         head.pack(fill="x", padx=px, pady=(12, 0))
         self.title_label = ttk.Label(head, text=version.full_name(), font=("Helvetica", 20, "bold"))
         self.title_label.pack(side="left")
-        self.version_label = ttk.Label(head, text=f"Version {version.VERSION}", foreground="#666")
-        self.version_label.pack(side="right", anchor="s")
+        upd = ttk.Frame(head)
+        upd.pack(side="right")
+        self.upd_zone = DropBox(upd, "Drop an update here", self.choose_update, self.bgc, height=34,
+                                font=("Helvetica", 10), width=150)
+        self.upd_zone.c.pack(side="left")
+        vcol = ttk.Frame(upd)
+        vcol.pack(side="left", padx=(8, 0))
+        self.version_label = ttk.Label(vcol, text=f"Version {version.VERSION}", foreground="#666")
+        self.version_label.pack(anchor="e")
+        get = ttk.Label(vcol, text="Get updates", foreground="#1a5fb4", cursor="hand2")
+        get.pack(anchor="e")
+        get.bind("<Button-1>", lambda e: self.get_updates())
         ttk.Label(root, text="Turn pictures, PDFs and comics into CBZ and EPUB files that fit "
-                  "your device - or join several books into one.", foreground="#555").pack(anchor="w", padx=px)
+                  "your device - or join several books into one.", foreground="#555", wraplength=760,
+                  justify="left").pack(anchor="w", padx=px)
 
         # ----- bottom part first, so the buttons, output folder and log are never cut off -----
         self.bottom = ttk.Frame(root)
@@ -308,8 +333,8 @@ class App:
                   justify="left").pack(anchor="w")
         self.conv = BookList(self, t1, CONVERT_TEXT)
         self.conv.frame.pack(fill="x")
-        ttk.Label(t2, text="The books are joined into ONE book, in the order of the list (use Move "
-                  "up / Move down). EPUBs from other programs are opened, fitted and joined "
+        ttk.Label(t2, text="The books are joined into ONE book, in the order of the list: Chapter 1, 2, 3... "
+                  "(change it with Move up / Move down). EPUBs from other programs are opened, fitted and joined "
                   "automatically. Your original files are never changed.", foreground="#555",
                   wraplength=700, justify="left").pack(anchor="w")
         self.comb = BookList(self, t2, COMBINE_TEXT, ordered=True)
@@ -443,6 +468,10 @@ class App:
                     w.dnd_bind("<<DropLeave>>", lambda e: self._hot(False))
                 self.cover_zone.drop_target_register(DND_FILES)
                 self.cover_zone.dnd_bind("<<Drop>>", self.on_cover_drop)
+                self.upd_zone.c.drop_target_register(DND_FILES)
+                self.upd_zone.c.dnd_bind("<<Drop>>", self.on_update_drop)
+                self.upd_zone.c.dnd_bind("<<DropEnter>>", lambda e: self.upd_zone.set_hot(True))
+                self.upd_zone.c.dnd_bind("<<DropLeave>>", lambda e: self.upd_zone.set_hot(False))
                 self.drop_on = True
             except Exception:
                 pass
@@ -451,6 +480,8 @@ class App:
         self.update_devices()
         self.update_cover()
         self._tab_changed()
+        self._collect_wraps(root)
+        self._updating = False
         root.bind("<Destroy>", self._on_destroy, add="+")
         self._pump_job = root.after(100, self.pump)
 
@@ -496,6 +527,12 @@ class App:
     def on_drop(self, event):
         self._hot(False)
         items = list(self.root.tk.splitlist(event.data or ""))
+        upd = [p for p in items if looks_like_update(p)]
+        if upd:   # the new program dropped in the wrong box: it is still an update
+            self.start_update(upd[0])
+            items = [p for p in items if p not in upd]
+            if not items:
+                return getattr(event, "action", None)
         self.current().add_paths(items)
         return getattr(event, "action", None)
 
@@ -504,6 +541,108 @@ class App:
         if items:
             self.set_cover(items[0])
         return getattr(event, "action", None)
+
+    # ----- text that wraps to the window's width -----
+    def _collect_wraps(self, w):
+        for c in w.winfo_children():
+            if isinstance(c, ttk.Label):
+                try:
+                    wl = int(str(c.cget("wraplength")) or 0)
+                except ValueError:
+                    wl = 0
+                if wl > 0:
+                    self._wraps.append((c, 760 - wl))   # how much narrower than the window it was
+            self._collect_wraps(c)
+
+    def _rewrap(self, width):
+        for lab, offset in self._wraps:
+            try:
+                lab.config(wraplength=max(220, width - 60 - offset))
+            except tk.TclError:
+                pass
+
+    # ----- updating the program -----
+    def get_updates(self):
+        import webbrowser
+        webbrowser.open(updater.RELEASES)
+        self.say("Download the newest EBZ-CNVRBINE file for your computer, then drop it on the "
+                 "'Drop an update here' box at the top right.")
+
+    def choose_update(self):
+        path = filedialog.askopenfilename(
+            title="Choose the downloaded update (Mac: the .zip, Windows: the .exe)",
+            filetypes=[("Program update", "*.zip *.exe *.app"), ("All files", "*")])
+        if path:
+            self.start_update(path)
+
+    def on_update_drop(self, event):
+        self.upd_zone.set_hot(False)
+        items = list(self.root.tk.splitlist(event.data or ""))
+        if items:
+            self.start_update(items[0])
+        return getattr(event, "action", None)
+
+    def start_update(self, path):
+        if self._updating:
+            return
+        if self.worker is not None and self.worker.is_alive():
+            if not messagebox.askyesno(version.full_name(), "The program is still working.\n\n"
+                                       "Stop what it is doing and update now? Files already "
+                                       "finished are kept.", parent=self.root):
+                return
+            self.on_stop()
+        self._updating = True
+        self.q.put(("status", "Getting the update ready..."))
+        self._wait_then_update(path)
+
+    def _wait_then_update(self, path):
+        if self.worker is not None and self.worker.is_alive():   # the stop takes effect after a page
+            self.root.after(200, lambda: self._wait_then_update(path))
+            return
+        self.btn_go.config(state="disabled")
+        self.say(f"Checking the update: {os.path.basename(path.rstrip('/'))}")
+
+        def check():
+            import tempfile
+            try:
+                info = updater.prepare(path, tempfile.mkdtemp(prefix="ebz_update_"))
+                self.q.put(("update_ready", info))
+            except updater.UpdateError as e:
+                self.q.put(("update_failed", str(e)))
+            except Exception as e:
+                self.q.put(("update_failed", f"something went wrong ({e})."))
+        threading.Thread(target=check, daemon=True).start()
+
+    def _update_ready(self, info):
+        have = version.VERSION
+        new = f"{info['name']} {info['version']}"
+        if info["newer"]:
+            msg = f"Install {new}?\n\nYou have version {have}. The program will close and open the new version."
+        else:
+            msg = (f"The file you dropped is {new}, and you already have version {have}.\n\n"
+                   "Install it anyway?")
+        if not messagebox.askyesno(version.full_name(), msg, parent=self.root):
+            self._update_done("Update cancelled.")
+            return
+        try:
+            dest = updater.install(info["kind"], info["current"], info["candidate"])
+        except updater.UpdateError as e:
+            self._update_done(f"The update could not be installed: {e}")
+            return
+        self.say(f"Installed {new}. Opening it...")
+        self.save_all()
+        try:
+            updater.launch(info["kind"], dest)
+        except Exception as e:
+            self._update_done(f"{new} is installed but could not be opened ({e}). Open it yourself.")
+            return
+        self.root.after(800, self.on_close)
+
+    def _update_done(self, msg):
+        self._updating = False
+        self.say(msg)
+        self.status.set(msg if len(msg) < 90 else "See the message below.")
+        self.btn_go.config(state="normal")
 
     # ----- cover -----
     def choose_cover(self):
@@ -601,6 +740,10 @@ class App:
     def _on_configure(self, event):
         if event.widget is not self.root:
             return
+        self._rewrap(event.width)
+        lines = 2 if event.height < 700 else 5   # a short window keeps more room for the options
+        if int(self.log.cget("height")) != lines:
+            self.log.config(height=lines)
         if self._save_job:
             self.root.after_cancel(self._save_job)
         self._save_job = self.root.after(500, self.save_all)
@@ -674,8 +817,13 @@ class App:
                     self.last_folder = val
                     self.btn_last.config(state="normal" if val else "disabled")
                 elif kind == "done":
-                    self.btn_go.config(state="normal")
+                    if not self._updating:
+                        self.btn_go.config(state="normal")
                     self.btn_stop.config(state="disabled")
+                elif kind == "update_ready":
+                    self._update_ready(val)
+                elif kind == "update_failed":
+                    self._update_done(f"The update could not be used: {val}")
         except queue.Empty:
             pass
         try:
@@ -815,9 +963,29 @@ def selftest(path):
     sys.exit(0 if result == "OK" else 1)
 
 
+def _arg(name):
+    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else None
+
+
 if __name__ == "__main__":
+    if "--version-file" in sys.argv:   # asked by the updater: "which program and version are you?"
+        with open(_arg("--version-file"), "w", encoding="utf-8") as f:
+            f.write(f"{version.APP_NAME}\n{version.VERSION}\n")
+        sys.exit(0)
+    if "--apply-update" in sys.argv:   # used by the build to test updating, end to end
+        try:
+            new, info = updater.apply(_arg("--apply-update"), launch_after="--no-launch" not in sys.argv)
+            result = f"OK {info['name']} {info['version']} -> {new}"
+        except Exception as e:
+            result = f"FAIL {e}"
+        if _arg("--result"):
+            with open(_arg("--result"), "w", encoding="utf-8") as f:
+                f.write(result)
+        sys.exit(0 if result.startswith("OK") else 1)
     if "--selftest" in sys.argv:
         selftest(sys.argv[sys.argv.index("--selftest") + 1])
+    if getattr(sys, "frozen", False):
+        updater.cleanup_old()
     r, has_dnd = make_root()
     App(r, has_dnd)
     r.mainloop()

@@ -50,7 +50,7 @@ def where_panels(paths, n):
 
 # ----- tests -----
 def test_version():
-    assert version.full_name() == f"EBZ CNVRTR {version.VERSION}"
+    assert version.full_name() == f"{version.APP_NAME} {version.VERSION}" and version.APP_NAME == "EBZ CNVRBINE"
     assert version.VERSION.isdigit()
 
 
@@ -297,4 +297,4 @@ if __name__ == "__main__":
                 print("FAILED", name)
     if failed:
         sys.exit(1)
-    print("EBZ CNVRTR tests OK")
+    print("EBZ CNVRBINE tests OK")
