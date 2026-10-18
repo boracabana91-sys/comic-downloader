@@ -235,8 +235,11 @@ class Review(unittest.TestCase):
             cues = [(t + 2.0, "blocked by Turner!"), (t + 8.0, "puts it back, good!")]
             pu = analyze.play_units(motion, rz, n, cues, None, None, 0.0, 150.0)
             hz = np.zeros(n); hz[t + 6:t + 10] = 9                     # the putback is the loudest moment
-            segs, _ = analyze.best_play_units(pu["units"], motion, rz, np.zeros(n), hz, 600, 0.0, 150.0, 0.01)
+            segs, _ = analyze.best_play_units(pu["units"], motion, rz, np.zeros(n), hz, 600, 0.0, 150.0, 0.7)
             self.assertTrue(any(a <= t - 3 and b >= t + 9 for a, b in segs), (t, pu["units"], segs))
+            u = next(u for u in pu["units"] if u["a"] <= t + 7 < u["b"])          # the unit holding the putback ...
+            g, _ = analyze.best_play_units([dict(x) for x in pu["units"]], motion, rz, np.zeros(n), hz, 600, 0.0, None, 0.01)
+            self.assertTrue(any(a <= t - 3 and b >= u["b"] for a, b in g) or u["a"] <= t - 3, (t, g))
 
     def test_crowd_shot_with_medium_motion_no_clock(self):           # review #6 (needs the wide-camera check)
         d = S.build("B"); d["motion"] = d["motion"].copy(); d["rz"] = d["rz"].copy()
@@ -280,6 +283,87 @@ class Review(unittest.TestCase):
         clock = np.full(n, analyze.CLK_R, np.int8); clock[:20] = analyze.CLK_F; clock[26:34] = analyze.CLK_F   # tip, foul
         us = analyze.play_units(np.full(n, 10.0), np.zeros(n), n, None, clock, None, 19.0)["units"]
         self.assertTrue(us and us[0]["a"] <= 20 and us[0]["b"] <= 30, us)
+
+
+class Round2(unittest.TestCase):
+    """vv39 review round 2: the editor's probe_r2 inputs."""
+
+    def units(self, sc):
+        d = S.build("B", sc)
+        return d, Review.units(self, d)
+
+    def test_R1_bench_shot_after_a_roar_is_cut(self):                 # a dunk, its roar, then a bench shot (no clock)
+        sc = dict(readable=False,
+                  rows=[(0, 3, "U", "low", "q"), (4, 20, "U", "med", "n"), (21, 25, "U", "high", "R"), (26, 33, "U", "low", "L"),
+                        (34, 50, "U", "med", "n")],
+                  cuts=[4, 26, 34], caps=[(21, "throws it down!")], keep=(5, 24), wideN=[(0, 3), (27, 33)])
+        for crowd in ("L", "n", None):
+            d = S.build("B", sc)
+            if crowd:
+                d["rz"][S.PAD + 26:S.PAD + 34] = S.CROWD[crowd]
+            if crowd is None:
+                d["rz"][S.PAD + 21:S.PAD + 26] = S.CROWD["L"]                    # no roar at all
+            us = Review.units(self, d)
+            self.assertTrue(any(u["a"] <= 5 and 25 <= u["b"] <= 27 for u in us), (crowd, us))
+            self.assertFalse(any(u["a"] < 33 and u["b"] > 28 for u in us), (crowd, us))
+
+    def test_R2_tight_live_angle_with_the_basket_is_kept(self):       # not the wide camera, but the basket is in it
+        sc = dict(readable=False,
+                  rows=[(0, 3, "U", "low", "q"), (4, 14, "U", "med", "n"), (15, 19, "U", "med", "n"), (20, 22, "U", "med", "R"),
+                        (23, 23, "U", "med", "n"), (24, 40, "U", "med", "n")],
+                  cuts=[4, 15, 24], caps=[(20, "and he scores, good!")], keep=(5, 22), wideN=[(0, 3), (16, 23)])
+        for variant in ("caption", "no caption", "away crowd"):
+            d = S.build("B", sc)
+            if variant != "caption":
+                d["cues"] = []
+            if variant == "away crowd":
+                d["rz"][S.PAD + 20:S.PAD + 23] = S.CROWD["L"]
+            us = Review.units(self, d)
+            self.assertTrue(any(u["a"] <= 4 and u["b"] >= 23 for u in us), (variant, us))
+
+    def test_R3_short_reset_shot_after_a_block_word(self):           # with the caption the play goes on (K1: not without)
+        sc = dict(readable=False,
+                  rows=[(0, 3, "U", "low", "q"), (4, 11, "U", "med", "n"), (12, 13, "U", "high", "R"), (14, 14, "U", "high", "L"),
+                        (15, 17, "U", "low", "n"), (18, 20, "U", "high", "L"), (21, 23, "U", "high", "R"), (24, 40, "U", "med", "n")],
+                  cuts=[4, 15, 18, 27], caps=[(13, "blocked!")], keep=(5, 24), wideN=[(0, 3)])
+        us = Review.units(self, S.build("B", sc))
+        self.assertTrue(any(u["a"] <= 5 and u["b"] >= 24 for u in us), us)
+
+    def chain(self, every, words):
+        n = 640
+        motion = np.full(n, 10.0); rz = np.zeros(n); cues = []
+        for k, t in enumerate(range(4, 600, every)):
+            motion[t] = 60; cues.append((t + 3.0, words[k % len(words)]))
+        rz[300:303] = 2.5
+        us = analyze.play_units(motion, rz, n, cues, None, None, 0.0, 600.0)["units"]
+        hz = np.zeros(n); hz[300] = 9
+        segs, _ = analyze.best_play_units(us, motion, rz, np.zeros(n), hz, 120, 0.0, 600.0, 0.3, True)
+        return us, segs
+
+    def test_R5_dense_commentary_never_keeps_the_whole_video(self):
+        for every, words in ((8, ("good",)), (8, ("rebound", "good")), (12, ("good", "rebound")), (12, ("good",))):
+            us, segs = self.chain(every, words)
+            self.assertLessEqual(sum(b - a for a, b in segs), 120 * 1.02 + 1e-6, (every, words, segs))
+            self.assertTrue(all(b - a <= 90 * 1.5 + 1e-6 for a, b in segs), (every, words, segs))
+            self.assertTrue(segs and segs[0][0] == 0.0 and segs[-1][1] == 600.0, (every, words, segs))   # tip and finish kept
+            self.assertEqual(S.unsafe_bounds(dict(n=640, cues=[(4 + k * every + 3.0, words[k % len(words)])
+                                                               for k in range(len(range(4, 600, every)))],
+                                                  rz=np.zeros(640), clock=None, end_s=600.0),
+                                             [dict(u, a=u["a"] - S.PAD, b=u["b"] - S.PAD) for u in us]), [])
+
+    def test_R5_made_it_words_still_allow_a_walk_up_split(self):     # "good" every 12 s: split in the walk-ups, not forced
+        us, _ = self.chain(12, ("good",))
+        self.assertFalse(any(u["end"] == "forced" for u in us), us)
+
+    def test_forced_picks_respect_the_maximum(self):
+        n = 640
+        motion = np.full(n, 20.0); rz = np.full(n, 1.5)                 # nothing but forced splits
+        us = analyze.play_units(motion, rz, n, None, None, None, 0.0, 600.0)["units"]
+        self.assertTrue(all(u["end"] in ("forced", "dead") for u in us))
+        for mx in (60, 120, 300):
+            segs, _ = analyze.best_play_units(us, motion, rz, np.zeros(n), np.zeros(n), mx, 0.0, 600.0, 0.5, True)
+            self.assertLessEqual(sum(b - a for a, b in segs), mx * 1.02 + 1e-6, (mx, segs))
+            self.assertEqual(segs[-1][1], 600.0)
 
 
 def digits(txt, shot=None):

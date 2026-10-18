@@ -641,7 +641,8 @@ def play_units(motion, rz, n: int | None = None, cues: list | None = None, clock
     LAG = 3                                  # vv39: auto-captions trail the action by up to 3 s
     last_cont = _last_true(ev["cont"])
     last_res = _last_true(ev["res"])
-    last_roar = _last_true(rz >= 2.0)
+    roar_on = (rz >= 2.0) & (np.r_[-np.inf, rz[:-1]] < 2.0)       # vv39: a roar is measured from its START
+    last_roar = _last_true(roar_on)
     last_word = _last_true(ev["cont"] | ev["res"])
     big = ev["cont"] | ev["res"] | (rz >= 1.0)
     next_big = _next_true(big)               # (starts keep 5-6 s before a cue: that already covers the caption lag)
@@ -660,6 +661,12 @@ def play_units(motion, rz, n: int | None = None, cues: list | None = None, clock
             return False
         return True
 
+    def cont_ok(b):                          # only "play goes on" words protect a cut into a cutaway shot
+        return b <= 0 or b >= n or b - last_cont[min(b + LAG, n - 1)] > hold
+
+    high = (motion > 1.5 * base) & ~cut
+    rise = (rz >= 1.0) & (np.r_[np.inf, rz[:-1]] < 1.0)
+
     unplay = blocked | bugN
     if not readable:
         # vv39: cutaways (crowd, bench, close-ups) are WHOLE shots between two cuts: >= 80% low motion, or >= 80% not the wide
@@ -674,7 +681,11 @@ def play_units(motion, rz, n: int | None = None, cues: list | None = None, clock
             replay = ev["rep"][sa:sb].any() and sb - sa <= 20
             lowish = low[inner].mean() >= 0.8
             crowd = W is not None and (~W[inner]).mean() >= 0.8 and motion[inner].mean() <= 1.2 * base and not ev["cont"][sa:sb].any()
-            if replay or ((lowish or crowd) and (k == 0 or ok_end(sa))):
+            # vv39: a shot with a "made it" word, a roar or the crowd rising inside it (not right at its cut: that is a
+            # reaction shot), or fast movement, is live play
+            live_in = (ev["res"][sa + 1:min(n, sb + 3)].any() or roar_on[sa + 2:sb].any() or rise[sa + 2:sb].any()
+                       or high[inner].any())
+            if replay or ((lowish or crowd) and not live_in and (k == 0 or cont_ok(sa))):
                 unplay[sa:sb] = True
     play = ~unplay & (run_clock if readable else np.ones(n, bool))
 
@@ -682,8 +693,10 @@ def play_units(motion, rz, n: int | None = None, cues: list | None = None, clock
         return b >= n or next_big[b] - b >= lead
 
     near_word = np.zeros(n, bool)
-    for t in np.where(ev["cont"] | ev["res"])[0]:
-        near_word[max(0, t - LAG):t + 7] = True        # vv39: no lull from 3 s before a play word to 6 s after it
+    for t in np.where(ev["cont"])[0]:
+        near_word[max(0, t - LAG):t + 7] = True        # vv39: no lull from 3 s before "blocked" / "misses" to 6 s after it
+    for t in np.where(ev["res"])[0]:
+        near_word[max(0, t - LAG):t + 3] = True        # ... after "good!" the walk-up IS the place to split: 3 s before to 2 s after
     lull = play & (motion <= 1.5 * base) & ~cut & (rz <= 1.0) & ~near_word
 
     # stretches of play, bounded by whistles / cutaways / replays / the game's start and end
@@ -741,8 +754,11 @@ def play_units(motion, rz, n: int | None = None, cues: list | None = None, clock
             if b - a < lull_min:
                 continue
             q0 = 0.0 + min(1.5, max(0.0, (1.5 * base - float(motion[a:b].mean())) / base)) + min(1.0, max(0.0, -float(rz[a:b].mean())))
-            pts = [(b - 1, 2.0 + q0), ] + ([(b, 2.5 + q0)] if b < n and cut[b] else [])        # S3: where the walk-up ends
-            pts = [(t, q + (1.5 if 0 <= next_big[t] - lead - t <= 4 else 0.0)) for t, q in pts]  # ... right before the next play
+            at_cut = b < n and cut[b]
+            pts = [] if at_cut or cut[b:b + 2].any() else [(b - 1, 2.0 + q0)]   # S3: where the walk-up ends (not 1 s before a cut)
+            if at_cut:
+                pts.append((b, 2.5 + q0))                                       # ... at the cut that ends it (S2: a clean shot)
+            pts = [(t, q + (1.5 if 0 <= next_big[t] - lead - t <= (10 if cut[t] else 4) else 0.0)) for t, q in pts]  # next play
             pts += [(t, 1.5 + q0 - 0.05 * min(t - a - 2, 6)) for t in range(a + 2, b)]          # E5: lull start + 2 (or later)
             for t, q in pts:
                 if S + min_play_s <= t <= E - min_play_s and ok_end(t) and ok_start(t):
@@ -788,6 +804,9 @@ def play_units(motion, rz, n: int | None = None, cues: list | None = None, clock
                 continue
             for u in split_long(a, b, kind):
                 units.append({"a": float(max(u[0], s)), "b": float(min(u[1], e)), "end": u[2]})
+    cont_t = np.where(ev["cont"])[0]
+    for u in units:                          # vv39: a forced split close to "blocked" / "misses" must never end a pick
+        u["sticky"] = u["end"] == "forced" and bool(((cont_t >= u["b"] - hold) & (cont_t <= u["b"] + hold + LAG)).any())
     if end_s is None and units:
         # vv39: game end unknown: a unit that starts at a "buzzer / wins it" line and runs into 30 s+ of low motion (the
         # interview) is the celebration after the game, not a play
@@ -805,7 +824,7 @@ def play_units(motion, rz, n: int | None = None, cues: list | None = None, clock
 
 def best_play_units(units: list, motion, rz, mz, hype, max_s: float, start_s: float = 0.0, end_s: float | None = None,
                     share: float = 0.5, end_known: bool = False, replays: list | None = None, keep_replays: bool = False,
-                    clock=None) -> tuple:
+                    clock=None, chain_max_s: float = 90.0) -> tuple:
     """vv39: pick whole play units (never a slice of one), best first, until about `share` of the playing time.
     The jump-ball unit opens the clip and, when the game end is known, the final unit closes it. Units that are mostly crowd /
     bench / interview shots are left out. Units split with no sign of the play's end (forced) are only taken with their neighbours.
@@ -843,18 +862,33 @@ def best_play_units(units: list, motion, rz, mz, hype, max_s: float, start_s: fl
     def joined(j):                            # unit j ends at a forced split and unit j + 1 follows straight on
         return 0 <= j < len(units) - 1 and units[j]["end"] == "forced" and abs(units[j + 1]["a"] - units[j]["b"]) < 0.01
 
-    def group(i):                             # no sign the play ended at a forced split: keep BOTH sides of it together
-        a = i
-        while joined(a - 1):
-            a -= 1
-        b = i
-        while joined(b):
-            b += 1
-        return list(range(a, b + 1))
+    def bmot(t):                              # how much is moving at a split point (low = a better place to stop)
+        t = int(round(t))
+        return float(motion[max(0, t - 1):t + 1].mean()) if t < len(motion) else 0.0
+
+    def group(i, cap=None):                   # no sign the play ended at a forced split: keep BOTH sides of it together,
+        a = b = i                             # up to `chain_max_s`; a longer chain stops at its calmest forced points, never
+        while True:                           # at one next to "blocked" / "misses" (sticky: crossed first, up to 1.5x the cap)
+            opts = []
+            for j, side, span in ((a - 1, "left", L[a - 1:b + 1]), (b, "right", L[a:b + 2])):
+                if joined(j):
+                    sticky = bool(units[j].get("sticky"))
+                    if sum(span) <= min(chain_max_s * (1.5 if sticky else 1.0), cap if cap is not None else 1e18):
+                        opts.append((1e9 if sticky else bmot(units[j]["b"]), side))
+            if not opts:
+                return list(range(a, b + 1))
+            if max(opts)[1] == "left":        # cross the busier split first, so the chain ends where things are calm
+                a -= 1
+            else:
+                b += 1
 
     picked = set()
-    for i in sorted(forced):
-        picked.update(group(i))
+    for i in sorted(forced, reverse=True):    # the final play first, then the opening one - both within the maximum length
+        room = max_s * 1.02 - sum(L[j] for j in picked) - (L[0] if i != 0 and 0 in forced else 0.0)   # keep room for the tip
+        g = [j for j in group(i, room) if j not in picked]
+        if picked and sum(L[j] for j in g) > room:
+            continue
+        picked.update(g)
     total = sum(L[i] for i in picked)
     for v, i in sorted(((vals[i], i) for i in range(len(units))), reverse=True):
         if total >= target:
