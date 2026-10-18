@@ -3,6 +3,14 @@ import os
 import sys
 import tempfile
 import time
+import traceback
+
+
+def _hook(t, v, tb):   # failures show as a note on the GitHub build
+    print("::error title=window test::" + "".join(traceback.format_exception(t, v, tb)).strip().replace("\n", "%0A"))
+
+
+sys.excepthook = _hook
 
 from PIL import Image
 

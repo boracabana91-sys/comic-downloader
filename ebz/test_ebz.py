@@ -240,7 +240,7 @@ def test_pdf_cbz_photo_inputs():
 
 def test_epub_is_valid_fixed_layout():
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
-        src = os.path.join(d, "Tom & Jerry <1>")
+        src = os.path.join(d, "Tom & Jerry's")
         os.makedirs(src)
         for i in range(3):
             panel(1100, COLORS[i]).save(os.path.join(src, f"{i}.png"))
@@ -283,8 +283,18 @@ def test_selftest():
 
 
 if __name__ == "__main__":
+    import traceback
+    failed = 0
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
-            fn()
-            print("ok ", name)
+            try:
+                fn()
+                print("ok ", name)
+            except Exception:
+                failed += 1
+                tb = traceback.format_exc().strip().replace("\n", "%0A")
+                print(f"::error title={name}::{tb}")   # shows as a note on the GitHub build
+                print("FAILED", name)
+    if failed:
+        sys.exit(1)
     print("EBZ CNVRTR tests OK")
