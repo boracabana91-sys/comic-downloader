@@ -36,6 +36,9 @@ Directly under the link box a bar shows **Original / Source site: <website>** an
 - Paste a **comix.to** link and press Find chapters: comix.to only copies chapters and blocks programs, so the program takes the series name from the link and looks for it on the translation group's own site (now: timelesstoons.org). If found, the link box switches to that site and the bar shows it. If not found, the log says so and asks you to paste the group's own link.
 - If some chapters are **locked with coins**, the log says which ones (e.g. "chapter 9 to 14"), that they are on the same site, and what to do: Open site, then later press Find chapters again and **New + out-of-date**. The program never pays or unlocks anything for you.
 
+## comix.to links, step by step (since series-v6-test3)
+Paste a comix.to link and press Find chapters. The program (1) reads the series name from the link, (2) searches the sites it can read (now timelesstoons.org), spelling differences allowed, (3) if not there, asks the MangaUpdates directory who translates it, opens that group's own website and searches it. The log shows every step. When found, the link box switches to the source and the chapters appear by themselves. The directory step could not be tried from the build computer; if it fails, the log shows exactly where.
+
 ## Window size
 Drag the window edges to resize it. The Download buttons and the log stay at the bottom. The program remembers the size and position you left it at.
 

@@ -311,26 +311,150 @@ class _Index(HTMLParser):
             self._names = None
 
 
-def find_original(url, fetch_text=None, indexes=None, skip_site=None, name=None):
+def _match_score(want, names):
+    """1.0 when the wanted name appears whole in `names`; otherwise the share of its words
+    found there (names are spelled differently from site to site: 'Megami-den', 'Megamiden')."""
+    have = _words(names)
+    if f" {want} " in f" {have} ":
+        return 1.0
+    squeezed = want.replace(" ", "")
+    if len(squeezed) >= 8 and squeezed in have.replace(" ", ""):
+        return 0.95
+    w, h = want.split(), set(have.split())
+    return sum(1 for x in w if x in h) / len(w) if len(w) >= 3 else 0.0
+
+
+def find_original(url, fetch_text=None, indexes=None, skip_site=None, name=None, say=None):
     """Look for the series named in `url` (or `name`) on the sites we can read, leaving out
-    `skip_site`. Returns {'url': series page, 'site': host, 'title': name on that site} or None."""
+    `skip_site`. Returns {'url': series page, 'site': host, 'title': name on that site} or None.
+    `say` receives one line per site tried, so a failure can be understood."""
+    say = say or (lambda m: None)
     want = _words(name) if name else title_from_link(url)
     if len(want) < 6:
+        say(f"  The link holds no usable series name ('{want}').")
         return None
     ft = fetch_text or core.fetch_text
+    say(f"  Looking for '{want}'...")
     for index in (indexes or SOURCE_INDEXES):
-        if skip_site and site_name(index) == skip_site:
+        site = site_name(index)
+        if skip_site and site == skip_site:
             continue
         try:
             p = _Index()
             p.feed(ft(index))
             p.close()
+        except Exception as e:
+            say(f"  {site}: could not read its series list ({e}).")
+            continue
+        scored = [(_match_score(want, names), -len(names), href, names) for href, names in p.entries]
+        best = max(scored, default=None)
+        if best and best[0] >= 0.8:
+            say(f"  {site}: found.")
+            return {"url": urljoin(index, best[2]), "site": site, "title": best[3]}
+        say(f"  {site}: {len(p.entries)} series read, none called that.")
+    return None
+
+
+# Sites that list who translates a series (public, no bot check). Used when the sites we can
+# read directly do not have it: find the translation group, then its own website.
+DIRECTORY_API = "https://api.mangaupdates.com/v1"
+SOCIAL_SITES = ("discord", "facebook", "twitter", "x.com", "patreon", "ko-fi", "reddit", "youtube",
+                "instagram", "mangaupdates", "mangadex", "github", "t.me", "tumblr", "pixiv")
+
+
+def _post_json(url, obj, timeout=30):
+    import urllib.request
+    req = urllib.request.Request(url, data=json.dumps(obj).encode(), method="POST", headers={
+        "User-Agent": core.UA, "Content-Type": "application/json", "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout, context=core.SSL_CTX) as r:
+        return json.loads(r.read().decode("utf-8", "replace"))
+
+
+def _group_sites(title, post=None, get=None, say=None, api=None):
+    """Websites of the groups translating `title`, via the MangaUpdates directory.
+    Best effort: any step may fail, each is reported through `say`."""
+    say = say or (lambda m: None)
+    post = post or _post_json
+    get = get or (lambda u: json.loads(core.fetch_text(u)))
+    api = api or DIRECTORY_API
+    try:
+        res = post(f"{api}/series/search", {"search": title, "perpage": 5}).get("results") or []
+    except Exception as e:
+        say(f"  Directory lookup failed ({e}).")
+        return []
+    want = _words(title)
+    sid = next((r["record"]["series_id"] for r in res
+                if _match_score(want, r["record"].get("title", "")) >= 0.8), None)
+    if sid is None:
+        say("  The directory does not know that name.")
+        return []
+    try:
+        rel = post(f"{api}/releases/search", {"search": str(sid), "search_type": "series", "perpage": 40})
+        gids = list(dict.fromkeys(g["group_id"] for r in (rel.get("results") or [])
+                                  for g in (r.get("record", {}).get("groups") or []) if g.get("group_id")))
+    except Exception as e:
+        say(f"  Could not read who translates it ({e}).")
+        return []
+    sites = []
+    for gid in gids[:6]:
+        try:
+            g = get(f"{api}/groups/{gid}")
         except Exception:
             continue
-        hits = [(href, names) for href, names in p.entries if f" {want} " in f" {_words(names)} "]
-        if hits:
-            href, names = min(hits, key=lambda h: len(h[1]))
-            return {"url": urljoin(index, href), "site": site_name(index), "title": names}
+        for u in [g.get("url"), (g.get("social") or {}).get("site")]:
+            if u and re.match(r"https?://", u) and not any(x in site_name(u) for x in SOCIAL_SITES):
+                sites.append((g.get("name") or site_name(u), u))
+    say(f"  Translation group site(s): {', '.join(site_name(u) for _n, u in sites) or 'none listed'}.")
+    return sites
+
+
+def search_site(site_url, title, fetch_text=None, say=None):
+    """Find a series by name on any group website: tries the usual list and search pages.
+    Returns the series page address or None."""
+    from urllib.parse import quote_plus
+    say = say or (lambda m: None)
+    ft = fetch_text or core.fetch_text
+    u = urlparse(site_url)
+    root = f"{u.scheme}://{u.netloc}"
+    q = quote_plus(title)
+    want = _words(title)
+    for path in ("/series", "/series/?search=" + q, "/manga", f"/?s={q}&post_type=wp-manga",
+                 f"/?s={q}", "/search?q=" + q, "/comics", "/"):
+        try:
+            html = ft(root + path)
+        except Exception:
+            continue
+        idx = _Index()
+        idx.feed(html)
+        cards = list(idx.entries)
+        links = _Links()
+        links.feed(html)
+        cards += [(h, t) for h, t in links.links
+                  if re.search(r"/(series|manga|comic|comics|title|read)/[^/]+/?$", urlparse(h).path)]
+        scored = [(_match_score(want, names), -len(names), urljoin(root, h)) for h, names in cards if names]
+        best = max(scored, default=None)
+        if best and best[0] >= 0.8:
+            say(f"  {site_name(root)}: found at {best[2]}")
+            return best[2]
+    say(f"  {site_name(root)}: could not find it there.")
+    return None
+
+
+def find_source(url, say=None, fetch_text=None, indexes=None, post=None, get=None):
+    """Everything we can do to find the original source of a copy-site link, in order:
+    (1) the sites we can read directly, (2) the translation group's own site via a directory."""
+    say = say or (lambda m: None)
+    hit = find_original(url, fetch_text=fetch_text, indexes=indexes, say=say)
+    if hit:
+        return hit
+    title = title_from_link(url)
+    if len(title) < 6:
+        return None
+    say("  Asking a directory who translates it...")
+    for _name, site in _group_sites(title, post=post, get=get, say=say):
+        found = search_site(site, title, fetch_text=fetch_text, say=say)
+        if found:
+            return {"url": found, "site": site_name(found), "title": title}
     return None
 
 

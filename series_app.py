@@ -501,11 +501,12 @@ class SeriesApp:
                 copy_site = series.site_name(link)
                 self.say(f"{copy_site} only copies chapters and does not let programs in. "
                          "Looking for the original source site...")
-                orig = series.find_original(link)
+                orig = series.find_source(link, say=self.say)
                 if not orig:
-                    self.say(f"Could not find the original source of this series automatically. "
-                             f"Open {copy_site} in your browser, look for the translation group's "
-                             "name or site, and paste that site's series link here instead.")
+                    self.say("Could not find the original source of this series. The lines above show "
+                             "what was tried. Please copy this whole log and send it to your developer "
+                             f"together with the {copy_site} link: that is all that is needed to add "
+                             "the missing site.")
                     self.q.put(("status", "Original source not found."))
                     return
                 self.say(f"Found it on {orig['site']} as '{orig['title'].split(' ~')[0][:60]}'. "

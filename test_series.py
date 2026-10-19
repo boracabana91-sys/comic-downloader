@@ -66,7 +66,7 @@ class Site(http.server.BaseHTTPRequestHandler):
                     + row.format(c="3c3", n="3", lock=lock) + row.format(c="25b", n="2.5", lock="")
                     + row.format(c="0d2", n="2", lock="") + row.format(c="77a1", n="1", lock="")
                     + '</body></html>')
-        elif path == "/index/series":   # a site's list of series: names are on each card's button
+        elif path in ("/index/series", "/series"):   # a site's list of series: names are on each card's button
             card = ('<button id="{i}" alt="{m}" title="{m} {alt}" data-type="manga">'
                     '<a href="/series/{s}/" alt="{m}" title="{m}">x</a></button>')
             body = ('<html><body>'
@@ -147,6 +147,48 @@ def main():
                                 indexes=(base + "/index/series",)) is None
     assert series.find_original("https://comix.to/title/zz9-mud", indexes=(base + "/index/series",)) is None  # too short
     assert series.find_original(cx, indexes=(base + "/missing",)) is None             # unreachable index: no crash
+
+    # --- spelled differently on the other site: still found; a failure explains itself ---
+    said = []
+    assert series.find_original("https://comix.to/title/q1-bloodshed-goddess-biography-extra",
+                                indexes=(base + "/index/series",), say=said.append) is None
+    assert any("none called that" in m for m in said), said
+    said = []
+    near = series.find_original("https://comix.to/title/q1-ryuuketsu-megami-den-teikoku-no-musume",
+                                indexes=(base + "/index/series",), say=said.append)
+    assert near and near["url"].endswith("/series/bloodshed/"), (near, said)
+    said = []
+    assert series.find_original(cx, indexes=(base + "/nope",), say=said.append) is None
+    assert any("could not read" in m for m in said), said
+
+    # --- not on a site we read: ask the directory who translates it, then search their site ---
+    calls = []
+
+    def post(url, obj, timeout=30):
+        calls.append(url)
+        if url.endswith("/series/search"):
+            return {"results": [{"record": {"series_id": 77, "title": "Ryuuketsu Megamiden ~Teikoku no Musume~"}}]}
+        return {"results": [{"record": {"groups": [{"group_id": 5, "name": "G"}, {"group_id": 6}]}}]}
+
+    def get(url):
+        return {"name": "Group", "url": "https://discord.gg/x", "social": {"site": base}} if url.endswith("/5") \
+            else {"name": "Other", "url": "https://www.facebook.com/y"}
+    said = []
+    got = series.find_source(cx, say=said.append, indexes=(base + "/nope",), post=post, get=get)
+    assert got and got["url"] == base + "/series/bloodshed/", (got, said)
+    assert calls[0].endswith("/series/search") and calls[1].endswith("/releases/search")
+    assert series._group_sites("ryuuketsu megamiden teikoku no musume", post=post, get=get) == [("Group", base)]
+    # directory down or unknown name: nothing found, and the log says why
+    def boom(*a, **k):
+        raise IOError("HTTP Error 403")
+    said = []
+    assert series.find_source(cx, say=said.append, indexes=(base + "/nope",), post=boom, get=get) is None
+    assert any("Directory lookup failed" in m for m in said), said
+    said = []
+    assert series.find_source(cx, say=said.append, indexes=(base + "/nope",),
+                              post=lambda u, o, timeout=30: {"results": []}, get=get) is None
+    assert any("does not know" in m for m in said), said
+    assert series.search_site(base, "completely missing series name") is None
 
     # --- a site whose chapter addresses are only codes, with a locked chapter and coded pictures ---
     cod = series.inspect_series(base + "/series/coded/")
