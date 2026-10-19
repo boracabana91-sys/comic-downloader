@@ -63,3 +63,6 @@ The old lookup through the MangaUpdates directory was removed: for licensed seri
 - Pictures come from the page's own reader list when it has one, so a stray picture can no longer land in front of page 1 (seen on madarascans.net).
 - Chapters like 175.5 ... 175.19 (Thunderscans) are ordered and named correctly (175.10 used to be read as 175.1 and sorted too early).
 - madarascans.net has changed its address twice (.com, .org, .net). If it moves again, paste a link from the new address once and it is remembered.
+
+## Sites that move (test6)
+If a source site's address does not answer, the program tries the same name with other endings (.com .net .org .to .io .cc ...) all at once, and only accepts one when the series really lists chapters there. Old addresses that redirect (madarascans.com -> .net) are followed. A pasted link on a dead address is moved the same way. Sites that worked are remembered.

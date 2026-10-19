@@ -380,8 +380,11 @@ def search_site(site_url, title, fetch_text=None, say=None):
     root = f"{u.scheme}://{u.netloc}"
     q = quote_plus(title)
     want = _words(title)
+    start = time.monotonic()
     for path in ("/series", "/series/?search=" + q, "/manga", f"/?s={q}&post_type=wp-manga",
                  f"/?s={q}", "/search?q=" + q, "/comics", "/"):
+        if time.monotonic() - start > SITE_BUDGET:
+            break
         try:
             html = ft(root + path)
         except Exception:
@@ -425,14 +428,20 @@ def remember_site(url, known=()):
     return root
 
 
+SITE_BUDGET = 8    # seconds one site may take to find a series before the next site is tried
+
+
 def probe_site(root, title, fetch_text=None, say=None):
     """Open the series page a site would use for `title` (its name written as a link: the-title-words)
     and accept it only when it really lists chapters. Returns the page address or None."""
     say = say or (lambda m: None)
     words = _words(title).split()
     slugs = ["-".join(words)] + (["-".join(words[1:])] if words[:1] == ["the"] and len(words) > 3 else [])
+    start = time.monotonic()
     for slug in slugs:
         for path in SLUG_PATHS:
+            if time.monotonic() - start > SITE_BUDGET:
+                return None
             page = root + path.format(slug)
             try:
                 info = inspect_series(page, fetch_text=fetch_text)
@@ -444,9 +453,54 @@ def probe_site(root, title, fetch_text=None, say=None):
     return None
 
 
-def find_source(url, say=None, fetch_text=None, indexes=None, known=(), sites=None, name=None):
+# Sites move: madarascans.com became .org, then .net. When an address does not answer, the same
+# name with another ending is tried (all at once), and only accepted if the series is really there.
+TLDS = ("com", "net", "org", "to", "io", "cc", "co", "me", "site", "xyz", "app", "top", "one",
+        "info", "live", "online", "fun", "club", "vip", "cx", "ws", "gg")
+
+
+def tld_variants(root):
+    """'https://madarascans.com' -> ['https://madarascans.net', 'https://madarascans.org', ...]"""
+    label, dot, tld = site_name(root).rpartition(".")
+    if not dot or not label or not re.search(r"[a-z]", tld):
+        return []
+    return [f"https://{label}.{t}" for t in TLDS if t != tld]
+
+
+def _alive(root, timeout=6):
+    """Where the site answers today: its address after redirects ('https://madarascans.net'), else ''."""
+    import urllib.request
+    try:
+        req = urllib.request.Request(root + "/", headers={"User-Agent": core.UA})
+        with urllib.request.urlopen(req, timeout=timeout, context=core.SSL_CTX) as r:
+            return site_root(r.geturl()) if 200 <= r.status < 300 else ""
+    except Exception:
+        return ""
+
+
+def live_roots(root, alive=None, say=None):
+    """The addresses to try for a site: itself (or where it redirects to), or, when it does not
+    answer, every other ending of the same name that does."""
+    from concurrent.futures import ThreadPoolExecutor
+    say = say or (lambda m: None)
+    alive = alive or _alive
+    now = alive(root)
+    if now:
+        if site_name(now) != site_name(root):
+            say(f"  {site_name(root)} has moved to {site_name(now)}.")
+        return [now]
+    variants = tld_variants(root)
+    say(f"  {site_name(root)} does not answer. Trying the same name with other endings...")
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        found = list(dict.fromkeys(g for g in ex.map(alive, variants) if g))
+    say("  Answering: " + (", ".join(site_name(g) for g in found) if found else "none") + ".")
+    return found
+
+
+def find_source(url, say=None, fetch_text=None, indexes=None, known=(), sites=None, name=None, alive=None):
     """Find the series named in a copy-site link on a site we can read, in order:
-    (1) each known/remembered site: the series page by name, then the site's own search,
+    (1) each known/remembered site (under whatever ending answers today): the series page by
+    name, then the site's own search,
     (2) the series lists of sites that publish one (timelesstoons.org).
     Every site tried is reported through `say`."""
     say = say or (lambda m: None)
@@ -455,13 +509,41 @@ def find_source(url, say=None, fetch_text=None, indexes=None, known=(), sites=No
         say(f"  The link holds no usable series name ('{title}').")
         return None
     say(f"  Looking for '{title}'...")
+    tried = set()
     for root in (sites if sites is not None else list(KNOWN_SOURCES) + list(known)):
-        page = probe_site(root, title, fetch_text=fetch_text, say=say)
-        if not page:
-            page = search_site(root, title, fetch_text=fetch_text, say=say)
-        if page:
-            return {"url": page, "site": site_name(page), "title": title}
+        for live in live_roots(root, alive=alive, say=say):
+            if site_name(live) in tried:
+                continue
+            tried.add(site_name(live))
+            page = probe_site(live, title, fetch_text=fetch_text, say=say)
+            if not page:
+                page = search_site(live, title, fetch_text=fetch_text, say=say)
+            if page:
+                return {"url": page, "site": site_name(page), "title": title}
     return find_original(url, fetch_text=fetch_text, indexes=indexes, name=name, say=say)
+
+
+def find_moved(link, say=None, fetch_text=None, alive=None):
+    """A pasted link whose address no longer answers: the same page (or the same series by name)
+    on another ending of the same site. Returns the new link or None."""
+    say = say or (lambda m: None)
+    u = urlparse(link)
+    root = site_root(link)
+    if not root:
+        return None
+    for live in live_roots(root, alive=alive, say=say):
+        if site_name(live) == site_name(root):
+            continue
+        same = live + u.path + (f"?{u.query}" if u.query else "")
+        try:
+            if inspect_series(same, fetch_text=fetch_text)["chapters"]:
+                return same
+        except Exception:
+            pass
+        page = probe_site(live, title_from_link(link), fetch_text=fetch_text, say=say)
+        if page:
+            return page
+    return None
 
 
 UID_ADDRESS = re.compile(r"`(https?://[^`\s$]+/)\$\{uid\}`")

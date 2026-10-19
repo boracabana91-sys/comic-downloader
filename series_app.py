@@ -516,7 +516,17 @@ class SeriesApp:
                          f"Using {orig['url']}")
                 link = orig["url"]
                 self.q.put(("url", link))
-            info = series.inspect_series(link)
+            try:
+                info = series.inspect_series(link)
+            except Exception:
+                # the site may have moved to another address ending (.com -> .net): look for it there
+                moved = None if series.is_aggregator(link) else series.find_moved(link, say=self.say)
+                if not moved:
+                    raise
+                self.say(f"The site has moved. Using {moved}")
+                link = moved
+                self.q.put(("url", link))
+                info = series.inspect_series(link)
             if info["chapters"]:
                 root = series.remember_site(link, series.load_settings(self.settings_path).get("sources") or [])
                 if root:

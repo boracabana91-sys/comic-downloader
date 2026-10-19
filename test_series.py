@@ -172,14 +172,40 @@ def main():
     tb = "https://comix.to/title/6c6iz-the-hit-saga-zz"
     hit_link = "https://comix.to/title/6c6iz-the-zz-hit-saga"
     said = []
-    got = series.find_source(hit_link, say=said.append, sites=[base], indexes=(base + "/nope",))
+    got = series.find_source(hit_link, say=said.append, sites=[base], indexes=(base + "/nope",), alive=lambda r: r)
     assert got and got["url"] == base + "/comics/the-zz-hit-saga/" and got["site"] == "127.0.0.1", (got, said)
     assert any("found it at" in m for m in said), said
     said = []
-    assert series.find_source(tb, say=said.append, sites=[base], indexes=(base + "/nope",)) is None
+    assert series.find_source(tb, say=said.append, sites=[base], indexes=(base + "/nope",), alive=lambda r: r) is None
     assert any("could not find it there" in m for m in said) and any("could not read" in m for m in said), said
     assert series.probe_site(base, "lonely one") is None, "a page with a single chapter link is not a series page"
     assert series.find_source(hit_link, sites=[], indexes=(base + "/index/series",), name="Bloodshed Goddess Biography")["url"].endswith("/series/bloodshed/")
+    # --- a site that moved: .com is dead, the same name answers under another ending ---
+    assert series.tld_variants("https://madarascans.com")[:3] == ["https://madarascans.net", "https://madarascans.org", "https://madarascans.to"]
+    assert "https://en-thunderscans.com" in series.tld_variants("https://en-thunderscans.net") and series.tld_variants("http://127.0.0.1:80") == []
+    moved = {"https://madarascans.net": "https://madarascans.net"}                     # only .net answers
+
+    def host_fetch(u):                                                                  # the stand-in site answers for madarascans.net
+        return core.fetch_text(u.replace("https://madarascans.net", base))
+    said = []
+    got = series.find_source(hit_link, say=said.append, sites=["https://madarascans.com"], indexes=(base + "/nope",),
+                             alive=lambda r: moved.get(r, ""), fetch_text=host_fetch)
+    assert got and got["url"] == "https://madarascans.net/comics/the-zz-hit-saga/", (got, said)
+    assert any("does not answer" in m for m in said) and any("Answering: madarascans.net" in m for m in said), said
+    said = []                                                                           # old address redirects to the new one
+    got = series.find_source(hit_link, say=said.append, sites=["https://madarascans.com"], indexes=(base + "/nope",),
+                             alive=lambda r: "https://madarascans.net" if "madarascans.com" in r else "", fetch_text=host_fetch)
+    assert got and got["site"] == "madarascans.net" and any("has moved to madarascans.net" in m for m in said), (got, said)
+    assert series.find_source(hit_link, sites=["https://gone.com"], indexes=(base + "/nope",), alive=lambda r: "", fetch_text=host_fetch) is None
+    # a site that is up but lacks the series is not "moved": its other endings are not tried, the next site is
+    asked = []
+    series.find_source(tb, sites=["https://up.com", "https://other.com"], indexes=(base + "/nope",),
+                       alive=lambda r: (asked.append(r), r)[1], fetch_text=host_fetch)
+    assert asked == ["https://up.com", "https://other.com"], asked
+    # a pasted link on a dead address is followed to the live one
+    link = series.find_moved("https://madarascans.com/comics/the-zz-hit-saga/", alive=lambda r: moved.get(r, ""), fetch_text=host_fetch)
+    assert link == "https://madarascans.net/comics/the-zz-hit-saga/", link
+    assert series.find_moved("https://madarascans.com/comics/zz-unknown-thing/", alive=lambda r: moved.get(r, ""), fetch_text=host_fetch) is None
     assert series.KNOWN_SOURCES and "en-thunderscans.com" in series.KNOWN_SOURCES[0]
     # sites you paste a working link from are remembered (but never the copy site or one already known)
     assert series.remember_site("https://newscans.net/comics/x/") == "https://newscans.net"
