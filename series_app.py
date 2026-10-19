@@ -6,6 +6,7 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
+import webbrowser
 from tkinter import filedialog, messagebox, ttk
 
 import cleaner
@@ -81,6 +82,17 @@ class SeriesApp:
         ttk.Button(row, text="Paste", command=self.paste).pack(side="left", padx=(8, 0))
         self.btn_find = ttk.Button(row, text="Find chapters", command=self.find)
         self.btn_find.pack(side="left", padx=(8, 0))
+
+        # directly below the link box: where the chapters really come from, so you can check it yourself
+        srcrow = ttk.Frame(root)
+        srcrow.pack(fill="x", padx=14, pady=(4, 0))
+        ttk.Label(srcrow, text="Original / Source site:", font=("Helvetica", 10, "bold")).pack(side="left")
+        self.source = tk.StringVar(value="-")
+        self.source_url = ""        # the page that "Open site" shows
+        ttk.Label(srcrow, textvariable=self.source, foreground="#0a5").pack(side="left", padx=(6, 0))
+        self.btn_source = ttk.Button(srcrow, text="Open site", command=self.open_source)
+        self.btn_source.pack(side="right")
+        self.url.trace_add("write", self.update_source)
 
         nrow = ttk.Frame(root)
         nrow.pack(fill="x", padx=14, pady=(6, 0))
@@ -285,6 +297,15 @@ class SeriesApp:
         except tk.TclError:
             pass
 
+    def update_source(self, *_):
+        link = self.url.get().strip()
+        self.source.set(series.source_label(link))
+        self.source_url = link if series.site_name(link) else ""
+
+    def open_source(self):
+        if self.source_url:
+            webbrowser.open(self.source_url)
+
     def choose(self):
         d = filedialog.askdirectory(initialdir=self.folder.get() or os.path.expanduser("~"))
         if d:
@@ -447,6 +468,8 @@ class SeriesApp:
                     self.status.set(a)
                 elif kind == "chapters":
                     self.show_chapters(a, b)
+                elif kind == "url":
+                    self.url.set(a)     # the original source's link replaces a copy site's link
                 elif kind == "found_done":
                     self.btn_find.config(state="normal")
                 elif kind == "done":
@@ -473,6 +496,22 @@ class SeriesApp:
 
     def _find(self, link):
         try:
+            if series.is_aggregator(link):
+                # a copy site (comix.to) blocks programs: go to the group's own site instead
+                copy_site = series.site_name(link)
+                self.say(f"{copy_site} only copies chapters and does not let programs in. "
+                         "Looking for the original source site...")
+                orig = series.find_original(link)
+                if not orig:
+                    self.say(f"Could not find the original source of this series automatically. "
+                             f"Open {copy_site} in your browser, look for the translation group's "
+                             "name or site, and paste that site's series link here instead.")
+                    self.q.put(("status", "Original source not found."))
+                    return
+                self.say(f"Found it on {orig['site']} as '{orig['title'].split(' ~')[0][:60]}'. "
+                         f"Using {orig['url']}")
+                link = orig["url"]
+                self.q.put(("url", link))
             info = series.inspect_series(link)
             if not info["chapters"]:
                 self.say("No chapter links found on that page. Make sure it is the page that "
@@ -484,7 +523,20 @@ class SeriesApp:
                 self.say(f"Found {len(info['chapters'])} chapters of '{info['title']}'. "
                          "Tick the ones you want, choose your gadget, then press Download.")
                 tot = info.get("total")
-                if tot and tot != len(info["chapters"]):
+                site = series.site_name(link)
+                shut = info.get("locked") or []
+                if shut:
+                    self.say(f"Not an error: {len(info['chapters'])} chapters are free to download. "
+                             f"{len(shut)} more (chapter {series.chapter_range(shut)}) are on {site} "
+                             "but locked behind its coins, so this program cannot download them.")
+                    self.say("To continue the series: press 'Open site' above to read or unlock "
+                             f"them on {site}. When they become free, press Find chapters again "
+                             "and then 'New + out-of-date'.")
+                    other = series.find_original(link, skip_site=site, name=info["title"])
+                    if other:
+                        self.say(f"The same series is also on {other['site']}: {other['url']}. "
+                                 "Paste that link to try its chapters.")
+                elif tot and tot != len(info["chapters"]):
                     self.say(f"Note: the website says it has {tot} chapters but only "
                              f"{len(info['chapters'])} can be downloaded (some may be paid or "
                              "locked).")

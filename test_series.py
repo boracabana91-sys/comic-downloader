@@ -66,6 +66,15 @@ class Site(http.server.BaseHTTPRequestHandler):
                     + row.format(c="3c3", n="3", lock=lock) + row.format(c="25b", n="2.5", lock="")
                     + row.format(c="0d2", n="2", lock="") + row.format(c="77a1", n="1", lock="")
                     + '</body></html>')
+        elif path == "/index/series":   # a site's list of series: names are on each card's button
+            card = ('<button id="{i}" alt="{m}" title="{m} {alt}" data-type="manga">'
+                    '<a href="/series/{s}/" alt="{m}" title="{m}">x</a></button>')
+            body = ('<html><body>'
+                    + card.format(i=1, m="Mad Mud", alt="", s="mad-mud")
+                    + card.format(i=2, m="Bloodshed Goddess Biography",
+                                  alt="Ryuuketsu Megamiden ~Teikoku no Musume~, 流血女神伝", s="bloodshed")
+                    + card.format(i=3, m="Other", alt="Megamiden Teikoku", s="other")
+                    + '</body></html>')
         elif path.startswith("/chapter/9f1e2-"):
             c = path.rstrip("/").rsplit("-", 1)[1]
             body = ('<html><head><title>Coded Comic Chapter</title></head><body><div id="pages">'
@@ -121,11 +130,35 @@ def main():
     names2 = series.chapter_names("S", ["https://x/a/b", "https://x/a/c"])  # no numbers: by position
     assert names2 == ["S - Chapter 001", "S - Chapter 002"], names2
 
+    # --- copy sites (comix.to): found again on the original source site, and shown in the bar ---
+    cx = "https://comix.to/title/j5ne6-ryuuketsu-megamiden-teikoku-no-musume"
+    assert series.is_aggregator(cx) and series.is_aggregator("https://www.comix.to/title/x")
+    assert not series.is_aggregator("https://notcomix.to/x") and not series.is_aggregator(base + "/series/demo")
+    assert series.title_from_link(cx) == "ryuuketsu megamiden teikoku no musume"
+    assert series.title_from_link("https://s.org/title/abc-def") == "abc def"       # no code in front
+    assert series.title_from_link("https://s.org/series/mad-mud/") == "mad mud"
+    assert series.site_name("https://www.timelesstoons.org/series/x/") == "timelesstoons.org"
+    assert series.site_name("junk") == "" and series.source_label("junk") == "-" and series.source_label("") == "-"
+    assert series.source_label("https://luacomic.org/series/x") == "luacomic.org"
+    assert "comix.to" in series.source_label(cx) and "original" in series.source_label(cx)
+    found = series.find_original(cx, indexes=(base + "/index/series",))
+    assert found and found["url"] == base + "/series/bloodshed/" and found["site"] == "127.0.0.1", found
+    assert series.find_original("https://comix.to/title/zz9-never-heard-of-it-series",
+                                indexes=(base + "/index/series",)) is None
+    assert series.find_original("https://comix.to/title/zz9-mud", indexes=(base + "/index/series",)) is None  # too short
+    assert series.find_original(cx, indexes=(base + "/missing",)) is None             # unreachable index: no crash
+
     # --- a site whose chapter addresses are only codes, with a locked chapter and coded pictures ---
     cod = series.inspect_series(base + "/series/coded/")
     assert cod["title"] == "Coded Comic", cod
     assert [series.chapter_number(u) for u in cod["chapters"]] == [1, 2, 2.5], cod["chapters"]
     assert cod["total"] == 4, "the locked chapter is counted but not offered"
+    assert cod["locked"] == [3.0], cod["locked"]
+    assert series.chapter_range([9, 10, 11, 12, 12.5, 13, 13.5, 14]) == "9 to 14"
+    assert series.chapter_range([3]) == "3" and series.chapter_range([2, 7.5]) == "2, 7.5" and series.chapter_range([]) == ""
+    assert series.find_original("x", indexes=(base + "/index/series",), name="Bloodshed Goddess Biography")["url"].endswith("/series/bloodshed/")
+    assert series.find_original("x", indexes=(base + "/index/series",), name="Bloodshed Goddess Biography",
+                                skip_site="127.0.0.1") is None, "the site you are already on is not offered again"
     assert series.chapter_names("Coded Comic", cod["chapters"]) == [
         "Coded Comic - Chapter 001", "Coded Comic - Chapter 002", "Coded Comic - Chapter 002.5"]
     pics = series.inspect_chapter(cod["chapters"][1])

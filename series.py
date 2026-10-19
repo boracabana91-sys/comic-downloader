@@ -122,7 +122,8 @@ def find_chapters(parsed, base_url, locked=None):
         seen.add(u)
         if u in shut:
             if locked is not None:
-                locked.append(u)
+                n = words.get(u)
+                locked.append(u + (f"#chapter-{n:g}" if n is not None else ""))
             return
         n = words.get(u)
         if n is not None and chapter_number(u) != n:   # the address has no real number: use the words
@@ -232,9 +233,105 @@ def inspect_series(url, fetch_text=None, api_base=None):
             if not more:
                 break
             chapters = _sort_chapters(chapters + more)
-    locked = set(locked)
-    return {"title": title, "chapters": chapters,
-            "total": len(chapters) + len(locked) if locked else None}
+    shut = sorted({n for n in (chapter_number(u) for u in locked) if n is not None})
+    count = len({u.split("#")[0] for u in locked})
+    return {"title": title, "chapters": chapters, "locked": shut,
+            "total": len(chapters) + count if count else None}
+
+
+def chapter_range(numbers):
+    """[9, 10, 11, 12, 12.5, 13, 13.5, 14] -> '9 to 14' ; [3] -> '3' ; [2, 7] -> '2, 7'."""
+    nums = sorted(numbers)
+    label = lambda n: f"{n:g}"
+    if not nums:
+        return ""
+    if len(nums) > 2:
+        return f"{label(nums[0])} to {label(nums[-1])}"
+    return ", ".join(label(n) for n in nums)
+
+
+# ----- original source site -----
+# Copy sites collect chapters from the translation groups and hide behind a bot check
+# ("Just a moment...") that this program does not and will not get past. For their links we
+# look for the group's own site instead. SOURCE_INDEXES = pages that list every series of a
+# site we can read, with each series' names written on it.
+AGGREGATORS = ("comix.to",)
+SOURCE_INDEXES = ("https://timelesstoons.org/series",)
+
+
+def site_name(url):
+    """'https://www.timelesstoons.org/series/x/' -> 'timelesstoons.org' ('' if not a web address)."""
+    host = urlparse((url or "").strip()).netloc.lower().split("@")[-1].split(":")[0]
+    return host[4:] if host.startswith("www.") else host
+
+
+def is_aggregator(url):
+    host = site_name(url)
+    return any(host == a or host.endswith("." + a) for a in AGGREGATORS)
+
+
+def source_label(url):
+    """The words shown in the 'Original / Source site' bar for the link in the box."""
+    host = site_name(url)
+    if not host or not re.match(r"https?://", (url or "").strip(), re.I):
+        return "-"
+    if is_aggregator(url):
+        return f"{host}  (only a copy site: press Find chapters and the original is looked for)"
+    return host
+
+
+def _words(text):
+    return " ".join(re.findall(r"[^\W_]+", (text or "").lower()))
+
+
+def title_from_link(url):
+    """The series name written inside a link: .../title/j5ne6-ryuuketsu-megamiden-teikoku-no-musume
+    -> 'ryuuketsu megamiden teikoku no musume' (a short leading code with a digit is dropped)."""
+    last = urlparse(url).path.rstrip("/").rsplit("/", 1)[-1]
+    parts = [p for p in re.split(r"[-_]+", last) if p]
+    if len(parts) > 1 and len(parts[0]) <= 8 and re.search(r"\d", parts[0]):
+        parts = parts[1:]
+    return _words(" ".join(parts))
+
+
+class _Index(HTMLParser):
+    """A site's list of series: every card has the series' names in its title and a link to it."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.entries = []      # (href, all names written on the card)
+        self._names = None
+
+    def handle_starttag(self, tag, attrs):
+        a = {k: (v or "") for k, v in attrs}
+        if tag == "button" and a.get("title"):
+            self._names = a["title"]
+        elif tag == "a" and re.match(r"^/series/[^/]+/?$", a.get("href", "")):
+            self.entries.append((a["href"], self._names or a.get("title", "")))
+            self._names = None
+
+
+def find_original(url, fetch_text=None, indexes=None, skip_site=None, name=None):
+    """Look for the series named in `url` (or `name`) on the sites we can read, leaving out
+    `skip_site`. Returns {'url': series page, 'site': host, 'title': name on that site} or None."""
+    want = _words(name) if name else title_from_link(url)
+    if len(want) < 6:
+        return None
+    ft = fetch_text or core.fetch_text
+    for index in (indexes or SOURCE_INDEXES):
+        if skip_site and site_name(index) == skip_site:
+            continue
+        try:
+            p = _Index()
+            p.feed(ft(index))
+            p.close()
+        except Exception:
+            continue
+        hits = [(href, names) for href, names in p.entries if f" {want} " in f" {_words(names)} "]
+        if hits:
+            href, names = min(hits, key=lambda h: len(h[1]))
+            return {"url": urljoin(index, href), "site": site_name(index), "title": names}
+    return None
 
 
 UID_ADDRESS = re.compile(r"`(https?://[^`\s$]+/)\$\{uid\}`")

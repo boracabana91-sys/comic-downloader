@@ -31,6 +31,11 @@ When you choose a cover picture, each chapter gets its own copy with the chapter
 The program remembers your choice. Switching makes finished chapters again the next time you download them.
 To go fully back: Releases → **series-v4** → download that app again. The GitHub tag `series-v4-stable` marks the code.
 
+## Original / Source site bar (since series-v6-test2)
+Directly under the link box a bar shows **Original / Source site: <website>** and an **Open site** button, so you can always check the source yourself.
+- Paste a **comix.to** link and press Find chapters: comix.to only copies chapters and blocks programs, so the program takes the series name from the link and looks for it on the translation group's own site (now: timelesstoons.org). If found, the link box switches to that site and the bar shows it. If not found, the log says so and asks you to paste the group's own link.
+- If some chapters are **locked with coins**, the log says which ones (e.g. "chapter 9 to 14"), that they are on the same site, and what to do: Open site, then later press Find chapters again and **New + out-of-date**. The program never pays or unlocks anything for you.
+
 ## Window size
 Drag the window edges to resize it. The Download buttons and the log stay at the bottom. The program remembers the size and position you left it at.
 
