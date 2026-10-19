@@ -73,7 +73,7 @@ class SeriesApp:
         self.canvas = canvas
         root = main
 
-        ttk.Label(root, text="Series link (the page with all the chapters)").pack(anchor="w", **pad)
+        ttk.Label(root, text="Series link (the page with all the chapters) - or just type a series NAME").pack(anchor="w", **pad)
         row = ttk.Frame(root)
         row.pack(fill="x", padx=14)
         self.url = tk.StringVar()
@@ -93,6 +93,18 @@ class SeriesApp:
         self.btn_source = ttk.Button(srcrow, text="Open site", command=self.open_source)
         self.btn_source.pack(side="right")
         self.url.trace_add("write", self.update_source)
+
+        mrow = ttk.Frame(root)
+        mrow.pack(fill="x", padx=14, pady=(4, 0))
+        self.btn_myseries = ttk.Button(mrow, text="My series...", command=self.show_my_series)
+        self.btn_myseries.pack(side="left")
+        self.btn_mysites = ttk.Button(mrow, text="My sites...", command=self.show_my_sites)
+        self.btn_mysites.pack(side="left", padx=6)
+        ttk.Label(mrow, text="Type a name (e.g. the beginning after the end) and press Find chapters "
+                  "to search all sites.", foreground="#555").pack(side="left", padx=6)
+        self.alternates = []        # the same series on other sites: the backup when a chapter fails
+        self.auto_new = False
+        self.dialog = self.my_lb = self.sites_lb = self.choose_lb = None
 
         nrow = ttk.Frame(root)
         nrow.pack(fill="x", padx=14, pady=(6, 0))
@@ -420,7 +432,12 @@ class SeriesApp:
     def show_chapters(self, title, urls):
         self.chapters = list(urls)
         if title and not self.sname.get().strip():
-            self.sname.set(title)
+            clean = core.clean_title(series.clean_series_name(title), "Series")
+            raw = core.clean_title(title, "Series")
+            out = self.folder.get()
+            old = raw != clean and os.path.isdir(os.path.join(out, raw)) \
+                and not os.path.isdir(os.path.join(out, clean))
+            self.sname.set(raw if old else clean)   # folders made by older builds keep their name
         names = series.chapter_names("", urls)
         self.lb.delete(0, "end")
         for n in names:
@@ -444,8 +461,10 @@ class SeriesApp:
         state = series.load_state(os.path.join(self.folder.get(),
                                                core.clean_title(self.sname.get(), "Series")))
         self.lb.selection_clear(0, "end")
+        have = {series.chapter_number(u) for u, rec in state["done"].items() if series.is_current(rec)}
         for i, u in enumerate(self.chapters):
-            if u not in state["done"] or not series.is_current(state["done"][u]):
+            n = series.chapter_number(u)
+            if (n is None and u not in state["done"]) or (n is not None and n not in have):
                 self.lb.selection_set(i)
         self.update_count()
 
@@ -468,6 +487,16 @@ class SeriesApp:
                     self.status.set(a)
                 elif kind == "chapters":
                     self.show_chapters(a, b)
+                    if self.auto_new:           # opened from 'My series': tick only what is new
+                        self.auto_new = False
+                        self.sel_new()
+                elif kind == "choose":
+                    self.choose_dialog(a)
+                elif kind == "mys":
+                    self._fill_row(self.my_lb, a, b)
+                elif kind == "sites":
+                    for i, text in enumerate(a):
+                        self._fill_row(self.sites_lb, i, text)
                 elif kind == "url":
                     self.url.set(a)     # the original source's link replaces a copy site's link
                 elif kind == "found_done":
@@ -484,15 +513,162 @@ class SeriesApp:
         self.q.put(("status", text))
 
     # ----- actions -----
-    def find(self):
+    def find(self, keep_alternates=False):
         link = self.url.get().strip()
-        if not link.lower().startswith("http"):
-            messagebox.showinfo("Link needed", "Please paste the full link, starting with https://")
+        if not link:
+            messagebox.showinfo("Link or name needed", "Paste the link of a series, or type a series "
+                                "name such as: the beginning after the end")
             return
+        if not keep_alternates:
+            self.alternates = []
         self.btn_find.config(state="disabled")
         self.sname.set("")
+        if not link.lower().startswith("http"):
+            self.say(f"Searching all sites for '{link}'...")
+            threading.Thread(target=self._search, args=(link,), daemon=True).start()
+            return
         self.say("Reading the page...")
         threading.Thread(target=self._find, args=(link,), daemon=True).start()
+
+    def _search(self, name):
+        try:
+            known = series.load_settings(self.settings_path).get("sources") or []
+            found = series.search_name(name, known=known, say=self.say)
+            if not found:
+                self.say("Nothing found on the sites this program knows. Try fewer words, or paste a "
+                         "link from a site that has it (the program remembers that site).")
+                self.q.put(("status", "Nothing found."))
+                self.q.put(("found_done", None))
+                return
+            self.say(f"Found {len(found)} option(s).")
+            self.q.put(("choose", found))
+        except Exception as e:
+            self.say(f"Error: {e}")
+            self.q.put(("found_done", None))
+
+    def choose_dialog(self, found):
+        """'Where do you want to get it?': the list of series found, one per line."""
+        self.btn_find.config(state="normal")
+        if len(found) == 1:
+            self.use_option(found, found[0])
+            return
+        dlg = tk.Toplevel(self.root)
+        dlg.title("Where do you want to get it?")
+        dlg.transient(self.root)
+        ttk.Label(dlg, text="Pick one, then press 'Use this one' (or double-click it). The same series "
+                  "on other sites is kept as a backup if a chapter fails.", wraplength=640
+                  ).pack(anchor="w", padx=12, pady=(10, 4))
+        lb = tk.Listbox(dlg, width=100, height=min(14, len(found)), exportselection=False)
+        lb.pack(fill="both", expand=True, padx=12)
+        for r in found:
+            lb.insert("end", series.option_label(r))
+        lb.selection_set(0)
+
+        def go(*_):
+            sel = lb.curselection()
+            if sel:
+                dlg.destroy()
+                self.use_option(found, found[sel[0]])
+        lb.bind("<Double-Button-1>", go)
+        row = ttk.Frame(dlg)
+        row.pack(fill="x", padx=12, pady=10)
+        ttk.Button(row, text="Use this one", command=go).pack(side="left")
+        ttk.Button(row, text="Cancel", command=dlg.destroy).pack(side="left", padx=8)
+        self.dialog, self.choose_lb = dlg, lb
+
+    def use_option(self, found, pick):
+        self.alternates = [r["url"] for r in found
+                           if r is not pick and series.same_series(r["title"], pick["title"])]
+        self.url.set(pick["url"])
+        self.find(keep_alternates=True)
+
+    def _backups(self, link, name):
+        """After a series is found: look up the same series on the other sites (the backups)."""
+        try:
+            known = series.load_settings(self.settings_path).get("sources") or []
+            self.alternates = series.find_alternates(name, link, known=known)
+            if self.alternates:
+                sites = ", ".join(series.site_name(u) for u in self.alternates)
+                self.say(f"Backup sites ready if a chapter fails: {sites}.")
+        except Exception:
+            pass
+
+    @staticmethod
+    def _fill_row(lb, i, text):
+        try:
+            if lb is not None and lb.winfo_exists() and i < lb.size():
+                sel = lb.curselection()
+                lb.delete(i)
+                lb.insert(i, text)
+                for k in sel:
+                    lb.selection_set(k)
+        except Exception:
+            pass
+
+    def _popup(self, title, lines, note):
+        dlg = tk.Toplevel(self.root)
+        dlg.title(title)
+        dlg.transient(self.root)
+        ttk.Label(dlg, text=note, wraplength=560).pack(anchor="w", padx=12, pady=(10, 4))
+        lb = tk.Listbox(dlg, width=84, height=min(14, max(4, len(lines))), exportselection=False)
+        lb.pack(fill="both", expand=True, padx=12)
+        for text in lines:
+            lb.insert("end", text)
+        self.dialog = dlg
+        return dlg, lb
+
+    def show_my_series(self):
+        items = series.load_settings(self.settings_path).get("series") or []
+        if not items:
+            messagebox.showinfo("My series", "Nothing here yet. Every series you download is "
+                                "remembered here, so you can check it for new chapters in one click.")
+            return
+        dlg, lb = self._popup("My series", [f"{i['title']}   -   checking..." for i in items],
+                              "Your series. Pick one and press 'Open and tick the new chapters'.")
+        self.my_lb = lb
+        lb.selection_set(0)
+        out = self.folder.get()
+
+        def check():
+            for idx, item in enumerate(items):
+                try:
+                    n, _fresh = series.new_chapters(item["url"], item["title"], out)
+                    text = f"{item['title']}   -   {n} new chapter(s)" if n else f"{item['title']}   -   up to date"
+                except Exception:
+                    text = f"{item['title']}   -   could not check (site not answering)"
+                self.q.put(("mys", idx, text))
+        threading.Thread(target=check, daemon=True).start()
+
+        def go(*_):
+            sel = lb.curselection()
+            if sel:
+                dlg.destroy()
+                self.url.set(items[sel[0]]["url"])
+                self.auto_new = True
+                self.find()
+        lb.bind("<Double-Button-1>", go)
+        row = ttk.Frame(dlg)
+        row.pack(fill="x", padx=12, pady=10)
+        ttk.Button(row, text="Open and tick the new chapters", command=go).pack(side="left")
+        ttk.Button(row, text="Close", command=dlg.destroy).pack(side="left", padx=8)
+
+    def show_my_sites(self):
+        known = series.load_settings(self.settings_path).get("sources") or []
+        roots = list(series.KNOWN_SOURCES) + [k for k in known if k not in series.KNOWN_SOURCES]
+        dlg, lb = self._popup("My sites", [f"...   {series.site_name(r)}   -   checking..." for r in roots],
+                              "The sites this program searches. A green dot means it answers today. "
+                              "If a site moved to another address, the new one is used automatically.")
+        self.sites_lb = lb
+
+        def check():
+            mark = {"ok": "\u25cf", "moved": "\u25d0", "down": "\u25cb"}
+            rows = []
+            for st in series.site_status(roots):
+                how = {"ok": "answers", "moved": f"maybe moved to {st['now']}", "down": "not answering"}[st["state"]]
+                rows.append(f"{mark[st['state']]}   {st['site']}   -   {how}")
+            self.q.put(("sites", rows))
+        threading.Thread(target=check, daemon=True).start()
+        ttk.Button(dlg, text="Close", command=dlg.destroy).pack(padx=12, pady=10)
 
     def _find(self, link):
         try:
@@ -542,6 +718,9 @@ class SeriesApp:
                 self.q.put(("status", "No chapters found."))
             else:
                 self.q.put(("chapters", info["title"], info["chapters"]))
+                if not self.alternates:
+                    threading.Thread(target=self._backups, args=(link, series.clean_series_name(info["title"])),
+                                     daemon=True).start()
                 self.say(f"Found {len(info['chapters'])} chapters of '{info['title']}'. "
                          "Tick the ones you want, choose your gadget, then press Download.")
                 tot = info.get("total")
@@ -599,8 +778,14 @@ class SeriesApp:
         opts = {"fit": self.fit.get(), "badge": self.badge.get(), "layout": self.layout.get(), "size": size, "convert": self.convert.get(), "device": self.device_key(),
                 "custom": custom, "epub": self.epub.get() == "Yes", "cover": cover,
                 "words": cleaner.all_words(self.words.get()) if self.hide.get() else [],
-                "redo": self.redo.get(), "all_urls": self.chapters}
+                "redo": self.redo.get(), "all_urls": self.chapters, "alternates": list(self.alternates)}
         name = core.clean_title(self.sname.get(), "Series")
+        try:
+            data = series.load_settings(self.settings_path)
+            data["series"] = series.remember_series(data.get("series"), self.url.get().strip(), name)
+            series.save_settings(data, self.settings_path)
+        except Exception:
+            pass
         self.stop.clear()
         self.btn_go.config(state="disabled")
         self.btn_stop.config(state="normal")

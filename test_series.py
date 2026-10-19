@@ -47,6 +47,13 @@ class Site(http.server.BaseHTTPRequestHandler):
                     + '</body></html>')
         elif path == "/comics/lonely-one/":
             body = '<html><head><title>Lonely</title></head><body><a href="/lonely-one-chapter-1/">Chapter 1</a></body></html>'
+        elif path == "/series/demoalt":
+            body = ('<html><head><title>Demo Comic Manga - Backup Site</title></head><body>'
+                    + "".join(f'<a href="/series/demoalt/chapter-{n}">Chapter {n}</a>' for n in (3, 2, 1)) + '</body></html>')
+        elif path.startswith("/series/demoalt/chapter-"):
+            n = path.rsplit("-", 1)[1]
+            body = ('<html><head><title>Demo Comic Chapter %s</title></head><body>' % n
+                    + "".join(f'<img src="/img/c{n}/{i}.png">' for i in (1, 2, 3)) + "</body></html>")
         elif path == "/series/demo":
             # newest first, one link twice, a sidebar link to ANOTHER series, one broken chapter
             links = "".join(f'<a href="/series/demo/chapter-{n}">Chapter {n}</a>' for n in (3, 2, 1))
@@ -206,6 +213,33 @@ def main():
     link = series.find_moved("https://madarascans.com/comics/the-zz-hit-saga/", alive=lambda r: moved.get(r, ""), fetch_text=host_fetch)
     assert link == "https://madarascans.net/comics/the-zz-hit-saga/", link
     assert series.find_moved("https://madarascans.com/comics/zz-unknown-thing/", alive=lambda r: moved.get(r, ""), fetch_text=host_fetch) is None
+    # --- the big search bar: a name finds the series on every site, the newest first ---
+    found = series.search_name("the zz hit saga", sites=[base], indexes=(base + "/nope",), alive=lambda r: r)
+    assert len(found) == 1 and found[0]["chapters"] == 3 and found[0]["latest"] == "3", found
+    assert found[0]["url"].endswith("/comics/the-zz-hit-saga/") and "3 chapters, latest 3" in series.option_label(found[0])
+    assert series.search_name("zz", sites=[base], alive=lambda r: r) == []                      # too short
+    assert series.search_name("nothing like this exists", sites=[base], indexes=(base + "/nope",), alive=lambda r: r) == []
+    assert series.clean_series_name("The Beginning After the End Manga - Madarascans") == "The Beginning After the End"
+    assert series.clean_series_name("The Beginning After The End - Thunderscans EN") == "The Beginning After The End"
+    assert series.same_series("The Beginning After The End - Thunderscans EN", "The Beginning After the End Manga - Madarascans")
+    assert not series.same_series("Damn Necromancer", "Necromancer")
+    assert series.find_alternates("the zz hit saga", "https://other.site/x", sites=[base], indexes=(base + "/nope",),
+                                  alive=lambda r: r)[0].endswith("/comics/the-zz-hit-saga/")
+    assert series.find_alternates("the zz hit saga", base + "/comics/the-zz-hit-saga/", sites=[base],
+                                  indexes=(base + "/nope",), alive=lambda r: r) == [], "the site in use is not its own backup"
+    # --- my series: how many chapters are new, by chapter number (any site) ---
+    items = series.remember_series([{"url": "u1", "title": "A"}, {"url": "u2", "title": "B"}], "u2", "B")
+    assert [i["title"] for i in items] == ["B", "A"] and len(series.remember_series(items * 40, "u9", "Z")) <= 60
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        os.makedirs(os.path.join(d, "Demo"))
+        series.save_state(os.path.join(d, "Demo"), {"done": {"https://elsewhere.test/demo-chapter-1/": {"sig": "x"}}})
+        n, fresh = series.new_chapters(base + "/series/demo", "Demo", d)
+        assert n == 2 and [series.chapter_number(u) for u in fresh] == [2, 3], (n, fresh)
+        assert series.new_chapters(base + "/series/demo", "Never Downloaded", d)[0] == 3
+    # --- my sites: answers / moved / down ---
+    st = series.site_status(["https://a.com", "https://b.com", "https://c.com"],
+                            alive=lambda r: {"https://a.com": "https://a.com", "https://b.net": "https://b.net"}.get(r, ""))
+    assert [(s["site"], s["state"]) for s in st] == [("a.com", "ok"), ("b.com", "moved"), ("c.com", "down")], st
     assert series.KNOWN_SOURCES and "en-thunderscans.com" in series.KNOWN_SOURCES[0]
     # sites you paste a working link from are remembered (but never the copy site or one already known)
     assert series.remember_site("https://newscans.net/comics/x/") == "https://newscans.net"
@@ -258,6 +292,21 @@ def main():
         assert sorted(os.listdir(jd)) == ["001.jpg", "002.jpg", "003.jpg"], os.listdir(jd)
         with open(os.path.join(jd, "001.jpg"), "rb") as f:
             assert f.read(3) == b"\xff\xd8\xff"
+
+    # --- backup per chapter: chapter 2 is broken on its own site, so it is taken from the backup site ---
+    assert not getattr(Site, "fixed", False)
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        ob = {"layout": "one", "size": 2, "device": "kobo", "epub": False, "words": [], "cover": None, "fit": "old",
+              "alternates": [base + "/series/demoalt"]}
+        logs = []
+        res = series.run_series("Demo Comic", info["chapters"], d, ob, say=logs.append, pause=0)
+        assert len(res["done"]) == 3 and not res["failed"], (res, logs)
+        assert any("Trying the same chapter on 127.0.0.1" in m for m in logs), logs
+        alt = series.inspect_series(base + "/series/demoalt")
+        res = series.run_series("Demo Comic", alt["chapters"], d, ob, say=logs.append, pause=0)
+        assert len(res["skipped"]) == 3 and not res["done"], "finished on one site counts as finished on every site"
+        res = series.run_series("Demo Comic", info["chapters"], tempfile.mkdtemp(), dict(ob, alternates=[]), say=logs.append, pause=0)
+        assert len(res["failed"]) == 1, "no backup site: the problem is reported as before"
 
     # --- Sample 1: one folder per chapter, one .cbz and one .epub each. Chapter 2 is broken
     #     at first; the others must still finish.

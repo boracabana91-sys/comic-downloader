@@ -370,9 +370,9 @@ def find_original(url, fetch_text=None, indexes=None, skip_site=None, name=None,
     return None
 
 
-def search_site(site_url, title, fetch_text=None, say=None):
-    """Find a series by name on any group website: tries the usual list and search pages.
-    Returns the series page address or None."""
+def search_site_all(site_url, title, fetch_text=None, say=None, limit=1):
+    """Series on a group website whose names match `title`, best first: tries the usual list and
+    search pages. Returns up to `limit` series page addresses ([] when none)."""
     from urllib.parse import quote_plus
     say = say or (lambda m: None)
     ft = fetch_text or core.fetch_text
@@ -396,13 +396,19 @@ def search_site(site_url, title, fetch_text=None, say=None):
         links.feed(html)
         cards += [(h, t) for h, t in links.links
                   if re.search(r"/(series|manga|comic|comics|title|read)/[^/]+/?$", urlparse(h).path)]
-        scored = [(_match_score(want, names), -len(names), urljoin(root, h)) for h, names in cards if names]
-        best = max(scored, default=None)
-        if best and best[0] >= 0.8:
-            say(f"  {site_name(root)}: found at {best[2]}")
-            return best[2]
+        scored = sorted(((-_match_score(want, names), len(names), urljoin(root, h)) for h, names in cards if names))
+        good = list(dict.fromkeys(x[2] for x in scored if -x[0] >= 0.8))
+        if good:
+            say(f"  {site_name(root)}: found at {good[0]}")
+            return good[:limit]
     say(f"  {site_name(root)}: could not find it there.")
-    return None
+    return []
+
+
+def search_site(site_url, title, fetch_text=None, say=None):
+    """The best matching series page on a group website, or None."""
+    found = search_site_all(site_url, title, fetch_text=fetch_text, say=say, limit=1)
+    return found[0] if found else None
 
 
 # Sites that carry series from many groups and that a program can read. A copy-site link
@@ -544,6 +550,125 @@ def find_moved(link, say=None, fetch_text=None, alive=None):
         if page:
             return page
     return None
+
+
+# ----- one big search bar: a name instead of a link -----
+def site_info(page, fetch_text=None):
+    """What a series page offers: {'url','site','title','chapters': count,'latest': '257','latest_num': 257.0}."""
+    info = inspect_series(page, fetch_text=fetch_text)
+    nums = [n for n in (chapter_number(c) for c in info["chapters"]) if n is not None]
+    return {"url": page, "site": site_name(page), "title": info["title"], "chapters": len(info["chapters"]),
+            "latest": number_label(max(nums)) if nums else "", "latest_num": max(nums) if nums else 0}
+
+
+MAX_PER_SITE, MAX_OPTIONS = 6, 15   # series listed per site / in all
+
+
+def search_name(name, known=(), sites=None, say=None, alive=None, fetch_text=None, indexes=None):
+    """Look for a series typed by name on every source site (all at once). Returns the sites that
+    really list its chapters, the one with the newest chapter first."""
+    from concurrent.futures import ThreadPoolExecutor
+    say = say or (lambda m: None)
+    title = _words(name)
+    if len(title) < 3:
+        say("  Type at least 3 letters of the series name.")
+        return []
+
+    def pages(root):
+        """Every series page on this site that matches the typed name (the exact one first)."""
+        for live in live_roots(root, alive=alive, say=say):
+            exact = probe_site(live, title, fetch_text=fetch_text, say=say)
+            more = search_site_all(live, title, fetch_text=fetch_text, say=say, limit=MAX_PER_SITE)
+            return ([exact] if exact else []) + more
+        return []
+
+    roots = sites if sites is not None else list(KNOWN_SOURCES) + list(known)
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        candidates = []
+        for root_pages in ex.map(pages, roots):
+            seen_slug = set()
+            for p in root_pages:                       # /comics/x and /series/x are the same series
+                key = (site_name(p), urlparse(p).path.rstrip("/").rsplit("/", 1)[-1])
+                if key not in seen_slug:
+                    seen_slug.add(key)
+                    candidates.append(p)
+
+        def info(page):
+            try:
+                return site_info(page, fetch_text)
+            except Exception:
+                return None
+        found = [r for r in ex.map(info, candidates) if r]
+    hit = find_original("", fetch_text=fetch_text, indexes=indexes, name=name, say=say)
+    if hit and hit["site"] not in {r["site"] for r in found}:
+        try:
+            found.append(site_info(hit["url"], fetch_text))
+        except Exception:
+            pass
+    out, seen = [], set()
+    want = _words(name)
+    for r in found:
+        r["score"] = _match_score(want, r["title"])
+    for r in sorted(found, key=lambda r: (-r["score"], -r["latest_num"], -r["chapters"])):
+        key = (r["site"], r["title"])
+        if r["chapters"] and key not in seen:
+            seen.add(key)
+            out.append(r)
+    return out[:MAX_OPTIONS]
+
+
+def clean_series_name(title):
+    """'The Beginning After the End Manga - Madarascans' -> 'The Beginning After the End'."""
+    t = re.split(r"\s+[|\u2013\u2014-]\s+", (title or "").strip())[0]
+    t = re.sub(r"\s+(manga|manhwa|manhua|webtoon|comic)s?$", "", t, flags=re.I).strip()
+    return t or (title or "")
+
+
+def same_series(a, b):
+    return _words(clean_series_name(a)) == _words(clean_series_name(b))
+
+
+def option_label(r):
+    """One line of the 'where to get it' list."""
+    return f"{r['site']}   -   {r['chapters']} chapters, latest {r['latest'] or '?'}   -   {r['title'][:50]}"
+
+
+def find_alternates(title, current_url, known=(), say=None, **kw):
+    """Series pages on OTHER sites than the one in use: the backup when a chapter fails there."""
+    here = site_name(current_url)
+    return [r["url"] for r in search_name(title, known=known, say=say or (lambda m: None), **kw)
+            if r["site"] != here and same_series(r["title"], title)]
+
+
+# ----- my series (so 'check for new chapters' is one click) -----
+def remember_series(items, url, title):
+    """The remembered list with this series first (no duplicates, at most 60)."""
+    keep = [i for i in (items or []) if i.get("url") != url and i.get("title") != title]
+    return ([{"url": url, "title": title}] + keep)[:60]
+
+
+def new_chapters(url, title, out_root, fetch_text=None):
+    """(number of chapters not downloaded yet, [their addresses]) for a remembered series."""
+    info = inspect_series(url, fetch_text=fetch_text)
+    state = load_state(os.path.join(out_root, title))
+    have = {chapter_number(u) for u in state["done"]}
+    fresh = [c for c in info["chapters"] if chapter_number(c) not in have]
+    return len(fresh), fresh
+
+
+# ----- my sites: which ones answer today -----
+def site_status(roots, alive=None):
+    """[{'site','state': 'ok'|'moved'|'down','now': address that answers}] for each site, all at once."""
+    from concurrent.futures import ThreadPoolExecutor
+    alive = alive or _alive
+
+    def one(root):
+        found = live_roots(root, alive=alive)
+        now = site_name(found[0]) if found else ""
+        state = "down" if not found else ("ok" if now == site_name(root) else "moved")
+        return {"site": site_name(root), "state": state, "now": now, "root": root}
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        return list(ex.map(one, roots))
 
 
 UID_ADDRESS = re.compile(r"`(https?://[^`\s$]+/)\$\{uid\}`")
@@ -1077,6 +1202,41 @@ def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series
     return total
 
 
+class _AltMaps:
+    """The same series on other sites ('backup' sites): chapter number -> that site's chapter link.
+    Each site's chapter list is read only when a chapter first needs it."""
+
+    def __init__(self, pages, say):
+        self.pages, self.say, self.maps = list(pages), say, {}
+
+    def links(self, number):
+        for page in self.pages:
+            if page not in self.maps:
+                try:
+                    self.maps[page] = {chapter_number(c): c for c in inspect_series(page)["chapters"]}
+                except Exception:
+                    self.maps[page] = {}
+            if number in self.maps[page]:
+                yield site_name(page), self.maps[page][number]
+
+
+def _from_backup(url, name, series_dir, opts, prog, stop, say, inspect, series_title, alt_maps, first):
+    """The chapter failed on its own site: try the same chapter number on each backup site.
+    Raises the original problem when no backup has it."""
+    number = chapter_number(url)
+    if number is not None:
+        for site, link in alt_maps.links(number):
+            say(f"  Problem on its own site ({first}). Trying the same chapter on {site}...")
+            shutil.rmtree(os.path.join(series_dir, ".work"), ignore_errors=True)   # never mix two sites' pages
+            try:
+                return do_chapter(link, name, series_dir, opts, prog, stop, say, inspect, series_title)
+            except core.Stopped:
+                raise
+            except Exception as e:
+                say(f"  {site} could not do it either ({e}).")
+    raise first
+
+
 def run_series(series_title, chapter_urls, out_root, opts, progress=None, stop=None, say=None,
                inspect=None, pause=1.0):
     """Do every chapter in order. One bad chapter never stops the rest.
@@ -1096,14 +1256,21 @@ def run_series(series_title, chapter_urls, out_root, opts, progress=None, stop=N
     names.update(zip(all_urls, chapter_names(series_title, all_urls)))
     result = {"done": [], "skipped": [], "failed": [], "dir": series_dir}
     todo = []
+    by_number = {}
+    for du, drec in state["done"].items():
+        dn = chapter_number(du)
+        if dn is not None:
+            by_number.setdefault(dn, drec)
     for u in chapter_urls:
-        rec = state["done"].get(u)
+        rec = state["done"].get(u) or by_number.get(chapter_number(u))
         if rec and rec.get("sig") == sig and not opts.get("redo"):
             result["skipped"].append(names[u])
         else:
             todo.append(u)
     if result["skipped"]:
         say(f"Skipping {len(result['skipped'])} chapter(s) that are already finished.")
+
+    alt_maps = _AltMaps(opts.get("alternates") or [], say)
 
     def one_pass(urls, label):
         failed = []
@@ -1117,7 +1284,13 @@ def run_series(series_title, chapter_urls, out_root, opts, progress=None, stop=N
             def prog(d, t, s, k=k, n=n):
                 progress(d, t, f"[{k}/{n}] {s}")
             try:
-                pages = do_chapter(u, name, series_dir, opts, prog, stop, say, inspect, series_title)
+                try:
+                    pages = do_chapter(u, name, series_dir, opts, prog, stop, say, inspect, series_title)
+                except core.Stopped:
+                    raise
+                except Exception as first:
+                    pages = _from_backup(u, name, series_dir, opts, prog, stop, say, inspect, series_title,
+                                         alt_maps, first)
                 state["done"][u] = {"name": name, "pages": pages, "sig": sig}
                 save_state(series_dir, state)
                 result["done"].append(name)

@@ -55,5 +55,17 @@ assert "comix.to" in a.source.get() and "original" in a.source.get(), a.source.g
 a.url.set("")
 root.update()
 assert a.source.get() == "-" and a.source_url == ""
+# the big search bar: the chooser lists every option; a series name drops the site suffix
+assert a.btn_myseries.winfo_exists() and a.btn_mysites.winfo_exists()
+fake = [{"url": "https://a.test/x", "site": "a.test", "title": "The X - A", "chapters": 5, "latest": "5", "latest_num": 5},
+        {"url": "https://b.test/x", "site": "b.test", "title": "The X Manga - B", "chapters": 4, "latest": "4", "latest_num": 4}]
+a.choose_dialog(fake)
+root.update()
+assert a.choose_lb.size() == 2 and "a.test" in a.choose_lb.get(0)
+a.dialog.destroy()
+a.sname.set("")
+a.show_chapters("The X Manga - Some Site", urls)
+assert a.sname.get() == "The X", a.sname.get()
+a.alternates = []
 root.destroy()
 print("series window OK")

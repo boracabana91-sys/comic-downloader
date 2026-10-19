@@ -66,3 +66,10 @@ The old lookup through the MangaUpdates directory was removed: for licensed seri
 
 ## Sites that move (test6)
 If a source site's address does not answer, the program tries the same name with other endings (.com .net .org .to .io .cc ...) all at once, and only accepts one when the series really lists chapters there. Old addresses that redirect (madarascans.com -> .net) are followed. A pasted link on a dead address is moved the same way. Sites that worked are remembered.
+
+## One big search bar, backups, My series, My sites (test7)
+- **Type a name** in the link box (for example: the beginning after the end) and press Find chapters. The program searches every source site at once and lists each series found with its chapter count and newest chapter. Pick one; the same series on other sites is kept as a backup.
+- **Backup per chapter:** if a chapter fails on its own site, the same chapter number is tried on the backup sites. A chapter finished from one site counts as finished on every site.
+- **My series...** lists series you downloaded with how many new chapters each has. One click opens it with only the new chapters ticked.
+- **My sites...** shows which source sites answer today (green dot), moved (half dot) or are down (empty dot).
+- The default folder name no longer carries the site name ("The Beginning After the End" instead of "... - Thunderscans EN"). Folders made by older builds keep their name.
