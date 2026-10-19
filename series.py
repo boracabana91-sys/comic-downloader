@@ -656,6 +656,38 @@ def new_chapters(url, title, out_root, fetch_text=None):
     return len(fresh), fresh
 
 
+# ----- Update websites: add a site by pasting its link -----
+SITE_HINT = re.compile(r"/(series|comics?|manga|manhwa|title|read)/[^/\"'\s]+|chapter", re.I)
+
+
+def add_site(link, known=(), alive=None, fetch_text=None):
+    """Check a pasted website link and say whether to add it.
+    Returns (root or '', message, ok). root is the address that answers today (moves are followed)."""
+    text = (link or "").strip()
+    root = site_root(text)
+    if not root and re.match(r"^[\w-]+(\.[\w-]+)+(/.*)?$", text):
+        root = site_root("https://" + text)                       # typed without https://
+    if not root:
+        return "", "That does not look like a website address. Paste the link, for example https://example.com", False
+    if is_aggregator(root):
+        return "", (f"{site_name(root)} only copies chapters and blocks programs, so it cannot be added. "
+                    "Paste the link of a site that has the chapters itself."), False
+    found = live_roots(root, alive=alive)
+    if not found:
+        return "", f"{site_name(root)} does not answer (other endings were tried too). Check the address.", False
+    now = found[0]
+    have = {site_name(k) for k in list(KNOWN_SOURCES) + list(known)}
+    if site_name(now) in have:
+        return "", f"{site_name(now)} is already in the list.", False
+    try:
+        looks_like_comics = bool(SITE_HINT.search((fetch_text or core.fetch_text)(now + "/")))
+    except Exception:
+        looks_like_comics = False
+    note = "" if looks_like_comics else " Note: the front page shows no comic or chapter links, so it may not work; remove it if a search finds nothing."
+    moved = f" (it now answers as {site_name(now)})" if site_name(now) != site_name(root) else ""
+    return now, f"Added {site_name(now)}{moved}. Searches and name lookups will use it from now on.{note}", True
+
+
 # ----- my sites: which ones answer today -----
 def site_status(roots, alive=None):
     """[{'site','state': 'ok'|'moved'|'down','now': address that answers}] for each site, all at once."""

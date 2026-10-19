@@ -71,5 +71,5 @@ If a source site's address does not answer, the program tries the same name with
 - **Type a name** in the link box (for example: the beginning after the end) and press Find chapters. The program searches every source site at once and lists each series found with its chapter count and newest chapter. Pick one; the same series on other sites is kept as a backup.
 - **Backup per chapter:** if a chapter fails on its own site, the same chapter number is tried on the backup sites. A chapter finished from one site counts as finished on every site.
 - **My series...** lists series you downloaded with how many new chapters each has. One click opens it with only the new chapters ticked.
-- **My sites...** shows which source sites answer today (green dot), moved (half dot) or are down (empty dot).
+- **Update websites...** shows the sites searched, with a dot each (full = answers, half = moved, empty = down). Paste a new site's link in the bar and press **Add website**: it is checked (moves are followed) and added. Sites you added yourself can be removed.
 - The default folder name no longer carries the site name ("The Beginning After the End" instead of "... - Thunderscans EN"). Folders made by older builds keep their name.

@@ -98,13 +98,14 @@ class SeriesApp:
         mrow.pack(fill="x", padx=14, pady=(4, 0))
         self.btn_myseries = ttk.Button(mrow, text="My series...", command=self.show_my_series)
         self.btn_myseries.pack(side="left")
-        self.btn_mysites = ttk.Button(mrow, text="My sites...", command=self.show_my_sites)
+        self.btn_mysites = ttk.Button(mrow, text="Update websites...", command=self.show_my_sites)
         self.btn_mysites.pack(side="left", padx=6)
         ttk.Label(mrow, text="Type a name (e.g. the beginning after the end) and press Find chapters "
                   "to search all sites.", foreground="#555").pack(side="left", padx=6)
         self.alternates = []        # the same series on other sites: the backup when a chapter fails
         self.auto_new = False
         self.dialog = self.my_lb = self.sites_lb = self.choose_lb = None
+        self.site_roots = []
 
         nrow = ttk.Frame(root)
         nrow.pack(fill="x", padx=14, pady=(6, 0))
@@ -494,6 +495,8 @@ class SeriesApp:
                     self.choose_dialog(a)
                 elif kind == "mys":
                     self._fill_row(self.my_lb, a, b)
+                elif kind == "sitesreopen":
+                    self.show_my_sites(a)
                 elif kind == "sites":
                     for i, text in enumerate(a):
                         self._fill_row(self.sites_lb, i, text)
@@ -652,13 +655,20 @@ class SeriesApp:
         ttk.Button(row, text="Open and tick the new chapters", command=go).pack(side="left")
         ttk.Button(row, text="Close", command=dlg.destroy).pack(side="left", padx=8)
 
-    def show_my_sites(self):
+    def show_my_sites(self, note=""):
+        """'Update websites': the sites searched (with a dot for each), and a bar to add a new one."""
+        if self.dialog is not None:
+            try:
+                self.dialog.destroy()
+            except Exception:
+                pass
         known = series.load_settings(self.settings_path).get("sources") or []
         roots = list(series.KNOWN_SOURCES) + [k for k in known if k not in series.KNOWN_SOURCES]
-        dlg, lb = self._popup("My sites", [f"...   {series.site_name(r)}   -   checking..." for r in roots],
-                              "The sites this program searches. A green dot means it answers today. "
-                              "If a site moved to another address, the new one is used automatically.")
+        dlg, lb = self._popup("Update websites", [f"...   {series.site_name(r)}   -   checking..." for r in roots],
+                              "Websites this program searches. A full dot means it answers today. "
+                              "To add another site, paste its link below and press 'Add website'.")
         self.sites_lb = lb
+        self.site_roots = roots
 
         def check():
             mark = {"ok": "\u25cf", "moved": "\u25d0", "down": "\u25cb"}
@@ -668,7 +678,52 @@ class SeriesApp:
                 rows.append(f"{mark[st['state']]}   {st['site']}   -   {how}")
             self.q.put(("sites", rows))
         threading.Thread(target=check, daemon=True).start()
-        ttk.Button(dlg, text="Close", command=dlg.destroy).pack(padx=12, pady=10)
+
+        msg = tk.StringVar(value=note)
+        ttk.Label(dlg, textvariable=msg, wraplength=560, foreground="#0a5").pack(anchor="w", padx=12, pady=(6, 0))
+        row = ttk.Frame(dlg)
+        row.pack(fill="x", padx=12, pady=(8, 0))
+        new = tk.StringVar()
+        entry = ttk.Entry(row, textvariable=new)
+        entry.pack(side="left", fill="x", expand=True)
+        btn = ttk.Button(row, text="Add website")
+        btn.pack(side="left", padx=(8, 0))
+
+        def add(*_):
+            link = new.get().strip()
+            if not link:
+                return
+            btn.config(state="disabled")
+            msg.set("Checking the site...")
+
+            def work():
+                try:
+                    root, text, ok = series.add_site(link, known=series.load_settings(self.settings_path).get("sources") or [])
+                    if ok:
+                        data = series.load_settings(self.settings_path)
+                        data["sources"] = (data.get("sources") or []) + [root]
+                        series.save_settings(data, self.settings_path)
+                except Exception as e:
+                    text = f"Could not add it: {e}"
+                self.q.put(("sitesreopen", text))
+            threading.Thread(target=work, daemon=True).start()
+        btn.config(command=add)
+        entry.bind("<Return>", add)
+
+        def remove():
+            sel = lb.curselection()
+            if not sel or sel[0] < len(series.KNOWN_SOURCES):
+                msg.set("Pick a site you added yourself (the built-in ones cannot be removed).")
+                return
+            gone = self.site_roots[sel[0]]
+            data = series.load_settings(self.settings_path)
+            data["sources"] = [k for k in (data.get("sources") or []) if k != gone]
+            series.save_settings(data, self.settings_path)
+            self.show_my_sites(f"Removed {series.site_name(gone)}.")
+        brow = ttk.Frame(dlg)
+        brow.pack(fill="x", padx=12, pady=10)
+        ttk.Button(brow, text="Remove selected", command=remove).pack(side="left")
+        ttk.Button(brow, text="Close", command=dlg.destroy).pack(side="left", padx=8)
 
     def _find(self, link):
         try:

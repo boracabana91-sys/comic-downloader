@@ -236,6 +236,22 @@ def main():
         n, fresh = series.new_chapters(base + "/series/demo", "Demo", d)
         assert n == 2 and [series.chapter_number(u) for u in fresh] == [2, 3], (n, fresh)
         assert series.new_chapters(base + "/series/demo", "Never Downloaded", d)[0] == 3
+    # --- Update websites: a pasted link is checked, then added ---
+    live = {"https://newscans.net": "https://newscans.net", "https://oldscans.com": "https://oldscans.org",
+            "https://emptysite.net": "https://emptysite.net", "https://en-thunderscans.com": "https://en-thunderscans.com"}
+    page = lambda u: '<a href="/comics/some-series/">x</a>' if "emptysite" not in u else "<p>hello</p>"
+    add = lambda link, known=(): series.add_site(link, known=known, alive=lambda r: live.get(r, ""), fetch_text=page)
+    assert add("https://newscans.net/comics/foo/")[::2] == ("https://newscans.net", True)          # a series link is enough
+    assert add("newscans.net")[0] == "https://newscans.net"                                          # typed without https://
+    root, msg, ok = add("https://oldscans.com/series/x")
+    assert ok and root == "https://oldscans.org" and "now answers as oldscans.org" in msg, (root, msg)
+    root, msg, ok = add("https://emptysite.net")
+    assert ok and "no comic or chapter links" in msg
+    assert not add("https://en-thunderscans.com/comics/x")[2] and "already" in add("https://en-thunderscans.com")[1]
+    assert not add("https://newscans.net", known=["https://newscans.net"])[2]
+    assert not add("https://comix.to/title/x")[2] and "blocks programs" in add("https://comix.to")[1]
+    assert not add("https://nowhere.test")[2] and "does not answer" in add("https://nowhere.test")[1]
+    assert not add("hello world")[2] and not add("")[2]
     # --- my sites: answers / moved / down ---
     st = series.site_status(["https://a.com", "https://b.com", "https://c.com"],
                             alive=lambda r: {"https://a.com": "https://a.com", "https://b.net": "https://b.net"}.get(r, ""))

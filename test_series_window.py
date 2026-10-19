@@ -67,5 +67,9 @@ a.sname.set("")
 a.show_chapters("The X Manga - Some Site", urls)
 assert a.sname.get() == "The X", a.sname.get()
 a.alternates = []
+a.show_my_sites("note")                      # 'Update websites': list + a bar to add a site
+root.update()
+assert a.sites_lb.size() >= 2 and "thunderscans" in a.sites_lb.get(0)
+a.dialog.destroy()
 root.destroy()
 print("series window OK")
