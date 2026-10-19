@@ -40,6 +40,13 @@ class Site(http.server.BaseHTTPRequestHandler):
                              "data": [{"chapter_name": f"Chapter {n}", "chapter_slug": f"chapter-{n}",
                                        "price": 0, "series": {"series_slug": "hidden"}}
                                       for n in rows]})
+        elif path == "/comics/the-zz-hit-saga/":
+            # Thunderscans style: series page under /comics/, chapter pages at the site root
+            body = ('<html><head><title>The ZZ Hit Saga - Thunder</title></head><body>'
+                    + "".join(f'<a href="/the-zz-hit-saga-chapter-{n}/">Chapter {n}</a>' for n in (3, 2, 1))
+                    + '</body></html>')
+        elif path == "/comics/lonely-one/":
+            body = '<html><head><title>Lonely</title></head><body><a href="/lonely-one-chapter-1/">Chapter 1</a></body></html>'
         elif path == "/series/demo":
             # newest first, one link twice, a sidebar link to ANOTHER series, one broken chapter
             links = "".join(f'<a href="/series/demo/chapter-{n}">Chapter {n}</a>' for n in (3, 2, 1))
@@ -161,33 +168,24 @@ def main():
     assert series.find_original(cx, indexes=(base + "/nope",), say=said.append) is None
     assert any("could not read" in m for m in said), said
 
-    # --- not on a site we read: ask the directory who translates it, then search their site ---
-    calls = []
-
-    def post(url, obj, timeout=30):
-        calls.append(url)
-        if url.endswith("/series/search"):
-            return {"results": [{"record": {"series_id": 77, "title": "Ryuuketsu Megamiden ~Teikoku no Musume~"}}]}
-        return {"results": [{"record": {"groups": [{"group_id": 5, "name": "G"}, {"group_id": 6}]}}]}
-
-    def get(url):
-        return {"name": "Group", "url": "https://discord.gg/x", "social": {"site": base}} if url.endswith("/5") \
-            else {"name": "Other", "url": "https://www.facebook.com/y"}
+    # --- not on timelesstoons: the known source sites are tried by series name, then their search ---
+    tb = "https://comix.to/title/6c6iz-the-hit-saga-zz"
+    hit_link = "https://comix.to/title/6c6iz-the-zz-hit-saga"
     said = []
-    got = series.find_source(cx, say=said.append, indexes=(base + "/nope",), post=post, get=get)
-    assert got and got["url"] == base + "/series/bloodshed/", (got, said)
-    assert calls[0].endswith("/series/search") and calls[1].endswith("/releases/search")
-    assert series._group_sites("ryuuketsu megamiden teikoku no musume", post=post, get=get) == [("Group", base)]
-    # directory down or unknown name: nothing found, and the log says why
-    def boom(*a, **k):
-        raise IOError("HTTP Error 403")
+    got = series.find_source(hit_link, say=said.append, sites=[base], indexes=(base + "/nope",))
+    assert got and got["url"] == base + "/comics/the-zz-hit-saga/" and got["site"] == "127.0.0.1", (got, said)
+    assert any("found it at" in m for m in said), said
     said = []
-    assert series.find_source(cx, say=said.append, indexes=(base + "/nope",), post=boom, get=get) is None
-    assert any("Directory lookup failed" in m for m in said), said
-    said = []
-    assert series.find_source(cx, say=said.append, indexes=(base + "/nope",),
-                              post=lambda u, o, timeout=30: {"results": []}, get=get) is None
-    assert any("does not know" in m for m in said), said
+    assert series.find_source(tb, say=said.append, sites=[base], indexes=(base + "/nope",)) is None
+    assert any("could not find it there" in m for m in said) and any("could not read" in m for m in said), said
+    assert series.probe_site(base, "lonely one") is None, "a page with a single chapter link is not a series page"
+    assert series.find_source(hit_link, sites=[], indexes=(base + "/index/series",), name="Bloodshed Goddess Biography")["url"].endswith("/series/bloodshed/")
+    assert series.KNOWN_SOURCES and "en-thunderscans.com" in series.KNOWN_SOURCES[0]
+    # sites you paste a working link from are remembered (but never the copy site or one already known)
+    assert series.remember_site("https://newscans.net/comics/x/") == "https://newscans.net"
+    assert series.remember_site("https://newscans.net/comics/x/", ["https://newscans.net"]) == ""
+    assert series.remember_site("https://en-thunderscans.com/comics/x/") == ""
+    assert series.remember_site("https://comix.to/title/x") == "" and series.remember_site("junk") == ""
     assert series.search_site(base, "completely missing series name") is None
 
     # --- a site whose chapter addresses are only codes, with a locked chapter and coded pictures ---

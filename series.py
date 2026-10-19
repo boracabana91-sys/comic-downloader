@@ -355,59 +355,6 @@ def find_original(url, fetch_text=None, indexes=None, skip_site=None, name=None,
     return None
 
 
-# Sites that list who translates a series (public, no bot check). Used when the sites we can
-# read directly do not have it: find the translation group, then its own website.
-DIRECTORY_API = "https://api.mangaupdates.com/v1"
-SOCIAL_SITES = ("discord", "facebook", "twitter", "x.com", "patreon", "ko-fi", "reddit", "youtube",
-                "instagram", "mangaupdates", "mangadex", "github", "t.me", "tumblr", "pixiv")
-
-
-def _post_json(url, obj, timeout=30):
-    import urllib.request
-    req = urllib.request.Request(url, data=json.dumps(obj).encode(), method="POST", headers={
-        "User-Agent": core.UA, "Content-Type": "application/json", "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout, context=core.SSL_CTX) as r:
-        return json.loads(r.read().decode("utf-8", "replace"))
-
-
-def _group_sites(title, post=None, get=None, say=None, api=None):
-    """Websites of the groups translating `title`, via the MangaUpdates directory.
-    Best effort: any step may fail, each is reported through `say`."""
-    say = say or (lambda m: None)
-    post = post or _post_json
-    get = get or (lambda u: json.loads(core.fetch_text(u)))
-    api = api or DIRECTORY_API
-    try:
-        res = post(f"{api}/series/search", {"search": title, "perpage": 5}).get("results") or []
-    except Exception as e:
-        say(f"  Directory lookup failed ({e}).")
-        return []
-    want = _words(title)
-    sid = next((r["record"]["series_id"] for r in res
-                if _match_score(want, r["record"].get("title", "")) >= 0.8), None)
-    if sid is None:
-        say("  The directory does not know that name.")
-        return []
-    try:
-        rel = post(f"{api}/releases/search", {"search": str(sid), "search_type": "series", "perpage": 40})
-        gids = list(dict.fromkeys(g["group_id"] for r in (rel.get("results") or [])
-                                  for g in (r.get("record", {}).get("groups") or []) if g.get("group_id")))
-    except Exception as e:
-        say(f"  Could not read who translates it ({e}).")
-        return []
-    sites = []
-    for gid in gids[:6]:
-        try:
-            g = get(f"{api}/groups/{gid}")
-        except Exception:
-            continue
-        for u in [g.get("url"), (g.get("social") or {}).get("site")]:
-            if u and re.match(r"https?://", u) and not any(x in site_name(u) for x in SOCIAL_SITES):
-                sites.append((g.get("name") or site_name(u), u))
-    say(f"  Translation group site(s): {', '.join(site_name(u) for _n, u in sites) or 'none listed'}.")
-    return sites
-
-
 def search_site(site_url, title, fetch_text=None, say=None):
     """Find a series by name on any group website: tries the usual list and search pages.
     Returns the series page address or None."""
@@ -440,22 +387,66 @@ def search_site(site_url, title, fetch_text=None, say=None):
     return None
 
 
-def find_source(url, say=None, fetch_text=None, indexes=None, post=None, get=None):
-    """Everything we can do to find the original source of a copy-site link, in order:
-    (1) the sites we can read directly, (2) the translation group's own site via a directory."""
+# Sites that carry series from many groups and that a program can read. A copy-site link
+# (comix.to) is looked up on these by series name; the first one that really lists the
+# chapters wins. Add a site here (one line) and every copy-site link will try it too.
+# Sites you paste a working link from are remembered and tried as well (see remember_site).
+KNOWN_SOURCES = ("https://en-thunderscans.com",)
+SLUG_PATHS = ("/comics/{}/", "/series/{}/", "/manga/{}/", "/title/{}/", "/comic/{}/")
+
+
+def site_root(url):
+    u = urlparse((url or "").strip())
+    return f"{u.scheme}://{u.netloc}" if u.scheme in ("http", "https") and u.netloc else ""
+
+
+def remember_site(url, known=()):
+    """The site root to add to the remembered list after a link on it worked, or '' when it
+    is a copy site, already known, or not a web address."""
+    root = site_root(url)
+    have = {site_name(k) for k in list(KNOWN_SOURCES) + list(known)}
+    if not root or is_aggregator(url) or site_name(root) in have:
+        return ""
+    return root
+
+
+def probe_site(root, title, fetch_text=None, say=None):
+    """Open the series page a site would use for `title` (its name written as a link: the-title-words)
+    and accept it only when it really lists chapters. Returns the page address or None."""
     say = say or (lambda m: None)
-    hit = find_original(url, fetch_text=fetch_text, indexes=indexes, say=say)
-    if hit:
-        return hit
-    title = title_from_link(url)
-    if len(title) < 6:
-        return None
-    say("  Asking a directory who translates it...")
-    for _name, site in _group_sites(title, post=post, get=get, say=say):
-        found = search_site(site, title, fetch_text=fetch_text, say=say)
-        if found:
-            return {"url": found, "site": site_name(found), "title": title}
+    words = _words(title).split()
+    slugs = ["-".join(words)] + (["-".join(words[1:])] if words[:1] == ["the"] and len(words) > 3 else [])
+    for slug in slugs:
+        for path in SLUG_PATHS:
+            page = root + path.format(slug)
+            try:
+                info = inspect_series(page, fetch_text=fetch_text)
+            except Exception:
+                continue
+            if len(info["chapters"]) >= 2:
+                say(f"  {site_name(root)}: found it at {page} ({len(info['chapters'])} chapters).")
+                return page
     return None
+
+
+def find_source(url, say=None, fetch_text=None, indexes=None, known=(), sites=None, name=None):
+    """Find the series named in a copy-site link on a site we can read, in order:
+    (1) each known/remembered site: the series page by name, then the site's own search,
+    (2) the series lists of sites that publish one (timelesstoons.org).
+    Every site tried is reported through `say`."""
+    say = say or (lambda m: None)
+    title = _words(name) if name else title_from_link(url)
+    if len(title) < 6:
+        say(f"  The link holds no usable series name ('{title}').")
+        return None
+    say(f"  Looking for '{title}'...")
+    for root in (sites if sites is not None else list(KNOWN_SOURCES) + list(known)):
+        page = probe_site(root, title, fetch_text=fetch_text, say=say)
+        if not page:
+            page = search_site(root, title, fetch_text=fetch_text, say=say)
+        if page:
+            return {"url": page, "site": site_name(page), "title": title}
+    return find_original(url, fetch_text=fetch_text, indexes=indexes, name=name, say=say)
 
 
 UID_ADDRESS = re.compile(r"`(https?://[^`\s$]+/)\$\{uid\}`")

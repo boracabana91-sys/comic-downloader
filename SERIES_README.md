@@ -53,3 +53,8 @@ Terminal: type `xattr -cr ` (with a space), drag the app into the window, press 
 
 ## Not yet tested on a real site
 The chapter finder was written from the real luacomic.org data you sent, but was tested here on a practice website, because the build computer cannot reach luacomic.org. If "No chapters found" appears, send the link to your developer.
+
+## Copy sites (comix.to) are redirected automatically
+Paste a comix.to link and press **Find chapters**. The program takes the series name from the link, looks for it on the readable source sites (now **en-thunderscans.com** and **timelesstoons.org**), puts the source link into the box and carries on with that site. Nothing to copy or paste by hand.
+If the series is on none of them: open the series on any site that has it and paste that link once. The program remembers that site, and later comix.to links are looked up there too.
+The old lookup through the MangaUpdates directory was removed: for licensed series it lists only the official publishers, never the scan sites.

@@ -501,12 +501,15 @@ class SeriesApp:
                 copy_site = series.site_name(link)
                 self.say(f"{copy_site} only copies chapters and does not let programs in. "
                          "Looking for the original source site...")
-                orig = series.find_source(link, say=self.say)
+                known = series.load_settings(self.settings_path).get("sources") or []
+                orig = series.find_source(link, say=self.say, known=known)
                 if not orig:
-                    self.say("Could not find the original source of this series. The lines above show "
-                             "what was tried. Please copy this whole log and send it to your developer "
-                             f"together with the {copy_site} link: that is all that is needed to add "
-                             "the missing site.")
+                    self.say("The original source of this series was not found on the sites this "
+                             "program knows. The lines above show what was tried. Do this ONCE: "
+                             "open the series on any site that has it, copy that link and paste it "
+                             "here instead. The program then remembers that site, and the next "
+                             f"{copy_site} link of a series on it is found automatically. "
+                             "Or send this log to your developer to add the site.")
                     self.q.put(("status", "Original source not found."))
                     return
                 self.say(f"Found it on {orig['site']} as '{orig['title'].split(' ~')[0][:60]}'. "
@@ -514,6 +517,14 @@ class SeriesApp:
                 link = orig["url"]
                 self.q.put(("url", link))
             info = series.inspect_series(link)
+            if info["chapters"]:
+                root = series.remember_site(link, series.load_settings(self.settings_path).get("sources") or [])
+                if root:
+                    data = series.load_settings(self.settings_path)
+                    data["sources"] = (data.get("sources") or []) + [root]
+                    series.save_settings(data, self.settings_path)
+                    self.say(f"Remembered {series.site_name(root)}: copy-site links are now also "
+                             "looked up there automatically.")
             if not info["chapters"]:
                 self.say("No chapter links found on that page. Make sure it is the page that "
                          "lists the chapters, then try again. If it keeps happening, send the "
