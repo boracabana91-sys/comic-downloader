@@ -1,4 +1,4 @@
-"""Series logic for Comic Series Downloader (no window code, so it can be tested alone).
+"""Series logic for Comic Series GOKU Downloader (no window code, so it can be tested alone).
 
 Give it the link of a page that lists many chapters. It finds the chapters, then for each one:
 download -> hide promo -> cover -> make the gadget's file(s). It remembers what is finished,
@@ -21,6 +21,9 @@ import covers
 STATE_NAME = ".series-state.json"
 CHAPTER_TEXT = re.compile(r"^(chapter|chap\.?|ch\.?|episode|ep\.?)\s*\d", re.I)
 SCRIPT_PATH = re.compile(r"[\"'](/[^\"'\s<>\\]*chapter[^\"'\s<>\\]*)[\"']", re.I)
+TEXT_NUMBER = re.compile(r"^(?:chapter|chap\.?|ch\.?|episode|ep\.?)\s*(\d+(?:\.\d+)?)", re.I)
+LOCK_ICON = re.compile(r"[:/_-]lock(?:ed)?\b", re.I)    # 'lock.svg', 'icon-locked' (not 'unlock')
+NUMBER_TAG = re.compile(r"^chapter-(\d+(?:\.\d+)?)$")
 
 
 class _Links(HTMLParser):
@@ -29,6 +32,7 @@ class _Links(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.links = []         # (href, text)
+        self.locked = set()     # hrefs of links showing a lock (coin / paid chapters)
         self.scripts = []
         self.title = ""
         self.og_title = ""
@@ -47,6 +51,8 @@ class _Links(HTMLParser):
         if tag == "a" and a.get("href"):
             self._flush()
             self._href = a["href"].strip()
+        elif tag == "img" and self._href is not None and LOCK_ICON.search(a.get("src", "")):
+            self.locked.add(self._href)
         elif tag == "meta" and a.get("property") == "og:title":
             self.og_title = a.get("content", "").strip()
         elif tag == "title":
@@ -77,17 +83,36 @@ class _Links(HTMLParser):
 
 
 def chapter_number(url):
-    """The chapter number hidden in the last part of the link, or None."""
+    """The chapter number hidden in the last part of the link, or None.
+    Links whose address is only a code (timelesstoons.org: /chapter/652b2080e4d-65e2be0202a/)
+    carry the number from the link's words as '#chapter-14'; the website never sees that part."""
+    tag = NUMBER_TAG.match(urlparse(url).fragment)
+    if tag:
+        return float(tag.group(1))
     last = urlparse(url).path.rstrip("/").rsplit("/", 1)[-1]
     m = re.findall(r"\d+(?:[.-]\d+)?", last)
     return float(m[-1].replace("-", ".")) if m else None
 
 
-def find_chapters(parsed, base_url):
-    """Chapter links on a series page, oldest first. Returns a list of URLs."""
+def _text_numbers(parsed, base_url):
+    """{link: chapter number written on it} ('Chapter 13.5' -> 13.5). A link may appear
+    several times (a 'Start Reading' button, then 'Chapter 1' in the list): any one with words counts."""
+    out = {}
+    for href, text in parsed.links:
+        m = TEXT_NUMBER.match(text or "")
+        if m:
+            out.setdefault(urljoin(base_url, href).split("#")[0], float(m.group(1)))
+    return out
+
+
+def find_chapters(parsed, base_url, locked=None):
+    """Chapter links on a series page, oldest first. Returns a list of URLs.
+    Chapters showing a lock (paid with coins) are left out and put in `locked` if given."""
     host = urlparse(base_url).netloc
     base_path = urlparse(base_url).path.rstrip("/")
     cand, seen = [], set()
+    shut = {urljoin(base_url, h).split("#")[0] for h in getattr(parsed, "locked", ())}
+    words = _text_numbers(parsed, base_url)
 
     def add(href):
         u = urljoin(base_url, href).split("#")[0]
@@ -95,6 +120,13 @@ def find_chapters(parsed, base_url):
         if p.netloc != host or u in seen or u.rstrip("/") == base_url.rstrip("/"):
             return
         seen.add(u)
+        if u in shut:
+            if locked is not None:
+                locked.append(u)
+            return
+        n = words.get(u)
+        if n is not None and chapter_number(u) != n:   # the address has no real number: use the words
+            u += f"#chapter-{n:g}"
         cand.append(u)
 
     for href, text in parsed.links:
@@ -184,7 +216,8 @@ def inspect_series(url, fetch_text=None, api_base=None):
         got = None
     if got and got[0]:
         return {"title": title, "chapters": _sort_chapters(got[0]), "total": got[1]}
-    chapters = find_chapters(p, url)
+    locked = []
+    chapters = find_chapters(p, url, locked)
     # Some sites show the chapter list over several pages (?page=2 ...). Best effort.
     if any("page=" in h for h, _t in p.links):
         for n in range(2, 40):
@@ -195,11 +228,81 @@ def inspect_series(url, fetch_text=None, api_base=None):
                 q.close()
             except Exception:
                 break
-            more = [c for c in find_chapters(q, url) if c not in chapters]
+            more = [c for c in find_chapters(q, url, locked) if c not in chapters]
             if not more:
                 break
             chapters = _sort_chapters(chapters + more)
-    return {"title": title, "chapters": chapters, "total": None}
+    locked = set(locked)
+    return {"title": title, "chapters": chapters,
+            "total": len(chapters) + len(locked) if locked else None}
+
+
+UID_ADDRESS = re.compile(r"`(https?://[^`\s$]+/)\$\{uid\}`")
+UID_IMG = re.compile(r"<img\b[^>]*?\buid=[\"']([^\"'\s]+)[\"']", re.I)
+
+
+def inspect_chapter(url, fetch_text=None):
+    """A chapter's pictures, in reading order. Like core.inspect_page, and also knows pages
+    that only name each picture by a code (<img uid="gus51jGqpjd">) and build the address
+    in their script (timelesstoons.org: https://cdn.meowing.org/uploads/${uid})."""
+    page = url.split("#")[0]
+    html = (fetch_text or core.fetch_text)(page)
+    p = core._Page()
+    p.feed(html)
+    title = core.clean_title(p.og_title or p.title)
+    where = UID_ADDRESS.search(html)
+    if where:
+        uids = list(dict.fromkeys(UID_IMG.findall(html)))
+        if uids:
+            return {"images": [where.group(1) + u for u in uids], "chapters": [], "title": title}
+    return {"images": core.find_images(p, page), "chapters": core.find_chapter_links(p, page),
+            "title": title}
+
+
+def _kind_of(head):
+    """The real picture type from the first bytes of the file."""
+    if head[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    if head[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return ".webp"
+    if head[4:8] == b"ftyp" and head[8:12] in (b"avif", b"avis"):
+        return ".avif"
+    if head[:4] == b"GIF8":
+        return ".gif"
+    return None
+
+
+def fix_picture_types(folder, convert=False):
+    """Pictures from addresses without a file type were saved as .jpg whatever they really are.
+    Give each its true ending (.webp, .avif, ...) and, if "Convert WebP to JPG" is ticked,
+    turn WebP/AVIF into real JPG, as the download does for addresses that say .webp."""
+    for f in sorted(os.listdir(folder)):
+        base, ext = os.path.splitext(f)
+        src = os.path.join(folder, f)
+        if ext.lower() not in core.IMG_EXT or f.lower() == covers.COVER_NAME:
+            continue
+        try:
+            with open(src, "rb") as fh:
+                kind = _kind_of(fh.read(16))
+        except OSError:
+            continue
+        if not kind or kind == ext.lower() or (kind == ".jpg" and ext.lower() == ".jpeg"):
+            continue
+        if convert and kind in (".webp", ".avif"):
+            try:
+                from PIL import Image
+                tmp = os.path.join(folder, base + ".jpg.part")
+                with Image.open(src) as im:
+                    im.convert("RGB").save(tmp, "JPEG", quality=92)
+                os.replace(tmp, os.path.join(folder, base + ".jpg"))
+                if ext.lower() != ".jpg":
+                    os.remove(src)
+                continue
+            except Exception:
+                pass   # keep the original picture if it cannot be turned into JPG
+        os.replace(src, os.path.join(folder, base + kind))
 
 
 def chapter_names(series_title, urls):
@@ -577,6 +680,7 @@ def _download_with_retry(imgs, name, work, url, progress, stop, size, convert, s
 def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series_title=""):
     """Everything for one chapter. Returns the number of pages. Raises on any problem."""
     info = _inspect_with_retry(inspect, url, stop)
+    url = url.split("#")[0]    # '#chapter-14' is only our own label: never sent to the website
     imgs = dedupe_images(info["images"])
     if not imgs:
         raise core.NoImages()
@@ -594,6 +698,10 @@ def do_chapter(url, name, series_dir, opts, progress, stop, say, inspect, series
         except Exception as e:
             why = f" ({e})"
         raise ChapterFailed(f"pages {failed} did not download{why}")
+    for g in range(math.ceil(total / size)):
+        gf = os.path.join(work, core.group_folder_name(name, g * size + 1, total, size))
+        if os.path.isdir(gf):
+            fix_picture_types(gf, opts.get("convert", False))
     words = opts.get("words")
     if words:
         try:
@@ -647,7 +755,7 @@ def run_series(series_title, chapter_urls, out_root, opts, progress=None, stop=N
     stop = stop or threading.Event()
     say = say or (lambda m: None)
     progress = progress or (lambda d, t, s: None)
-    inspect = inspect or core.inspect_page
+    inspect = inspect or inspect_chapter
     series_dir = os.path.join(out_root, series_title)
     os.makedirs(series_dir, exist_ok=True)
     state = load_state(series_dir)

@@ -1,7 +1,9 @@
-# Comic Series Downloader (separate app)
+# Comic Series GOKU Downloader (separate app)
+
+(Called Comic Series Downloader up to series-v5-test9.)
 
 A second app next to **Comic Downloader**. Both can be installed at the same time; they do not touch each other.
-Comic Downloader = one chapter link. **Comic Series Downloader = a page that lists many chapters, done automatically.**
+Comic Downloader = one chapter link. **Comic Series GOKU Downloader = a page that lists many chapters, done automatically.**
 
 ## How to use (click by click)
 1. Open the app.
@@ -36,7 +38,10 @@ Drag the window edges to resize it. The Download buttons and the log stay at the
 Terminal: type `xattr -cr ` (with a space), drag the app into the window, press Enter.
 
 ## Chapter finder
-On luacomic.org it asks the website for the full chapter list (all pages, 30 at a time) using the series number in the page. Other sites: it reads the chapter links in the page.
+- **luacomic.org:** it asks the website for the full chapter list (all pages, 30 at a time) using the series number in the page.
+- **timelesstoons.org** (since series-v6-test1): paste the series page, e.g. `https://timelesstoons.org/series/bloodshed-goddess-biography/`. Chapter numbers (also half chapters like 13.5) come from the words on each link, because the links themselves are only codes. Chapters with a lock (paid with coins) are left out; the log says how many. Pictures come from `cdn.meowing.org` and keep their true type (WebP, AVIF, JPG). Tick "Convert WebP to JPG" to get JPG.
+- **Other sites:** it reads the chapter links in the page.
+- **Sites behind a "Just a moment..." (Cloudflare) check, such as comix.to, do not work.** The program does not get past that check. Use the translation group's own site instead (comix.to copies chapters from them).
 
 ## Not yet tested on a real site
 The chapter finder was written from the real luacomic.org data you sent, but was tested here on a practice website, because the build computer cannot reach luacomic.org. If "No chapters found" appears, send the link to your developer.

@@ -1,4 +1,4 @@
-"""Comic Series Downloader - paste the link of a page that lists many chapters;
+"""Comic Series GOKU Downloader - paste the link of a page that lists many chapters;
 it downloads every chapter you tick, one after the other, as your chosen file type."""
 import os
 import queue
@@ -23,7 +23,7 @@ class SeriesApp:
     def __init__(self, root, dnd=False, settings_path=None):
         self.root = root
         self.settings_path = settings_path
-        root.title("Comic Series Downloader")
+        root.title("Comic Series GOKU Downloader")
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
         saved = series.load_settings(settings_path).get("geometry")
         root.geometry(series.fit_geometry(saved, sw, sh))   # the size you left it at last time
@@ -39,7 +39,7 @@ class SeriesApp:
         self.worker = None
         pad = {"padx": 14, "pady": 4}
 
-        ttk.Label(root, text="Comic Series Downloader",
+        ttk.Label(root, text="Comic Series GOKU Downloader",
                   font=("Helvetica", 18, "bold")).pack(anchor="w", padx=14, pady=(14, 0))
         ttk.Label(root, text="Paste the link of the page that lists the chapters, press "
                   "Find chapters, then Download.", foreground="#555").pack(anchor="w", padx=14)

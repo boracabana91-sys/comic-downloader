@@ -1,4 +1,4 @@
-name: Build Comic Series Downloader
+name: Build Comic Series GOKU Downloader
 
 on:
   push:
@@ -47,27 +47,27 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          pyinstaller --onefile --windowed --osx-bundle-identifier com.boracabana.comicseriesdownloader --collect-data certifi --collect-all rapidocr_onnxruntime --collect-all onnxruntime --collect-all tkinterdnd2 --name ComicSeriesDownloader series_app.py
-          Move-Item dist/ComicSeriesDownloader.exe ComicSeriesDownloader-Windows.exe
-          Start-Process -FilePath ./ComicSeriesDownloader-Windows.exe -ArgumentList "--selftest","selftest.txt" -Wait
+          pyinstaller --onefile --windowed --osx-bundle-identifier com.boracabana.comicseriesdownloader --collect-data certifi --collect-all rapidocr_onnxruntime --collect-all onnxruntime --collect-all tkinterdnd2 --name ComicSeriesGOKUDownloader series_app.py
+          Move-Item dist/ComicSeriesGOKUDownloader.exe ComicSeriesGOKUDownloader-Windows.exe
+          Start-Process -FilePath ./ComicSeriesGOKUDownloader-Windows.exe -ArgumentList "--selftest","selftest.txt" -Wait
           Write-Host "Built app https test: $(Get-Content selftest.txt)"
           if ((Get-Content selftest.txt) -ne "OK") { exit 1 }
 
       - name: Build Mac app
         if: runner.os == 'macOS'
         run: |
-          pyinstaller --windowed --osx-bundle-identifier com.boracabana.comicseriesdownloader --collect-data certifi --collect-all rapidocr_onnxruntime --collect-all onnxruntime --collect-all tkinterdnd2 --name ComicSeriesDownloader series_app.py
-          dist/ComicSeriesDownloader.app/Contents/MacOS/ComicSeriesDownloader --selftest selftest.txt || true
+          pyinstaller --windowed --osx-bundle-identifier com.boracabana.comicseriesdownloader --collect-data certifi --collect-all rapidocr_onnxruntime --collect-all onnxruntime --collect-all tkinterdnd2 --name ComicSeriesGOKUDownloader series_app.py
+          dist/ComicSeriesGOKUDownloader.app/Contents/MacOS/ComicSeriesGOKUDownloader --selftest selftest.txt || true
           echo "Built app https test: $(cat selftest.txt)"
           grep -qx OK selftest.txt
-          ditto -c -k --sequesterRsrc --keepParent dist/ComicSeriesDownloader.app ComicSeriesDownloader-Mac.zip
+          ditto -c -k --sequesterRsrc --keepParent dist/ComicSeriesGOKUDownloader.app ComicSeriesGOKUDownloader-Mac.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ComicSeriesDownloader-${{ runner.os }}
+          name: ComicSeriesGOKUDownloader-${{ runner.os }}
           path: |
-            ComicSeriesDownloader-Windows.exe
-            ComicSeriesDownloader-Mac.zip
+            ComicSeriesGOKUDownloader-Windows.exe
+            ComicSeriesGOKUDownloader-Mac.zip
           if-no-files-found: ignore
 
   release:
@@ -91,5 +91,5 @@ jobs:
           gh release create "$V" files/* \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
-            --title "Comic Series Downloader $V" \
-            --notes "Windows: download ComicSeriesDownloader-Windows.exe. Mac: download ComicSeriesDownloader-Mac.zip. This is a separate app from Comic Downloader; both can stay installed. Help: SERIES_README.md"
+            --title "Comic Series GOKU Downloader $V" \
+            --notes "Windows: download ComicSeriesGOKUDownloader-Windows.exe. Mac: download ComicSeriesGOKUDownloader-Mac.zip. Reads luacomic.org and timelesstoons.org (and other sites that list chapter links). This is a separate app from Comic Downloader; both can stay installed. Help: SERIES_README.md"

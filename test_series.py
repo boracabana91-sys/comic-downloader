@@ -54,6 +54,37 @@ class Site(http.server.BaseHTTPRequestHandler):
                 return
             body = ('<html><head><title>Demo Comic Chapter %s</title></head><body>' % n
                     + "".join(f'<img src="/img/c{n}/{i}.png">' for i in (1, 2, 3)) + "</body></html>")
+        elif path == "/series/coded/":
+            # timelesstoons.org style: chapter addresses are codes, the number is only in the words;
+            # a 'Start Reading' button first; chapter 3 is locked (coins), chapter 2.5 is a half chapter
+            row = ('<a href="/chapter/9f1e2-{c}/" title="Chapter {n}"><div style="background-image:'
+                   'url(x)"></div>{lock}<span>Chapter {n}</span> <span>New</span> 2 hours ago</a>')
+            lock = '<img src="https://api.iconify.design/material-symbols:lock.svg?color=white">'
+            body = ('<html><head><title>Coded Comic</title>'
+                    '<meta property="og:title" content="Coded Comic"></head><body>'
+                    '<a href="/chapter/9f1e2-77a1/"><img src="https://x/ic:round-play-arrow.svg">Start Reading</a>'
+                    + row.format(c="3c3", n="3", lock=lock) + row.format(c="25b", n="2.5", lock="")
+                    + row.format(c="0d2", n="2", lock="") + row.format(c="77a1", n="1", lock="")
+                    + '</body></html>')
+        elif path.startswith("/chapter/9f1e2-"):
+            c = path.rstrip("/").rsplit("-", 1)[1]
+            body = ('<html><head><title>Coded Comic Chapter</title></head><body><div id="pages">'
+                    + "".join(f'<img src="/assets/images/placeholder.svg" count="{i}" uid="{c}u{i}" '
+                              'class="lazy">' for i in range(3))
+                    + '</div><script>function loadImage(el){const uid=el.getAttribute("uid");'
+                    'let realUrl = `' + f"http://{self.headers['Host']}/uploads/" + '${uid}`;}</script>'
+                    '</body></html>')
+        elif path.startswith("/uploads/"):   # pictures without a file type in the address (WebP inside)
+            b = io.BytesIO()
+            im = Image.new("RGB", (900, 1300), COLORS[int(path[-1])])
+            for y in range(100, 1200, 40):
+                im.paste((10, 10, 10), (100, y, 800, y + 15))
+            im.save(b, "WEBP")
+            self.send_response(200)
+            self.send_header("Content-Type", "image/webp")
+            self.end_headers()
+            self.wfile.write(b.getvalue())
+            return
         elif path.startswith("/img/"):
             data = png(COLORS[int(path.rsplit("/", 1)[1][0]) - 1])
             self.send_response(200)
@@ -89,6 +120,33 @@ def main():
     assert series.chapter_number("https://x/a/chapter-12-5") == 12.5
     names2 = series.chapter_names("S", ["https://x/a/b", "https://x/a/c"])  # no numbers: by position
     assert names2 == ["S - Chapter 001", "S - Chapter 002"], names2
+
+    # --- a site whose chapter addresses are only codes, with a locked chapter and coded pictures ---
+    cod = series.inspect_series(base + "/series/coded/")
+    assert cod["title"] == "Coded Comic", cod
+    assert [series.chapter_number(u) for u in cod["chapters"]] == [1, 2, 2.5], cod["chapters"]
+    assert cod["total"] == 4, "the locked chapter is counted but not offered"
+    assert series.chapter_names("Coded Comic", cod["chapters"]) == [
+        "Coded Comic - Chapter 001", "Coded Comic - Chapter 002", "Coded Comic - Chapter 002.5"]
+    pics = series.inspect_chapter(cod["chapters"][1])
+    assert pics["images"] == [f"{base}/uploads/0d2u{i}" for i in range(3)], pics
+    assert series.chapter_number("https://x/a/chapter-7") == 7          # ordinary addresses unchanged
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+        oc = {"layout": "central", "size": 2, "device": "kobo", "epub": True, "words": [], "cover": None}
+        res = series.run_series("Coded Comic", cod["chapters"], d, oc, say=print, pause=0)
+        assert len(res["done"]) == 3 and not res["failed"], res
+        sd = os.path.join(d, "Coded Comic")
+        assert sorted(os.listdir(os.path.join(sd, "Coded Comic WEBP", "Coded Comic WEBP Chapter 002.5"))) == [
+            "001.webp", "002.webp", "003.webp"], "pictures get their true type"
+        assert len(os.listdir(os.path.join(sd, "Coded Comic CBZ"))) == 3
+        assert len(os.listdir(os.path.join(sd, "Coded Comic EPUB"))) == 3
+        # with "Convert WebP to JPG" the same pictures become real JPEGs
+        res = series.run_series("Coded Comic", cod["chapters"][:1], d, dict(oc, convert=True), say=print, pause=0)
+        assert len(res["done"]) == 1, res
+        jd = os.path.join(sd, "Coded Comic JPEG", "Coded Comic JPEG Chapter 001")
+        assert sorted(os.listdir(jd)) == ["001.jpg", "002.jpg", "003.jpg"], os.listdir(jd)
+        with open(os.path.join(jd, "001.jpg"), "rb") as f:
+            assert f.read(3) == b"\xff\xd8\xff"
 
     # --- Sample 1: one folder per chapter, one .cbz and one .epub each. Chapter 2 is broken
     #     at first; the others must still finish.
