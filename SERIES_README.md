@@ -55,6 +55,11 @@ Terminal: type `xattr -cr ` (with a space), drag the app into the window, press 
 The chapter finder was written from the real luacomic.org data you sent, but was tested here on a practice website, because the build computer cannot reach luacomic.org. If "No chapters found" appears, send the link to your developer.
 
 ## Copy sites (comix.to) are redirected automatically
-Paste a comix.to link and press **Find chapters**. The program takes the series name from the link, looks for it on the readable source sites (now **en-thunderscans.com** and **timelesstoons.org**), puts the source link into the box and carries on with that site. Nothing to copy or paste by hand.
+Paste a comix.to link and press **Find chapters**. The program takes the series name from the link, looks for it on the readable source sites (now **en-thunderscans.com**, **madarascans.net** and **timelesstoons.org**), puts the source link into the box and carries on with that site. Nothing to copy or paste by hand.
 If the series is on none of them: open the series on any site that has it and paste that link once. The program remembers that site, and later comix.to links are looked up there too.
 The old lookup through the MangaUpdates directory was removed: for licensed series it lists only the official publishers, never the scan sites.
+
+## Fixes in test5 (found on the real sites)
+- Pictures come from the page's own reader list when it has one, so a stray picture can no longer land in front of page 1 (seen on madarascans.net).
+- Chapters like 175.5 ... 175.19 (Thunderscans) are ordered and named correctly (175.10 used to be read as 175.1 and sorted too early).
+- madarascans.net has changed its address twice (.com, .org, .net). If it moves again, paste a link from the new address once and it is remembered.

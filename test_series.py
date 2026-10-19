@@ -133,7 +133,7 @@ def main():
     assert hid["chapters"][0] == base + "/series/hidden/chapter-1"
     names = series.chapter_names("Demo Comic", info["chapters"])
     assert names[0] == "Demo Comic - Chapter 001" and names[2] == "Demo Comic - Chapter 003"
-    assert series.chapter_number("https://x/a/chapter-12-5") == 12.5
+    assert series.chapter_number("https://x/a/chapter-12-5") == 12.05 and series.number_label(12.05) == "12.5"
     names2 = series.chapter_names("S", ["https://x/a/b", "https://x/a/c"])  # no numbers: by position
     assert names2 == ["S - Chapter 001", "S - Chapter 002"], names2
 
@@ -191,11 +191,11 @@ def main():
     # --- a site whose chapter addresses are only codes, with a locked chapter and coded pictures ---
     cod = series.inspect_series(base + "/series/coded/")
     assert cod["title"] == "Coded Comic", cod
-    assert [series.chapter_number(u) for u in cod["chapters"]] == [1, 2, 2.5], cod["chapters"]
+    assert [series.chapter_number(u) for u in cod["chapters"]] == [1, 2, 2.05], cod["chapters"]
     assert cod["total"] == 4, "the locked chapter is counted but not offered"
     assert cod["locked"] == [3.0], cod["locked"]
-    assert series.chapter_range([9, 10, 11, 12, 12.5, 13, 13.5, 14]) == "9 to 14"
-    assert series.chapter_range([3]) == "3" and series.chapter_range([2, 7.5]) == "2, 7.5" and series.chapter_range([]) == ""
+    assert series.chapter_range([9, 10, 11, 12, 12.05, 13, 13.05, 14]) == "9 to 14"
+    assert series.chapter_range([3]) == "3" and series.chapter_range([2, 7.05]) == "2, 7.5" and series.chapter_range([]) == ""
     assert series.find_original("x", indexes=(base + "/index/series",), name="Bloodshed Goddess Biography")["url"].endswith("/series/bloodshed/")
     assert series.find_original("x", indexes=(base + "/index/series",), name="Bloodshed Goddess Biography",
                                 skip_site="127.0.0.1") is None, "the site you are already on is not offered again"
@@ -203,6 +203,18 @@ def main():
         "Coded Comic - Chapter 001", "Coded Comic - Chapter 002", "Coded Comic - Chapter 002.5"]
     pics = series.inspect_chapter(cod["chapters"][1])
     assert pics["images"] == [f"{base}/uploads/0d2u{i}" for i in range(3)], pics
+    # Thunderscans lists Chapter 175.5 ... 175.19: the part after the dot is a whole number
+    t = [f"https://s.org/x-chapter-{c}/" for c in ("176", "175-10", "175-5", "175-9", "175", "175-19")]
+    assert [u.split("chapter-")[1].rstrip("/") for u in series._sort_chapters(t)] == ["175", "175-5", "175-9", "175-10", "175-19", "176"]
+    assert series.chapter_names("S", series._sort_chapters(t)) == [
+        f"S - Chapter {x}" for x in ("175", "175.5", "175.9", "175.10", "175.19", "176")]
+    assert series.number_label(175.1) == "175.10" and series.number_label(3.0) == "3" and series.number_label(175.01) == "175.1"
+    # reader data in the page: exactly the chapter's pages in order, a stray picture ahead of them is ignored
+    page = ('<img src="/stray.webp"><script>ts_reader.run({"sources":[{"source":"S","images":'
+            '["https:\\/\\/s.org\\/u\\/0001.webp","https:\\/\\/s.org\\/u\\/0002.webp","https:\\/\\/s.org\\/u\\/0003.webp"]}]})</script>')
+    assert series.reader_images(page, "https://s.org/c/") == [f"https://s.org/u/000{i}.webp" for i in (1, 2, 3)], series.reader_images(page, "https://s.org/c/")
+    assert series.reader_images('<script>{"images":["a.txt","b.txt"]}</script>', "https://s.org/") == []
+    assert series.reader_images("<p>nothing</p>", "https://s.org/") == []
     assert series.chapter_number("https://x/a/chapter-7") == 7          # ordinary addresses unchanged
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
         oc = {"layout": "central", "size": 2, "device": "kobo", "epub": True, "words": [], "cover": None}

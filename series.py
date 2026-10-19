@@ -22,6 +22,7 @@ STATE_NAME = ".series-state.json"
 CHAPTER_TEXT = re.compile(r"^(chapter|chap\.?|ch\.?|episode|ep\.?)\s*\d", re.I)
 SCRIPT_PATH = re.compile(r"[\"'](/[^\"'\s<>\\]*chapter[^\"'\s<>\\]*)[\"']", re.I)
 TEXT_NUMBER = re.compile(r"^(?:chapter|chap\.?|ch\.?|episode|ep\.?)\s*(\d+(?:\.\d+)?)", re.I)
+URL_NUMBER = re.compile(r"\d+(?:[.-]\d+)?")
 LOCK_ICON = re.compile(r"[:/_-]lock(?:ed)?\b", re.I)    # 'lock.svg', 'icon-locked' (not 'unlock')
 NUMBER_TAG = re.compile(r"^chapter-(\d+(?:\.\d+)?)$")
 
@@ -82,6 +83,20 @@ class _Links(HTMLParser):
         self._flush()
 
 
+def _num(text):
+    """The part after the dot counts as a whole number, so 175.10 comes after 175.9 and 12.5 after 12
+    (Thunderscans lists Chapter 175.5 ... 175.19). Stored as 175 + 10/100; see number_label."""
+    major, _sep, minor = re.split(r"([.-])", text, maxsplit=1) if re.search(r"[.-]", text) else (text, "", "")
+    return int(major) + (int(minor) / 10 ** max(2, len(minor)) if minor else 0)
+
+
+def number_label(n):
+    """The chapter number as people write it: 175.1 stored for 175.10 -> '175.10', 12.05 -> '12.5', 3.0 -> '3'."""
+    major = int(n + 1e-9)
+    minor = round((n - major) * 100)
+    return str(major) if minor <= 0 else f"{major}.{minor}"
+
+
 def chapter_number(url):
     """The chapter number hidden in the last part of the link, or None.
     Links whose address is only a code (timelesstoons.org: /chapter/652b2080e4d-65e2be0202a/)
@@ -90,8 +105,8 @@ def chapter_number(url):
     if tag:
         return float(tag.group(1))
     last = urlparse(url).path.rstrip("/").rsplit("/", 1)[-1]
-    m = re.findall(r"\d+(?:[.-]\d+)?", last)
-    return float(m[-1].replace("-", ".")) if m else None
+    m = URL_NUMBER.findall(last)
+    return _num(m[-1]) if m else None
 
 
 def _text_numbers(parsed, base_url):
@@ -101,7 +116,7 @@ def _text_numbers(parsed, base_url):
     for href, text in parsed.links:
         m = TEXT_NUMBER.match(text or "")
         if m:
-            out.setdefault(urljoin(base_url, href).split("#")[0], float(m.group(1)))
+            out.setdefault(urljoin(base_url, href).split("#")[0], _num(m.group(1)))
     return out
 
 
@@ -123,11 +138,11 @@ def find_chapters(parsed, base_url, locked=None):
         if u in shut:
             if locked is not None:
                 n = words.get(u)
-                locked.append(u + (f"#chapter-{n:g}" if n is not None else ""))
+                locked.append(u + (f"#chapter-{n!r}" if n is not None else ""))
             return
         n = words.get(u)
         if n is not None and chapter_number(u) != n:   # the address has no real number: use the words
-            u += f"#chapter-{n:g}"
+            u += f"#chapter-{n!r}"
         cand.append(u)
 
     for href, text in parsed.links:
@@ -242,7 +257,7 @@ def inspect_series(url, fetch_text=None, api_base=None):
 def chapter_range(numbers):
     """[9, 10, 11, 12, 12.5, 13, 13.5, 14] -> '9 to 14' ; [3] -> '3' ; [2, 7] -> '2, 7'."""
     nums = sorted(numbers)
-    label = lambda n: f"{n:g}"
+    label = number_label
     if not nums:
         return ""
     if len(nums) > 2:
@@ -391,7 +406,7 @@ def search_site(site_url, title, fetch_text=None, say=None):
 # (comix.to) is looked up on these by series name; the first one that really lists the
 # chapters wins. Add a site here (one line) and every copy-site link will try it too.
 # Sites you paste a working link from are remembered and tried as well (see remember_site).
-KNOWN_SOURCES = ("https://en-thunderscans.com",)
+KNOWN_SOURCES = ("https://en-thunderscans.com", "https://madarascans.net")
 SLUG_PATHS = ("/comics/{}/", "/series/{}/", "/manga/{}/", "/title/{}/", "/comic/{}/")
 
 
@@ -453,6 +468,24 @@ UID_ADDRESS = re.compile(r"`(https?://[^`\s$]+/)\$\{uid\}`")
 UID_IMG = re.compile(r"<img\b[^>]*?\buid=[\"']([^\"'\s]+)[\"']", re.I)
 
 
+READER_IMAGES = re.compile(r'"images"\s*:\s*(\[[^\]]*\])')
+
+
+def reader_images(html, page):
+    """Pictures from the reader data many sites put in the page (ts_reader.run({"sources":[{"images":[...]}]})):
+    exactly the chapter's pages, in reading order, without the stray pictures found elsewhere on the page.
+    Returns [] when the page has no such list."""
+    for m in READER_IMAGES.finditer(html):
+        try:
+            urls = json.loads(m.group(1))
+        except ValueError:
+            continue
+        urls = [urljoin(page, u) for u in urls if isinstance(u, str)]
+        if len(urls) >= 2 and all(re.search(r"\.(?:jpe?g|png|webp|avif)(?:\?|$)", u, re.I) for u in urls):
+            return list(dict.fromkeys(urls))
+    return []
+
+
 def inspect_chapter(url, fetch_text=None):
     """A chapter's pictures, in reading order. Like core.inspect_page, and also knows pages
     that only name each picture by a code (<img uid="gus51jGqpjd">) and build the address
@@ -467,6 +500,9 @@ def inspect_chapter(url, fetch_text=None):
         uids = list(dict.fromkeys(UID_IMG.findall(html)))
         if uids:
             return {"images": [where.group(1) + u for u in uids], "chapters": [], "title": title}
+    reader = reader_images(html, page)
+    if reader:
+        return {"images": reader, "chapters": [], "title": title}
     return {"images": core.find_images(p, page), "chapters": core.find_chapter_links(p, page),
             "title": title}
 
@@ -524,7 +560,7 @@ def chapter_names(series_title, urls):
     out = []
     for i, (u, n) in enumerate(zip(urls, nums), 1):
         if use_nums:
-            label = f"{int(n):03d}" if n == int(n) else f"{int(n):03d}.{str(n).split('.')[1]}"
+            label = number_label(n).zfill(3) if n == int(n) else f"{int(n):03d}.{number_label(n).split('.')[1]}"
         else:
             label = f"{i:03d}"
         out.append(f"{series_title} - Chapter {label}")
