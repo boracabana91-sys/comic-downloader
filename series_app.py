@@ -306,6 +306,8 @@ class SeriesApp:
     def on_close(self):
         self.save_geometry()
         self.root.destroy()
+        if threading.active_count() > 1:    # a background check still running: leave cleanly, no crash on exit
+            os._exit(0)
 
     # ----- helpers -----
     def paste(self):

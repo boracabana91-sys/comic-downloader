@@ -76,5 +76,10 @@ a.show_my_sites("note", editable=True)       # 'Update websites': list + a bar t
 root.update()
 assert a.sites_lb.size() >= 2 and "thunderscans" in a.sites_lb.get(0)
 a.dialog.destroy()
+import threading, time                       # let the status-check threads finish before the program exits
+end = time.time() + 40
+while threading.active_count() > 1 and time.time() < end:
+    root.update()
+    time.sleep(0.2)
 root.destroy()
 print("series window OK")
