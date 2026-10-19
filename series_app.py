@@ -40,8 +40,12 @@ class SeriesApp:
         self.worker = None
         pad = {"padx": 14, "pady": 4}
 
-        ttk.Label(root, text="Comic Series GOKU Downloader",
-                  font=("Helvetica", 18, "bold")).pack(anchor="w", padx=14, pady=(14, 0))
+        head = ttk.Frame(root)
+        head.pack(fill="x")
+        ttk.Label(head, text="Comic Series GOKU Downloader",
+                  font=("Helvetica", 18, "bold")).pack(side="left", padx=14, pady=(14, 0))
+        self.btn_update = ttk.Button(head, text="Update websites...", command=lambda: self.show_my_sites(editable=True))
+        self.btn_update.pack(side="right", padx=14, pady=(14, 0))
         ttk.Label(root, text="Paste the link of the page that lists the chapters, press "
                   "Find chapters, then Download.", foreground="#555").pack(anchor="w", padx=14)
 
@@ -98,7 +102,7 @@ class SeriesApp:
         mrow.pack(fill="x", padx=14, pady=(4, 0))
         self.btn_myseries = ttk.Button(mrow, text="My series...", command=self.show_my_series)
         self.btn_myseries.pack(side="left")
-        self.btn_mysites = ttk.Button(mrow, text="Update websites...", command=self.show_my_sites)
+        self.btn_mysites = ttk.Button(mrow, text="My sites...", command=self.show_my_sites)
         self.btn_mysites.pack(side="left", padx=6)
         ttk.Label(mrow, text="Type a name (e.g. the beginning after the end) and press Find chapters "
                   "to search all sites.", foreground="#555").pack(side="left", padx=6)
@@ -496,7 +500,7 @@ class SeriesApp:
                 elif kind == "mys":
                     self._fill_row(self.my_lb, a, b)
                 elif kind == "sitesreopen":
-                    self.show_my_sites(a)
+                    self.show_my_sites(a, editable=True)
                 elif kind == "sites":
                     for i, text in enumerate(a):
                         self._fill_row(self.sites_lb, i, text)
@@ -655,8 +659,9 @@ class SeriesApp:
         ttk.Button(row, text="Open and tick the new chapters", command=go).pack(side="left")
         ttk.Button(row, text="Close", command=dlg.destroy).pack(side="left", padx=8)
 
-    def show_my_sites(self, note=""):
-        """'Update websites': the sites searched (with a dot for each), and a bar to add a new one."""
+    def show_my_sites(self, note="", editable=False):
+        """'My sites': the sites searched, a dot for each. With editable=True ('Update websites') there is also
+        a bar to add a new site and a button to remove the ones you added."""
         if self.dialog is not None:
             try:
                 self.dialog.destroy()
@@ -664,9 +669,9 @@ class SeriesApp:
                 pass
         known = series.load_settings(self.settings_path).get("sources") or []
         roots = list(series.KNOWN_SOURCES) + [k for k in known if k not in series.KNOWN_SOURCES]
-        dlg, lb = self._popup("Update websites", [f"...   {series.site_name(r)}   -   checking..." for r in roots],
-                              "Websites this program searches. A full dot means it answers today. "
-                              "To add another site, paste its link below and press 'Add website'.")
+        dlg, lb = self._popup("Update websites" if editable else "My sites", [f"...   {series.site_name(r)}   -   checking..." for r in roots],
+                              "Websites this program searches. A full dot means it answers today."
+                              + (" To add another site, paste its link below and press 'Add website'." if editable else ""))
         self.sites_lb = lb
         self.site_roots = roots
 
@@ -679,6 +684,9 @@ class SeriesApp:
             self.q.put(("sites", rows))
         threading.Thread(target=check, daemon=True).start()
 
+        if not editable:
+            ttk.Button(dlg, text="Close", command=dlg.destroy).pack(padx=12, pady=10)
+            return
         msg = tk.StringVar(value=note)
         ttk.Label(dlg, textvariable=msg, wraplength=560, foreground="#0a5").pack(anchor="w", padx=12, pady=(6, 0))
         row = ttk.Frame(dlg)
@@ -719,7 +727,7 @@ class SeriesApp:
             data = series.load_settings(self.settings_path)
             data["sources"] = [k for k in (data.get("sources") or []) if k != gone]
             series.save_settings(data, self.settings_path)
-            self.show_my_sites(f"Removed {series.site_name(gone)}.")
+            self.show_my_sites(f"Removed {series.site_name(gone)}.", editable=True)
         brow = ttk.Frame(dlg)
         brow.pack(fill="x", padx=12, pady=10)
         ttk.Button(brow, text="Remove selected", command=remove).pack(side="left")

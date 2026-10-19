@@ -67,7 +67,12 @@ a.sname.set("")
 a.show_chapters("The X Manga - Some Site", urls)
 assert a.sname.get() == "The X", a.sname.get()
 a.alternates = []
-a.show_my_sites("note")                      # 'Update websites': list + a bar to add a site
+assert a.btn_update.winfo_ismapped() and a.btn_mysites.winfo_exists()   # 'Update websites' sits top right
+a.show_my_sites()                            # 'My sites': just the list
+root.update()
+assert a.sites_lb.size() >= 2
+a.dialog.destroy()
+a.show_my_sites("note", editable=True)       # 'Update websites': list + a bar to add a site
 root.update()
 assert a.sites_lb.size() >= 2 and "thunderscans" in a.sites_lb.get(0)
 a.dialog.destroy()
