@@ -54,10 +54,18 @@ jobs:
           codesign --verify --deep --strict dist/mac-arm64/Cattyfied.app
           codesign --verify --deep --strict dist/mac/Cattyfied.app
           ls -la dist/*.dmg
-      - uses: actions/upload-artifact@v4
+      - name: Download for Apple Silicon Macs (M1, M2, M3, M4…)
+        uses: actions/upload-artifact@v4
         with:
-          name: Cattyfied-installers
-          path: dist/Cattyfied-*.dmg
+          name: Cattyfied-for-Apple-Silicon-Mac
+          path: dist/Cattyfied-Apple-Silicon.dmg
+          compression-level: 0
+          retention-days: 30
+      - name: Download for Intel Macs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cattyfied-for-Intel-Mac
+          path: dist/Cattyfied-Intel.dmg
           compression-level: 0
           retention-days: 30
       - name: Publish a Release (fast permanent download) when tagged
@@ -83,14 +91,16 @@ jobs:
           - runner: macos-latest
             label: Apple Silicon
             dmg: Cattyfied-Apple-Silicon.dmg
+            artifact: Cattyfied-for-Apple-Silicon-Mac
           - runner: macos-15-intel
             label: Intel
             dmg: Cattyfied-Intel.dmg
+            artifact: Cattyfied-for-Intel-Mac
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: Cattyfied-installers
+          name: ${{ matrix.artifact }}
       - name: Install like a user would (copy + xattr), self-test, then launch
         run: |
           set -e
