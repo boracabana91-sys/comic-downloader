@@ -3,7 +3,8 @@ import { useRef, useState } from 'react'
 export interface CheckResult {
   ok: true
   projectDir: string
-  visual: 'picture' | 'clip' | 'none'
+  visual: 'picture' | 'clip' | 'none' | 'drawn'
+  look: 'drawn' | 'clip' | 'picture'
   stillUrl: string | null
   plan: {
     phrases: { index: number; startSec: number; endSec: number; url: string }[]
@@ -52,6 +53,9 @@ export default function TimingPanel(props: {
   onPickPunch: (i: number) => void
   onPickHit: (i: number) => void
   onPause: (s: number) => void
+  hasClip: boolean
+  hasPicture: boolean
+  onLook: (l: 'drawn' | 'clip' | 'picture') => void
 }) {
   const { plan } = props.result
   const [pause, setPause] = useState(props.pauseSec)
@@ -110,6 +114,15 @@ export default function TimingPanel(props: {
       </div>
 
       <div className="timing-col">
+        <h2>What should the video show?</h2>
+        <div className="card-labels">
+          <button className={`chip ${props.result.look === 'drawn' ? 'on' : ''}`} onClick={() => props.onLook('drawn')}>🐱 Animated Casanova cat</button>
+          {props.hasClip && <button className={`chip ${props.result.look === 'clip' ? 'on' : ''}`} onClick={() => props.onLook('clip')}>🎬 My video clip</button>}
+          {props.hasPicture && <button className={`chip ${props.result.look === 'picture' ? 'on' : ''}`} onClick={() => props.onLook('picture')}>🖼️ My picture</button>}
+        </div>
+        {props.result.look === 'drawn' && (
+          <p className="small">The cat talks with your voice, then the camera cuts every second after the punch line (wink, laugh, hearts, toast). Drawn by code, so it is a bit stiffer than hand animation.</p>
+        )}
         <h2>Listen to the timing</h2>
         <audio className="mix" controls src={plan.mixUrl} />
         <ul className="facts">
@@ -128,7 +141,7 @@ export default function TimingPanel(props: {
         {props.result.stillUrl && (
           <div className="still">
             <img src={props.result.stillUrl} alt="How the video will look" />
-            <small>How the video will be framed</small>
+            <small>{props.result.look === 'drawn' ? 'The punch-line moment' : 'How the video will be framed'}</small>
           </div>
         )}
       </div>

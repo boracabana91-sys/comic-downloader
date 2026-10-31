@@ -178,3 +178,28 @@ export function concatStereo(a: Stereo, b: Stereo): Stereo {
   r.set(a.r); r.set(b.r, a.r.length)
   return { l, r }
 }
+
+/** Band-passed noise whoosh (brief: 0.28 s, quadratic rise) ending exactly on a cut. */
+export function addWhoosh(mix: Stereo, endAt: number, gain = 0.1): void {
+  const len = samp(0.28)
+  const start = endAt - len
+  // simple biquad band-pass around 1.6 kHz
+  const f0 = 1600, q = 0.9
+  const w0 = (2 * Math.PI * f0) / SAMPLE_RATE
+  const alpha = Math.sin(w0) / (2 * q)
+  const b0 = alpha, b2 = -alpha, a0 = 1 + alpha, a1 = -2 * Math.cos(w0), a2 = 1 - alpha
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0
+  let seed = 12345 + endAt
+  for (let i = 0; i < len; i++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff
+    const x = seed / 0x3fffffff - 1
+    const y = (b0 * x + b2 * x2 - a1 * y1 - a2 * y2) / a0
+    x2 = x1; x1 = x; y2 = y1; y1 = y
+    const u = i / len
+    const d = start + i
+    if (d < 0 || d >= mix.l.length) continue
+    const v = gain * u * u * y * 4
+    mix.l[d] += v
+    mix.r[d] += v
+  }
+}

@@ -1,5 +1,12 @@
 # What's new in Cattyfied
 
+## v0.3 (the cat moves!)
+- New: **Animated Casanova cat**, drawn from your reference picture (limo, tux, champagne, tail). It's now the default look.
+- His mouth moves with your voice, and he blinks and looks around.
+- The camera does what your reference video does: one smooth push-in until the punch line, then a hard cut every second with a white flash, blur and shake. The close-ups switch between a wink with a laugh and hearts, a raised eyebrow, a smug eye close-up, a champagne toast, and the other wink.
+- New: a whoosh sound into each cut. The thump stays on the punch line.
+- New: you can still choose your own video clip or picture instead.
+
 ## v0.2 (first draft that makes videos)
 - New: **Check timing**. Drop your voice and music, and Cattyfied finds the parts of your voice, guesses the punch line (you confirm it by listening), finds the music's hit, and lines them up exactly. Press play to hear it before anything is made.
 - New: intro + punch-line music. The intro's hit lands exactly on your punch line, and the punch-line music starts right where the intro ends.

@@ -54,3 +54,16 @@ NOT done yet (honest list):
 - Video is a draft: a clip is reframed and looped (no motion-peak alignment, no slideshow cuts, no lip-sync; that's Phase 3/5). Pictures get a slow push-in, then zoom + shake + flash on the punch line.
 - Whoosh SFX on cuts belongs to Phase 3 (no cuts yet). The sub thump on the punch line is in.
 - Not yet run by the owner on a real Mac.
+
+## v0.3: Draw-it engine (animated Casanova cat), pulled forward because v0.2 didn't move like the reference
+The reference video (casanova_v11.mp4) was made with the cartoon-short-voice-sync skill: a code-drawn character plus a director shot list.
+Measured its rhythm: one continuous shot until the punch line (8.27 s), then hard cuts every 1.0 s, each followed by ~3 flash/blur frames.
+Built: src/engine/draw/{cat,director,lipsync,pchip,render}.ts using @napi-rs/canvas (Skia, prebuilt for both Mac types).
+- cat.ts: limo set + Casanova cat drawn from the owner's picture; rig = lid, winkL/R, brow, look, smirk (only asymmetry), grin, open/wide (lip-sync), blush, headRoll/Bob, glass toast, tail, ear, hearts.
+- director.ts: PCHIP camera keys; push-in → punch cut → 1 s takes (wink+laugh+hearts, brow, eye close-up, toast, other wink); blinks; look away in the pause; handheld drift; decaying cut shake; 3-frame flash; blur 3/7/11/7/3.5/1.5.
+- lipsync.ts: per-frame RMS (attack 0.7, release 0.35) + spectral-centroid width.
+- render.ts: 30 fps, 2× supersample, 3 motion-blur subsamples (never across a cut), raw RGBA streamed to ffmpeg.
+- Audio: 'draw' style adds 5 s after the punch line for the takes, plus a whoosh ending on each cut.
+Verified in the real app with the owner's files: 11.1 s video; punch/hit 0 ms; MP4 offset 0 ms; −14.4 LUFS, TP −1.9; voice +8.0 dB. Render ≈ 100 s here (Linux cloud CPU).
+CI: bundles canvas for both arm64 and x64; CATTY_SELFTEST=1 draws a real frame inside the installed app on both Mac types.
+Not done: still one built-in character (the cat). Takes are fixed templates (chat control comes in Phase 4). No 3D throne-style turning props yet. Lip shapes are open/wide only.

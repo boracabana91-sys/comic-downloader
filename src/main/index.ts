@@ -213,7 +213,30 @@ function createWindow(): void {
   else win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
+/** CATTY_SELFTEST=1: prove the video tools AND the cartoon drawing work on this Mac, then quit. */
+async function selfTest(): Promise<void> {
+  try {
+    const t = tools()
+    await run(t.ffmpeg, ['-version'])
+    await run(t.ffprobe, ['-version'])
+    const { createCanvas } = await import('@napi-rs/canvas')
+    const { drawLimo, drawCat, REST_POSE } = await import('../engine/draw/cat')
+    const c = createCanvas(72, 128)
+    const ctx = c.getContext('2d')
+    ctx.scale(0.1, 0.1)
+    drawLimo(ctx)
+    drawCat(ctx, { ...REST_POSE })
+    const png = await c.encode('png')
+    console.log(`SELFTEST OK ${process.arch} png=${png.length}`)
+    app.exit(0)
+  } catch (err) {
+    console.log(`SELFTEST FAILED ${process.arch}: ${String((err as Error)?.stack ?? err)}`)
+    app.exit(1)
+  }
+}
+
 app.whenReady().then(() => {
+  if (process.env.CATTY_SELFTEST) { void selfTest(); return }
   handleMediaScheme()
   registerIpc()
   registerProjectIpc(() => tools().ffmpeg)

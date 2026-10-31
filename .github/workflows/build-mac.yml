@@ -24,6 +24,11 @@ jobs:
         run: npm run typecheck
       - name: Bundle universal ffmpeg/ffprobe
         run: npm run prepare:binaries
+      - name: Include the cartoon drawing library for both Apple Silicon and Intel
+        run: |
+          V=$(node -p "require('@napi-rs/canvas/package.json').version")
+          npm install --no-save --force @napi-rs/canvas-darwin-x64@$V @napi-rs/canvas-darwin-arm64@$V
+          ls node_modules/@napi-rs/
       - name: Build .dmg
         run: npm run dist:mac
       - name: Check the app is universal and signed
@@ -70,6 +75,8 @@ jobs:
           echo "Machine: $(uname -m)"
           /Applications/Cattyfied.app/Contents/Resources/bin/ffmpeg -version | head -1
           /Applications/Cattyfied.app/Contents/Resources/bin/ffprobe -version | head -1
+          CATTY_SELFTEST=1 /Applications/Cattyfied.app/Contents/MacOS/Cattyfied 2>&1 | tee selftest.log
+          grep -q "SELFTEST OK" selftest.log
           /Applications/Cattyfied.app/Contents/MacOS/Cattyfied > app.log 2>&1 &
           PID=$!
           sleep 15

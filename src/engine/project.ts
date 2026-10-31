@@ -4,7 +4,8 @@ import { join } from 'node:path'
 import { decodeAudio, encodeWav, toMono, SAMPLE_RATE, type Stereo } from './ffmpeg'
 import { findPhrases, findHits, refineOnset, sec, samp, estimateTempo, type Phrase } from './audio/analysis'
 import { planTimeline, PAD, type Timeline } from './audio/timeline'
-import { mixTracks, concatStereo, DEFAULT_MIX } from './audio/mix'
+import { mixTracks, concatStereo, DEFAULT_MIX, addWhoosh } from './audio/mix'
+import { cutTimes } from './draw/director'
 import { normalizeLoudness, describeLoudness, type Loudness } from './loudness'
 import { makeCanvas, renderVideo, grabFrame, FPS, type Visual } from './video'
 import type { FormatPreset } from './formats'
@@ -28,6 +29,8 @@ export interface ProjectInput {
   /** Which music hit to use (index into the candidates); default the strongest. */
   hitIndex?: number
   targetLufs?: number
+  /** 'draw' = animated cartoon (longer tail for close-up takes, whoosh on each cut). */
+  style?: 'draw' | 'frame'
 }
 
 export interface AudioPlan {
@@ -48,6 +51,11 @@ export interface AudioPlan {
   syncErrorMs: number | null
   notes: string[]
   warnings: string[]
+  /** Voice only, placed on the timeline (for lip-sync). */
+  voiceTrackWav: string
+  /** Phrases on the final timeline, in seconds. */
+  timelinePhrases: { start: number; end: number }[]
+  cutsSec: number[]
 }
 
 function pickByRole(music: ProjectInput['music'], role: MusicRole) {
@@ -150,7 +158,7 @@ export async function buildAudio(inp: ProjectInput, onStep?: (s: string) => void
     punchIndex,
     pauseSec: inp.pauseSec,
     leadInSec: 0.4,
-    tailSec: 2.5,
+    tailSec: inp.style === 'draw' ? 5 : 2.5,
     maxGapSec: 0.6,
     bedLength: bed ? bed.l.length : 0,
     hitAt
@@ -160,6 +168,11 @@ export async function buildAudio(inp: ProjectInput, onStep?: (s: string) => void
 
   onStep?.('Mixing voice and music…')
   const mixed = mixTracks(voice, bed, tl, DEFAULT_MIX)
+  const cuts = inp.style === 'draw' ? cutTimes(sec(tl.punchAt), sec(tl.length)) : []
+  for (const c of cuts.slice(1)) addWhoosh(mixed.mix, samp(c))
+  const timelinePhrases = tl.phrases.map((p, i) => ({ start: sec(p.soundAt), end: sec(p.soundAt + (phrases[i].end - phrases[i].start)) }))
+  const voiceTrackWav = join(inp.workDir, 'voice-track.wav')
+  await writeFileAtomic(voiceTrackWav, encodeWav(mixed.voiceTrack))
 
   // Independent check on the placed tracks: re-detect the voice onset and the music hit near the punch line.
   let syncErrorMs: number | null = null
@@ -193,7 +206,10 @@ export async function buildAudio(inp: ProjectInput, onStep?: (s: string) => void
     voiceOverMusicDb: mixed.voiceOverMusicDb,
     syncErrorMs,
     notes,
-    warnings
+    warnings,
+    voiceTrackWav,
+    timelinePhrases,
+    cutsSec: cuts
   }
 }
 
@@ -236,6 +252,21 @@ export async function renderDraft(opts: {
 }): Promise<RenderResult> {
   const { ffmpeg, plan, fmt } = opts
   let canvas: string | undefined
+  if (opts.visual.type === 'drawn') {
+    const partial0 = tempNameFor(opts.outFile)
+    try {
+      const { renderDrawn } = await import('./draw/render')
+      await renderDrawn({
+        ffmpeg, fmt, durationSec: plan.durationSec, punchSec: plan.punchAtSec, phrases: plan.timelinePhrases,
+        voiceTrack: await decodeAudio(ffmpeg, plan.voiceTrackWav), audioWav: plan.mixWav, outPartial: partial0, onProgress: opts.onProgress
+      })
+      await fs.rename(partial0, opts.outFile)
+    } catch (e) {
+      await fs.rm(partial0, { force: true })
+      throw e
+    }
+    return finishQa(ffmpeg, opts.workDir, opts.outFile, plan, fmt)
+  }
   if (opts.visual.type === 'picture') {
     canvas = join(opts.workDir, `canvas-${fmt.id}.png`)
     await makeCanvas(ffmpeg, opts.visual.path, fmt, canvas)
@@ -251,7 +282,11 @@ export async function renderDraft(opts: {
     await fs.rm(partial, { force: true })
     throw e
   }
+  return finishQa(ffmpeg, opts.workDir, opts.outFile, plan, fmt)
+}
 
+async function finishQa(ffmpeg: string, workDir: string, outFile: string, plan: AudioPlan, fmt: FormatPreset): Promise<RenderResult> {
+  const opts = { workDir, outFile }
   // QA: re-open the finished file and check it.
   const frames: RenderResult['frames'] = []
   const P = plan.punchAtSec

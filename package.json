@@ -1,7 +1,7 @@
 {
   "name": "cattyfied",
   "productName": "Cattyfied",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Cattyfied: punch-line synced short videos, made easy.",
   "author": "Cattyfied",
   "private": true,
@@ -30,7 +30,9 @@
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@napi-rs/canvas": "^1.1.0"
+  },
   "build": {
     "appId": "com.cattyfied.app",
     "productName": "Cattyfied",
@@ -66,7 +68,7 @@
       "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "x64ArchFiles": "Contents/Resources/bin/*"
+      "x64ArchFiles": "{Contents/Resources/bin/*,**/*.node}"
     },
     "dmg": {
       "title": "Cattyfied ${version}",

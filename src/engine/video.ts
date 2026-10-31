@@ -10,6 +10,7 @@ export const FPS = 30
 export type Visual =
   | { type: 'picture'; path: string }
   | { type: 'clip'; path: string }
+  | { type: 'drawn' }
   | { type: 'none' }
 
 async function imageStreamMap(ffmpeg: string, path: string): Promise<string> {

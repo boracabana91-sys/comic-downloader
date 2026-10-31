@@ -22,6 +22,8 @@ export interface CheckRequest {
   punchIndex: number | null
   hitIndex: number
   channelName: string
+  /** What the video shows: the animated cat (default), the dropped clip, or the dropped picture. */
+  look?: 'drawn' | 'clip' | 'picture'
 }
 
 interface Current {
@@ -85,9 +87,10 @@ async function copyIn(cur: Current, original: string): Promise<string> {
   return target
 }
 
-function pickVisual(cards: CardIn[], copies: Map<string, string>): Visual {
+function pickVisual(cards: CardIn[], copies: Map<string, string>, look: CheckRequest['look'] = 'drawn'): Visual {
+  if (look === 'drawn') return { type: 'drawn' }
   const clip = cards.find((c) => c.kind === 'video')
-  if (clip) return { type: 'clip', path: copies.get(clip.path)! }
+  if (clip && look === 'clip') return { type: 'clip', path: copies.get(clip.path)! }
   const pic = cards.find((c) => c.kind === 'character') ?? cards.find((c) => c.kind === 'background')
   if (pic) return { type: 'picture', path: copies.get(pic.path)! }
   return { type: 'none' }
@@ -129,7 +132,8 @@ export function registerProjectIpc(getFfmpeg: () => string): void {
           music,
           pauseSec: req.pauseSec,
           punchIndex: req.punchIndex,
-          hitIndex: req.hitIndex
+          hitIndex: req.hitIndex,
+          style: (req.look ?? 'drawn') === 'drawn' ? 'draw' : 'frame'
         },
         (s) => send(e.sender, s)
       )
@@ -138,13 +142,24 @@ export function registerProjectIpc(getFfmpeg: () => string): void {
 
       // Picture first (owner rule 4): a still of how the video will be framed.
       let still: string | null = null
-      const visual = pickVisual(req.cards, cur.copies)
+      const visual = pickVisual(req.cards, cur.copies, req.look)
       const fmt = FORMATS[req.format]
       send(e.sender, 'Making a preview picture…')
       try {
         const { makeCanvas, grabFrame } = await import('../engine/video')
         const out = join(cur.dir, 'work', `still-${fmt.id}.jpg`)
-        if (visual.type === 'picture') {
+        if (visual.type === 'drawn') {
+          const { renderDrawn, FPS } = await import('../engine/draw/render')
+          const { decodeAudio } = await import('../engine/ffmpeg')
+          const small = { ...fmt, width: Math.round(fmt.width / 3), height: Math.round(fmt.height / 3) }
+          await renderDrawn({
+            ffmpeg: getFfmpeg(), fmt: small, durationSec: plan.durationSec, punchSec: plan.punchAtSec,
+            phrases: plan.timelinePhrases, voiceTrack: await decodeAudio(getFfmpeg(), plan.voiceTrackWav),
+            audioWav: plan.mixWav, outPartial: '', onlyFrames: [Math.round((plan.punchAtSec + 0.25) * FPS)],
+            onFrame: async (_i, canvas) => { await fs.writeFile(out, await canvas.encode('jpeg', 88)) }
+          })
+          still = out
+        } else if (visual.type === 'picture') {
           const png = join(cur.dir, 'work', `canvas-${fmt.id}.png`)
           await makeCanvas(getFfmpeg(), visual.path, fmt, png)
           const { runTool } = await import('../engine/ffmpeg')
@@ -167,6 +182,7 @@ export function registerProjectIpc(getFfmpeg: () => string): void {
           phrases: plan.phrases.map((p) => ({ ...p, url: mediaUrl(p.clip) }))
         },
         visual: visual.type,
+        look: req.look ?? 'drawn',
         stillUrl: still ? mediaUrl(still) : null
       }
     } catch (err) {
@@ -190,7 +206,7 @@ export function registerProjectIpc(getFfmpeg: () => string): void {
         workDir: join(cur.dir, 'work'),
         outFile: out,
         plan,
-        visual: pickVisual(req.cards, cur.copies),
+        visual: pickVisual(req.cards, cur.copies, req.look),
         fmt,
         onProgress: (f) => e.sender.send('job:progress', { step: 'Making your video…', fraction: f })
       })

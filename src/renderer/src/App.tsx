@@ -20,7 +20,7 @@ export default function App() {
   const [confirmed, setConfirmed] = useState(false)
   const [result, setResult] = useState<RenderOk | null>(null)
   const [error, setError] = useState<Failure | null>(null)
-  const params = useRef<{ punchIndex: number | null; hitIndex: number; pauseSec: number | null }>({ punchIndex: null, hitIndex: 0, pauseSec: null })
+  const params = useRef<{ punchIndex: number | null; hitIndex: number; pauseSec: number | null; look: 'drawn' | 'clip' | 'picture' }>({ punchIndex: null, hitIndex: 0, pauseSec: null, look: 'drawn' })
 
   useEffect(() => {
     window.catty.getSettings().then(setSettings)
@@ -36,7 +36,7 @@ export default function App() {
     setCheck(null)
     setConfirmed(false)
     setResult(null)
-    params.current = { punchIndex: null, hitIndex: 0, pauseSec: null }
+    params.current = { punchIndex: null, hitIndex: 0, pauseSec: null, look: params.current.look }
   }, [cardKey])
 
   const update = async (patch: Partial<Settings>) => {
@@ -62,7 +62,8 @@ export default function App() {
       pauseSec,
       punchIndex: params.current.punchIndex,
       hitIndex: params.current.hitIndex,
-      channelName: channel
+      channelName: channel,
+      look: params.current.look
     })
     setBusy(null)
     if (r.ok) setCheck(r as CheckResult)
@@ -140,6 +141,12 @@ export default function App() {
                       }}
                       onPause={(s) => {
                         params.current.pauseSec = s
+                        void runCheck()
+                      }}
+                      hasClip={cards.some((c) => c.kind === 'video')}
+                      hasPicture={cards.some((c) => c.kind === 'character' || c.kind === 'background')}
+                      onLook={(l) => {
+                        params.current.look = l
                         void runCheck()
                       }}
                     />
