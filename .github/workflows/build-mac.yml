@@ -1,0 +1,76 @@
+name: Build Mac app
+
+on:
+  push:
+    branches: [cattyfied]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build universal .dmg
+    runs-on: macos-latest   # Apple Silicon
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tests
+        run: npm test
+      - name: Type check
+        run: npm run typecheck
+      - name: Bundle universal ffmpeg/ffprobe
+        run: npm run prepare:binaries
+      - name: Build .dmg
+        run: npm run dist:mac
+      - name: Check the app is universal and signed
+        run: |
+          APP="dist/mac-universal/Cattyfied.app"
+          lipo -info "$APP/Contents/MacOS/Cattyfied"
+          lipo -info "$APP/Contents/Resources/bin/ffmpeg"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cattyfied-dmg
+          path: dist/*.dmg
+          retention-days: 30
+
+  smoke-test:
+    name: Install test on ${{ matrix.label }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest
+            label: Apple Silicon
+          - runner: macos-15-intel
+            label: Intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Cattyfied-dmg
+      - name: Install like a user would (copy + xattr), then launch
+        run: |
+          set -e
+          DMG=$(ls Cattyfied-*.dmg | head -1)
+          # Simulate a browser download so the quarantine flag is present.
+          xattr -w com.apple.quarantine "0081;$(printf %x $(date +%s));Safari;" "$DMG"
+          hdiutil attach "$DMG" -nobrowse -mountpoint /Volumes/Cattyfied
+          ls -la /Volumes/Cattyfied
+          test -x "/Volumes/Cattyfied/Double-click me first.command"
+          test -f "/Volumes/Cattyfied/Start Here.html"
+          ditto /Volumes/Cattyfied/Cattyfied.app /Applications/Cattyfied.app
+          xattr -cr /Applications/Cattyfied.app
+          hdiutil detach /Volumes/Cattyfied
+          echo "Machine: $(uname -m)"
+          /Applications/Cattyfied.app/Contents/Resources/bin/ffmpeg -version | head -1
+          /Applications/Cattyfied.app/Contents/Resources/bin/ffprobe -version | head -1
+          /Applications/Cattyfied.app/Contents/MacOS/Cattyfied > app.log 2>&1 &
+          PID=$!
+          sleep 15
+          if kill -0 $PID 2>/dev/null; then echo "✅ Cattyfied started and stayed open"; kill $PID; else echo "❌ Cattyfied quit"; cat app.log; exit 1; fi

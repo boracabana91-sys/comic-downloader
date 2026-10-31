@@ -1,0 +1,113 @@
+:root {
+  --bg: #fff8f2;
+  --panel: #ffffff;
+  --ink: #2b2230;
+  --muted: #7a6f80;
+  --accent: #ff6b8b;
+  --accent-dark: #e14d70;
+  --line: #f0e3da;
+  --ok: #1f9d55;
+  --bad: #c0392b;
+  --ask: #ffb020;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; background: var(--bg); }
+.app.large { font-size: 20px; }
+.loading { padding: 40px; font-size: 1.2em; }
+
+button { font: inherit; cursor: pointer; border-radius: 12px; border: none; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+.primary { background: var(--accent); color: white; padding: 12px 22px; font-weight: 600; }
+.primary:hover:not(:disabled) { background: var(--accent-dark); }
+.secondary { background: white; color: var(--ink); padding: 12px 20px; border: 2px solid var(--line); font-weight: 500; }
+.big { font-size: 1.25em; padding: 16px 32px; }
+.link { background: none; color: var(--accent-dark); text-decoration: underline; padding: 0 4px; }
+.small { font-size: 0.85em; color: var(--muted); }
+
+.app { display: flex; flex-direction: column; height: 100%; }
+/* Top bar: leaves room for the macOS traffic lights; version always top-right. */
+.topbar {
+  display: flex; align-items: center; gap: 16px; height: 52px; padding: 0 16px 0 84px;
+  border-bottom: 1px solid var(--line); background: var(--panel); -webkit-app-region: drag;
+}
+.topbar button { -webkit-app-region: no-drag; }
+.brand { font-weight: 700; font-size: 1.1em; }
+.top-actions { display: flex; gap: 12px; margin-left: 12px; font-size: 0.9em; }
+.version {
+  margin-left: auto; font-weight: 600; font-size: 0.9em; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px;
+}
+
+.main { flex: 1; display: grid; grid-template-columns: 1fr 340px; min-height: 0; }
+.center { display: flex; flex-direction: column; gap: 16px; padding: 20px; min-height: 0; }
+
+.ticker { display: flex; gap: 12px; justify-content: center; }
+.tick {
+  display: flex; align-items: center; gap: 12px; padding: 10px 18px; background: white;
+  border: 2px solid var(--line); text-align: left;
+}
+.tick strong { display: block; }
+.tick small { color: var(--muted); }
+.tick.on { border-color: var(--accent); background: #fff0f3; }
+.shape { display: inline-block; border: 3px solid currentColor; border-radius: 4px; }
+.shape.vertical { width: 18px; height: 32px; }
+.shape.landscape { width: 32px; height: 18px; }
+
+.dropzone {
+  flex: 1; border: 3px dashed #e8cfc0; border-radius: 24px; background: white; display: flex;
+  flex-direction: column; min-height: 0; overflow: auto; transition: all 0.15s;
+}
+.dropzone.over { border-color: var(--accent); background: #fff0f3; transform: scale(1.005); }
+.drop-empty { margin: auto; text-align: center; padding: 24px; }
+.drop-icon { font-size: 64px; }
+.drop-empty h1 { font-size: 2.2em; margin: 8px 0; }
+.drop-more { text-align: center; color: var(--muted); padding: 12px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; padding: 18px; }
+.card { border: 2px solid var(--line); border-radius: 16px; padding: 12px; background: var(--bg); }
+.card.ask { border-color: var(--ask); background: #fff8e6; }
+.card-head { display: flex; align-items: center; gap: 8px; }
+.card-icon { font-size: 1.6em; }
+.card-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.x { background: none; color: var(--muted); padding: 2px 6px; }
+.card-size { font-size: 0.8em; color: var(--muted); margin: 4px 0; }
+.card-reason { font-size: 0.85em; margin: 6px 0; }
+.card-labels { display: flex; flex-wrap: wrap; gap: 6px; }
+.card-kind { font-weight: 600; color: var(--accent-dark); }
+.chip { background: white; border: 2px solid var(--line); padding: 6px 10px; font-size: 0.85em; }
+.chip.on { border-color: var(--accent); background: #fff0f3; font-weight: 600; }
+
+.chat { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; padding: 16px; }
+.chat h2 { margin: 0 0 12px; font-size: 1.1em; }
+.chat-body { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.bubble { padding: 12px; border-radius: 14px; background: var(--bg); }
+.bubble.note { font-size: 0.85em; color: var(--muted); background: none; border: 1px dashed var(--line); }
+.chat-input { padding: 12px; border-radius: 12px; border: 2px solid var(--line); font: inherit; }
+
+.bottombar { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--panel); }
+.hint { color: var(--muted); font-size: 0.85em; }
+
+.banner { padding: 12px 16px; border-radius: 12px; margin: 10px 0; }
+.banner.ok { background: #e7f7ee; color: var(--ok); }
+.banner.error { background: #fdecea; color: var(--bad); margin: 12px 20px 0; }
+.panel .banner.error { margin: 10px 0; }
+
+.wizard { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow: auto; }
+.dots { display: flex; gap: 10px; margin-bottom: 18px; }
+.dots span { width: 12px; height: 12px; border-radius: 50%; background: var(--line); }
+.dots span.on { background: var(--accent); }
+.dots span.done { background: #f7b2c1; }
+.panel { background: white; border-radius: 24px; padding: 32px 40px; max-width: 640px; width: 100%; box-shadow: 0 10px 40px #0000000d; }
+.panel h1 { margin-top: 0; }
+.hero { font-size: 64px; text-align: center; }
+.howto li { margin: 8px 0; }
+.big-input { width: 100%; padding: 14px 16px; font: inherit; font-size: 1.1em; border-radius: 12px; border: 2px solid var(--line); margin: 8px 0; }
+.row { display: flex; gap: 12px; align-items: center; margin: 10px 0; }
+.row.between { justify-content: space-between; margin-top: 20px; }
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+.choice { background: white; border: 2px solid var(--line); padding: 16px; text-align: left; }
+.choice strong { display: block; font-size: 1.1em; }
+.choice small { color: var(--muted); }
+.choice.on { border-color: var(--accent); background: #fff0f3; }
