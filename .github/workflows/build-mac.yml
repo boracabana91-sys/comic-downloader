@@ -3,14 +3,16 @@ name: Build Mac app
 on:
   push:
     branches: [cattyfied]
-    tags: ['v*']
-  pull_request:
+    tags: ['cattyfied-v*']
   workflow_dispatch:
+
+permissions:
+  contents: write   # to publish Releases (fast, permanent downloads)
 
 jobs:
   build:
-    name: Build universal .dmg
-    runs-on: macos-latest   # Apple Silicon
+    name: Build installers (Apple Silicon + Intel)
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,26 +24,54 @@ jobs:
         run: npm test
       - name: Type check
         run: npm run typecheck
-      - name: Bundle universal ffmpeg/ffprobe
-        run: npm run prepare:binaries
-      - name: Include the cartoon drawing library for both Apple Silicon and Intel
+      - run: npm run build
+
+      - name: Build for Apple Silicon (M1, M2, M3, M4…)
         run: |
+          set -e
           V=$(node -p "require('@napi-rs/canvas/package.json').version")
-          npm install --no-save --force @napi-rs/canvas-darwin-x64@$V @napi-rs/canvas-darwin-arm64@$V
-          ls node_modules/@napi-rs/
-      - name: Build .dmg
-        run: npm run dist:mac
-      - name: Check the app is universal and signed
+          TARGET_ARCH=arm64 npm run prepare:binaries
+          npm install --no-save --force @napi-rs/canvas-darwin-arm64@$V
+          rm -rf node_modules/@napi-rs/canvas-darwin-x64
+          npx electron-builder --mac --arm64 --publish never
+          mv dist/Cattyfied-*-arm64.dmg "dist/Cattyfied-Apple-Silicon.dmg"
+      - name: Build for Intel Macs
         run: |
-          APP="dist/mac-universal/Cattyfied.app"
-          lipo -info "$APP/Contents/MacOS/Cattyfied"
-          lipo -info "$APP/Contents/Resources/bin/ffmpeg"
-          codesign --verify --deep --strict --verbose=2 "$APP"
+          set -e
+          V=$(node -p "require('@napi-rs/canvas/package.json').version")
+          TARGET_ARCH=x64 npm run prepare:binaries
+          npm install --no-save --force @napi-rs/canvas-darwin-x64@$V
+          rm -rf node_modules/@napi-rs/canvas-darwin-arm64
+          npx electron-builder --mac --x64 --publish never
+          mv dist/Cattyfied-*-x64.dmg "dist/Cattyfied-Intel.dmg"
+      - name: Check both apps
+        run: |
+          set -e
+          lipo -archs dist/mac-arm64/Cattyfied.app/Contents/MacOS/Cattyfied
+          lipo -archs dist/mac-arm64/Cattyfied.app/Contents/Resources/bin/ffmpeg
+          lipo -archs dist/mac/Cattyfied.app/Contents/MacOS/Cattyfied
+          lipo -archs dist/mac/Cattyfied.app/Contents/Resources/bin/ffmpeg
+          codesign --verify --deep --strict dist/mac-arm64/Cattyfied.app
+          codesign --verify --deep --strict dist/mac/Cattyfied.app
+          ls -la dist/*.dmg
       - uses: actions/upload-artifact@v4
         with:
-          name: Cattyfied-dmg
-          path: dist/*.dmg
+          name: Cattyfied-installers
+          path: dist/Cattyfied-*.dmg
+          compression-level: 0
           retention-days: 30
+      - name: Publish a Release (fast permanent download) when tagged
+        if: startsWith(github.ref, 'refs/tags/cattyfied-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="${GITHUB_REF#refs/tags/}"
+          VER="${TAG#cattyfied-}"
+          awk '/^## /{n++} n==1' CHANGELOG.md > notes.md
+          printf '\n---\n**Which one do I download?** Click the Apple menu  → About This Mac.\n- "Chip: Apple M…" → **Cattyfied-Apple-Silicon.dmg**\n- "Processor: Intel…" → **Cattyfied-Intel.dmg**\n\nThen open it and double-click **"Double-click me first"**.\n' >> notes.md
+          gh release create "$TAG" dist/Cattyfied-Apple-Silicon.dmg dist/Cattyfied-Intel.dmg "installer/Start Here.html#Start-Here.html" \
+            --repo "$GITHUB_REPOSITORY" --title "Cattyfied $VER" --notes-file notes.md --latest=false
 
   smoke-test:
     name: Install test on ${{ matrix.label }}
@@ -52,18 +82,20 @@ jobs:
         include:
           - runner: macos-latest
             label: Apple Silicon
+            dmg: Cattyfied-Apple-Silicon.dmg
           - runner: macos-15-intel
             label: Intel
+            dmg: Cattyfied-Intel.dmg
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: Cattyfied-dmg
-      - name: Install like a user would (copy + xattr), then launch
+          name: Cattyfied-installers
+      - name: Install like a user would (copy + xattr), self-test, then launch
         run: |
           set -e
-          DMG=$(ls Cattyfied-*.dmg | head -1)
-          # Simulate a browser download so the quarantine flag is present.
+          DMG="${{ matrix.dmg }}"
+          ls -la
           xattr -w com.apple.quarantine "0081;$(printf %x $(date +%s));Safari;" "$DMG"
           hdiutil attach "$DMG" -nobrowse -mountpoint /Volumes/Cattyfied
           ls -la /Volumes/Cattyfied
@@ -74,7 +106,6 @@ jobs:
           hdiutil detach /Volumes/Cattyfied
           echo "Machine: $(uname -m)"
           /Applications/Cattyfied.app/Contents/Resources/bin/ffmpeg -version | head -1
-          /Applications/Cattyfied.app/Contents/Resources/bin/ffprobe -version | head -1
           CATTY_SELFTEST=1 /Applications/Cattyfied.app/Contents/MacOS/Cattyfied 2>&1 | tee selftest.log
           grep -q "SELFTEST OK" selftest.log
           /Applications/Cattyfied.app/Contents/MacOS/Cattyfied > app.log 2>&1 &

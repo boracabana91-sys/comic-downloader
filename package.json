@@ -1,7 +1,7 @@
 {
   "name": "cattyfied",
   "productName": "Cattyfied",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Cattyfied: punch-line synced short videos, made easy.",
   "author": "Cattyfied",
   "private": true,
@@ -11,7 +11,7 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "dist:mac": "electron-vite build && electron-builder --mac --universal --publish never",
+    "dist:mac": "electron-vite build && electron-builder --mac --publish never",
     "prepare:binaries": "node build/prepare-binaries.mjs"
   },
   "devDependencies": {
@@ -43,7 +43,8 @@
     },
     "files": [
       "out/**/*",
-      "package.json"
+      "package.json",
+      "!**/*.map"
     ],
     "extraResources": [
       {
@@ -58,21 +59,17 @@
     "mac": {
       "target": [
         {
-          "target": "dmg",
-          "arch": [
-            "universal"
-          ]
+          "target": "dmg"
         }
       ],
       "category": "public.app-category.video",
       "identity": null,
       "hardenedRuntime": false,
-      "gatekeeperAssess": false,
-      "x64ArchFiles": "{Contents/Resources/bin/*,**/*.node}"
+      "gatekeeperAssess": false
     },
     "dmg": {
       "title": "Cattyfied ${version}",
-      "artifactName": "Cattyfied-${version}.dmg",
+      "artifactName": "Cattyfied-${version}-${arch}.dmg",
       "window": {
         "width": 660,
         "height": 440
@@ -107,7 +104,8 @@
           "type": "file",
           "path": "installer/README.txt"
         }
-      ]
+      ],
+      "format": "ULMO"
     }
   }
 }

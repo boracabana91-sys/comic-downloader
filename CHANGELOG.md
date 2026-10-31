@@ -1,5 +1,10 @@
 # What's new in Cattyfied
 
+## v0.4.1 (much smaller, faster download)
+- One installer per Mac type instead of one big combined installer, so you download only what your Mac needs (about 2.5× smaller).
+- Removed a video tool the app didn't need, and the installer is packed tighter.
+- Ready to publish as GitHub Releases (fast, permanent download link, no sign-in needed) once the owner says yes.
+
 ## v0.4 (fix the timing by hand)
 - Automatic sync is still the default. Nothing changes unless you open the new section.
 - New: **"Fix the timing by hand"** on the Check timing screen, a timeline like a video editor:

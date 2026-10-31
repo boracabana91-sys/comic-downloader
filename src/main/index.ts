@@ -50,8 +50,7 @@ function tools() {
     packaged: app.isPackaged,
     resourcesPath: process.resourcesPath,
     platform: process.platform,
-    devFfmpeg: app.isPackaged ? null : devToolPath('ffmpeg-static'),
-    devFfprobe: app.isPackaged ? null : devToolPath('ffprobe-static')
+    devFfmpeg: app.isPackaged ? null : devToolPath('ffmpeg-static')
   })
 }
 
@@ -102,8 +101,8 @@ function registerIpc(): void {
   ipcMain.handle('tools:check', async () => {
     try {
       const t = tools()
-      const [a, b] = await Promise.all([run(t.ffmpeg, ['-version']), run(t.ffprobe, ['-version'])])
-      return { ok: true, ffmpeg: a.stdout.split('\n')[0], ffprobe: b.stdout.split('\n')[0] }
+      const a = await run(t.ffmpeg, ['-version'])
+      return { ok: true, ffmpeg: a.stdout.split('\n')[0] }
     } catch (err) {
       return { ok: false, message: 'The video tools inside the app could not start.', detail: String(err) }
     }
@@ -218,7 +217,6 @@ async function selfTest(): Promise<void> {
   try {
     const t = tools()
     await run(t.ffmpeg, ['-version'])
-    await run(t.ffprobe, ['-version'])
     const { createCanvas } = await import('@napi-rs/canvas')
     const { drawLimo, drawCat, REST_POSE } = await import('../engine/draw/cat')
     const c = createCanvas(72, 128)
