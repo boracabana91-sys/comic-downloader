@@ -1,5 +1,17 @@
 # What's new in Cattyfied
 
+## v0.4 (fix the timing by hand)
+- Automatic sync is still the default. Nothing changes unless you open the new section.
+- New: **"Fix the timing by hand"** on the Check timing screen, a timeline like a video editor:
+  - your voice and music shown as waveforms, the punch line as a red line, music hits as yellow marks
+  - drag the music to move it; drag its edges to choose exactly where it starts and ends
+  - drop any music or video file (mp3, m4a, wav, mp4…) onto the timeline at the spot where it should start
+  - exact numbers, plus −1 frame / −10 ms / +10 ms / +1 frame buttons
+  - "Put its hit on the punch line", snapping, and "Move all music together" (on by default)
+  - ▶ instant preview while you edit; "Use this timing" makes the real mix and checks it
+  - "Back to automatic" undoes your edits
+- Your hand placement stays locked to the punch line if you change the pause.
+
 ## v0.3 (the cat moves!)
 - New: **Animated Casanova cat**, drawn from your reference picture (limo, tux, champagne, tail). It's now the default look.
 - His mouth moves with your voice, and he blinks and looks around.

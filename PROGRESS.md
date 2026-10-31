@@ -67,3 +67,10 @@ Built: src/engine/draw/{cat,director,lipsync,pchip,render}.ts using @napi-rs/can
 Verified in the real app with the owner's files: 11.1 s video; punch/hit 0 ms; MP4 offset 0 ms; −14.4 LUFS, TP −1.9; voice +8.0 dB. Render ≈ 100 s here (Linux cloud CPU).
 CI: bundles canvas for both arm64 and x64; CATTY_SELFTEST=1 draws a real frame inside the installed app on both Mac types.
 Not done: still one built-in character (the cat). Takes are fixed templates (chat control comes in Phase 4). No 3D throne-style turning props yet. Lip shapes are open/wide only.
+
+## v0.4: manual timeline editor (owner request: fix sync by hand when automatic fails)
+- Engine: music is now always a list of clips (src/engine/audio/clips.ts). The automatic plan is converted to clips (clipsFromTimeline), so the editor shows exactly what auto did, and manual placements go through the same placeClips → mixPlaced path. Manual positions are stored relative to the punch line.
+- buildAudio(manualMusic) + plan.editor (waveform peaks at 100/s, hits per file, clips, manual flag).
+- UI: TimelineEditor.tsx (drag/trim/snap/move-together/nudge/numeric/drop-to-place/Web Audio preview).
+- Found and fixed while testing: the live preview was blocked by the window's security policy (connect-src, then CORS on catty-media://). Now allowed for that private scheme only; preview errors show a message.
+- Tested in the real app (scripts/editor-flow.mjs): auto 0 ms → drag +445 ms → +1 frame 478 ms → applied mix measured 480–485 ms → 🎯 back to 0 ms → Back to automatic 0 ms; preview playhead advances. Engine tests: manual +250 ms measured 220–280 ms; dropped file placed by hand lands within one frame.

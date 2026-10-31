@@ -4,7 +4,8 @@ import { join } from 'node:path'
 import { decodeAudio, encodeWav, toMono, SAMPLE_RATE, type Stereo } from './ffmpeg'
 import { findPhrases, findHits, refineOnset, sec, samp, estimateTempo, type Phrase } from './audio/analysis'
 import { planTimeline, PAD, type Timeline } from './audio/timeline'
-import { mixTracks, concatStereo, DEFAULT_MIX, addWhoosh } from './audio/mix'
+import { concatStereo, DEFAULT_MIX, addWhoosh, mixPlaced } from './audio/mix'
+import { clipsFromTimeline, placeClips, peaks, type MusicClip } from './audio/clips'
 import { cutTimes } from './draw/director'
 import { normalizeLoudness, describeLoudness, type Loudness } from './loudness'
 import { makeCanvas, renderVideo, grabFrame, FPS, type Visual } from './video'
@@ -31,6 +32,22 @@ export interface ProjectInput {
   targetLufs?: number
   /** 'draw' = animated cartoon (longer tail for close-up takes, whoosh on each cut). */
   style?: 'draw' | 'frame'
+  /**
+   * Music placed by hand in the timeline editor. dstFromPunchSec is relative to the punch line, so the
+   * owner's placement stays locked to the punch line when the pause or punch phrase changes.
+   * outSec null = play to the end of the file.
+   */
+  manualMusic?: { path: string; dstFromPunchSec: number; inSec: number; outSec: number | null }[]
+}
+
+export interface EditorData {
+  /** Waveform buckets per second. */
+  pps: number
+  voicePeaks: number[]
+  files: { path: string; durSec: number; peaks: number[]; hitsSec: number[] }[]
+  /** What is playing now (automatic or the owner's), in timeline seconds. */
+  clips: MusicClip[]
+  manual: boolean
 }
 
 export interface AudioPlan {
@@ -56,36 +73,37 @@ export interface AudioPlan {
   /** Phrases on the final timeline, in seconds. */
   timelinePhrases: { start: number; end: number }[]
   cutsSec: number[]
+  editor: EditorData
 }
 
 function pickByRole(music: ProjectInput['music'], role: MusicRole) {
   return music.find((m) => m.role === role)?.path ?? null
 }
 
-async function buildBed(ffmpeg: string, music: ProjectInput['music']) {
+async function buildBed(dec: (p: string) => Promise<Stereo>, music: ProjectInput['music']) {
   const introP = pickByRole(music, 'intro')
   const punchP = pickByRole(music, 'punchline')
   const mainP = pickByRole(music, 'main')
   const notes: string[] = []
   if (introP && punchP) {
-    const intro = await decodeAudio(ffmpeg, introP)
-    const punch = await decodeAudio(ffmpeg, punchP)
+    const intro = await dec(introP)
+    const punch = await dec(punchP)
     const bed = concatStereo(intro, punch)
     notes.push('Intro plays first; the punch-line music starts exactly where the intro ends.')
-    return { bed, from: Math.max(0, intro.l.length - samp(4)), to: Math.min(bed.l.length, intro.l.length + samp(1.5)), notes, firstSoundFallback: false }
+    return { bed, files: [{ path: introP, length: intro.l.length }, { path: punchP, length: punch.l.length }], from: Math.max(0, intro.l.length - samp(4)), to: Math.min(bed.l.length, intro.l.length + samp(1.5)), notes, firstSoundFallback: false }
   }
   if (introP) {
-    const bed = await decodeAudio(ffmpeg, introP)
-    return { bed, from: Math.max(0, bed.l.length - samp(4)), to: bed.l.length, notes, firstSoundFallback: false }
+    const bed = await dec(introP)
+    return { bed, files: [{ path: introP, length: bed.l.length }], from: Math.max(0, bed.l.length - samp(4)), to: bed.l.length, notes, firstSoundFallback: false }
   }
   if (punchP) {
-    const bed = await decodeAudio(ffmpeg, punchP)
+    const bed = await dec(punchP)
     notes.push('Only punch-line music was given, so it starts on the punch line.')
-    return { bed, from: 0, to: Math.min(bed.l.length, samp(3)), notes, firstSoundFallback: true }
+    return { bed, files: [{ path: punchP, length: bed.l.length }], from: 0, to: Math.min(bed.l.length, samp(3)), notes, firstSoundFallback: true }
   }
   if (mainP) {
-    const bed = await decodeAudio(ffmpeg, mainP)
-    return { bed, from: samp(0.5), to: Math.max(samp(0.5), bed.l.length - samp(1)), notes, firstSoundFallback: false }
+    const bed = await dec(mainP)
+    return { bed, files: [{ path: mainP, length: bed.l.length }], from: samp(0.5), to: Math.max(samp(0.5), bed.l.length - samp(1)), notes, firstSoundFallback: false }
   }
   return null
 }
@@ -130,7 +148,13 @@ export async function buildAudio(inp: ProjectInput, onStep?: (s: string) => void
   }
 
   onStep?.('Listening to the music for the hit…')
-  const bedInfo = await buildBed(ffmpeg, inp.music)
+  const cache = new Map<string, Stereo>()
+  const dec = async (p: string) => {
+    let a = cache.get(p)
+    if (!a) { a = await decodeAudio(ffmpeg, p); cache.set(p, a) }
+    return a
+  }
+  const bedInfo = await buildBed(dec, inp.music)
   const notes: string[] = [...(bedInfo?.notes ?? [])]
   let hits: { at: number; strength: number }[] = []
   let hitAt: number | null = null
@@ -166,8 +190,26 @@ export async function buildAudio(inp: ProjectInput, onStep?: (s: string) => void
   notes.push(...tl.notes)
   notes.push(`Put a ${inp.pauseSec.toFixed(1)} s pause before the punch line; the music keeps playing through it.`)
 
+  // Music as clips: the automatic placement, or the owner's own placement from the timeline editor.
+  const punchSecTl = sec(tl.punchAt)
+  let clipsNow: MusicClip[] = bedInfo ? clipsFromTimeline(tl, bedInfo.files) : []
+  const manual = !!inp.manualMusic && inp.manualMusic.length > 0
+  if (manual) {
+    clipsNow = []
+    for (const m of inp.manualMusic!) {
+      const a = await dec(m.path)
+      const dur = sec(a.l.length)
+      const inS = Math.max(0, Math.min(m.inSec, dur))
+      const outS = Math.max(inS, Math.min(m.outSec ?? dur, dur))
+      clipsNow.push({ path: m.path, dstSec: punchSecTl + m.dstFromPunchSec, inSec: inS, outSec: outS, fadeInSec: 0.015 })
+    }
+    notes.length = 0
+    notes.push('You placed the music by hand in the timeline.')
+  }
+
   onStep?.('Mixing voice and music…')
-  const mixed = mixTracks(voice, bed, tl, DEFAULT_MIX)
+  const placed = clipsNow.length ? placeClips(cache, clipsNow, tl.length) : null
+  const mixed = mixPlaced(voice, placed, tl, DEFAULT_MIX)
   const cuts = inp.style === 'draw' ? cutTimes(sec(tl.punchAt), sec(tl.length)) : []
   for (const c of cuts.slice(1)) addWhoosh(mixed.mix, samp(c))
   const timelinePhrases = tl.phrases.map((p, i) => ({ start: sec(p.soundAt), end: sec(p.soundAt + (phrases[i].end - phrases[i].start)) }))
@@ -176,7 +218,7 @@ export async function buildAudio(inp: ProjectInput, onStep?: (s: string) => void
 
   // Independent check on the placed tracks: re-detect the voice onset and the music hit near the punch line.
   let syncErrorMs: number | null = null
-  if (bed && hitAt !== null) {
+  if (placed && (hitAt !== null || manual)) {
     const win = samp(0.6)
     const vOn = findPhrases(toMono(mixed.voiceTrack)).map((p) => p.start).reduce((best, s) => (Math.abs(s - tl.punchAt) < Math.abs(best - tl.punchAt) ? s : best), Number.MAX_SAFE_INTEGER)
     const mHits = findHits(toMono(mixed.musicTrack), { from: Math.max(0, tl.punchAt - win), to: tl.punchAt + win, count: 1 })
@@ -209,8 +251,21 @@ export async function buildAudio(inp: ProjectInput, onStep?: (s: string) => void
     warnings,
     voiceTrackWav,
     timelinePhrases,
-    cutsSec: cuts
+    cutsSec: cuts,
+    editor: await editorData(mixed.voiceTrack, [...new Set([...inp.music.map((m) => m.path), ...clipsNow.map((c) => c.path)])], dec, clipsNow, manual)
   }
+}
+
+async function editorData(voiceTrack: Stereo, paths: string[], dec: (p: string) => Promise<Stereo>, clips: MusicClip[], manual: boolean): Promise<EditorData> {
+  const pps = 100
+  const files: EditorData['files'] = []
+  for (const p of paths) {
+    const a = await dec(p)
+    const mono = toMono(a)
+    const hits = findHits(mono, { count: 6 }).map((h) => sec(h.at)).sort((x, y) => x - y)
+    files.push({ path: p, durSec: sec(a.l.length), peaks: peaks(a, pps), hitsSec: hits })
+  }
+  return { pps, voicePeaks: peaks(voiceTrack, pps), files, clips, manual }
 }
 
 export interface RenderResult {

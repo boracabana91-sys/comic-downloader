@@ -127,10 +127,21 @@ function rmsWhere(x: Stereo, mask: Float32Array, minMask: number): number | null
 }
 
 export function mixTracks(voice: Stereo, bed: Stereo | null, tl: Timeline, opt: MixOptions = DEFAULT_MIX): MixResult {
+  return mixPlaced(voice, bed ? placeMusic(bed, tl) : null, tl, opt)
+}
+
+/** Same as mixTracks, but the music is already placed on the timeline (e.g. from clips). */
+export function mixPlaced(voice: Stereo, placedMusic: Stereo | null, tl: Timeline, opt: MixOptions = DEFAULT_MIX): MixResult {
+  const bed = placedMusic
   const v = placeVoice(voice, tl)
   for (let i = 0; i < v.l.length; i++) { v.l[i] *= opt.voiceGain; v.r[i] *= opt.voiceGain }
 
-  const m = bed ? placeMusic(bed, tl) : blank(tl.length)
+  const m = placedMusic ? { l: placedMusic.l.slice(0, tl.length), r: placedMusic.r.slice(0, tl.length) } : blank(tl.length)
+  if (m.l.length < tl.length) {
+    const l = new Float32Array(tl.length); l.set(m.l)
+    const r = new Float32Array(tl.length); r.set(m.r)
+    m.l = l; m.r = r
+  }
   const duck = duckCurve(v)
   for (let i = 0; i < m.l.length; i++) {
     const g = opt.musicGain * (1 - opt.duckDepth * duck[i])

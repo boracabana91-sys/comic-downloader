@@ -161,3 +161,38 @@ describe('draft render in both shapes', () => {
     }, 300_000)
   }
 })
+
+describe('manual timeline editing (when automatic sync is not right)', () => {
+  it('the automatic clips put the intro hit exactly on the punch line', () => {
+    const intro = plan.editor.clips.find((c) => c.path === INTRO)!
+    const hitOnTimeline = intro.dstSec + (INTRO_HIT - intro.inSec)
+    expect(Math.abs(hitOnTimeline - plan.punchAtSec) * 1000).toBeLessThan(12)
+    const punch = plan.editor.clips.find((c) => c.path === PUNCH)!
+    // The punch-line music starts exactly where the intro ends.
+    expect(Math.abs(punch.dstSec - (intro.dstSec + intro.outSec - intro.inSec))).toBeLessThan(0.001)
+    expect(plan.editor.manual).toBe(false)
+  })
+  it('moving the music by hand really moves it (hit lands 250 ms late)', async () => {
+    const auto = plan.editor.clips
+    const manual = await buildAudio({
+      ffmpeg: ff, workDir: join(dir, 'work-manual'), voice: VOICE,
+      music: [{ path: INTRO, role: 'intro' }, { path: PUNCH, role: 'punchline' }],
+      pauseSec: 2, punchIndex: null,
+      manualMusic: auto.map((c) => ({ path: c.path, dstFromPunchSec: c.dstSec - plan.punchAtSec + 0.25, inSec: c.inSec, outSec: c.outSec }))
+    })
+    expect(manual.editor.manual).toBe(true)
+    expect(manual.syncErrorMs!).toBeGreaterThan(220)
+    expect(manual.syncErrorMs!).toBeLessThan(280)
+  }, 120_000)
+  it('a dropped music file can start anywhere and be trimmed', async () => {
+    const manual = await buildAudio({
+      ffmpeg: ff, workDir: join(dir, 'work-manual2'), voice: VOICE,
+      music: [{ path: PUNCH, role: 'main' }], pauseSec: 2, punchIndex: null,
+      manualMusic: [{ path: INTRO, dstFromPunchSec: -INTRO_HIT, inSec: 0, outSec: null }]
+    })
+    const c = manual.editor.clips[0]
+    expect(c.outSec).toBeCloseTo(6, 1) // null = to the end of the file
+    expect(Math.abs(manual.syncErrorMs!)).toBeLessThanOrEqual(FRAME_MS)
+    expect(manual.editor.files.find((f) => f.path === INTRO)!.peaks.length).toBeGreaterThan(500)
+  }, 120_000)
+})

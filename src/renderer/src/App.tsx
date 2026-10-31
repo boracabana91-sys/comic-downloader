@@ -8,6 +8,7 @@ import FormatTicker from './components/FormatTicker'
 import ChatPanel from './components/ChatPanel'
 import TimingPanel, { type CheckResult } from './components/TimingPanel'
 import ResultPanel, { type RenderOk } from './components/ResultPanel'
+import TimelineEditor, { type EditorView, type ManualClip } from './components/TimelineEditor'
 
 type Failure = { ok: false; message: string; detail?: string }
 
@@ -20,7 +21,8 @@ export default function App() {
   const [confirmed, setConfirmed] = useState(false)
   const [result, setResult] = useState<RenderOk | null>(null)
   const [error, setError] = useState<Failure | null>(null)
-  const params = useRef<{ punchIndex: number | null; hitIndex: number; pauseSec: number | null; look: 'drawn' | 'clip' | 'picture' }>({ punchIndex: null, hitIndex: 0, pauseSec: null, look: 'drawn' })
+  const params = useRef<{ punchIndex: number | null; hitIndex: number; pauseSec: number | null; look: 'drawn' | 'clip' | 'picture'; manual?: ManualClip[] }>({ punchIndex: null, hitIndex: 0, pauseSec: null, look: 'drawn' })
+  const keepTiming = useRef(false)
 
   useEffect(() => {
     window.catty.getSettings().then(setSettings)
@@ -33,6 +35,7 @@ export default function App() {
   // New or changed files mean the old timing no longer applies.
   const cardKey = cards.map((c) => `${c.path}|${c.kind}|${c.musicRole}|${c.needsAnswer}|${c.roleKnown}`).join(';')
   useEffect(() => {
+    if (keepTiming.current) { keepTiming.current = false; return }
     setCheck(null)
     setConfirmed(false)
     setResult(null)
@@ -52,12 +55,13 @@ export default function App() {
   const channel = settings.channels.find((c) => c.id === settings.activeChannelId)?.name ?? 'My video'
   const pauseSec = params.current.pauseSec ?? settings.punchPauseSec
 
-  const runCheck = async (format: FormatId = settings.format) => {
+  const runCheck = async (format: FormatId = settings.format, cardList: AssetCard[] = cards) => {
     setError(null)
     setResult(null)
     setBusy({ step: 'Starting…', fraction: null })
     const r = await window.catty.checkTiming({
-      cards: cards.map((c) => ({ path: c.path, kind: c.kind, musicRole: c.musicRole })),
+      cards: cardList.map((c) => ({ path: c.path, kind: c.kind, musicRole: c.musicRole })),
+      manualMusic: params.current.manual,
       format,
       pauseSec,
       punchIndex: params.current.punchIndex,
@@ -150,6 +154,38 @@ export default function App() {
                         void runCheck()
                       }}
                     />
+                  )}
+                  {check && (check.plan as unknown as { editor?: EditorView }).editor && (
+                    <details className="tl-wrap" open={!!params.current.manual}>
+                      <summary>🎚️ Fix the timing by hand <small>(only if the automatic sync doesn’t sound right)</small></summary>
+                      <TimelineEditor
+                        data={(check.plan as unknown as { editor: EditorView }).editor}
+                        punchAtSec={check.plan.punchAtSec}
+                        durationSec={check.plan.durationSec}
+                        onApply={(clips) => {
+                          params.current.manual = clips
+                          void runCheck()
+                        }}
+                        onAuto={() => {
+                          params.current.manual = undefined
+                          void runCheck()
+                        }}
+                        onDropFile={async (path, atSec) => {
+                          const ed = (check.plan as unknown as { editor: EditorView }).editor
+                          const [d] = await window.catty.describeFiles([path])
+                          if (!d) return
+                          const existing = params.current.manual ?? ed.clips.map((c) => ({ cardPath: c.cardPath, dstFromPunchSec: c.dstSec - check.plan.punchAtSec, inSec: c.inSec, outSec: c.outSec }))
+                          params.current.manual = [...existing, { cardPath: d.path, dstFromPunchSec: atSec - check.plan.punchAtSec, inSec: 0, outSec: null }]
+                          let next = cards
+                          if (!cards.some((c) => c.path === d.path)) {
+                            next = [...cards, { path: d.path, name: d.name, size: d.size, kind: 'music', allowed: d.allowed, reason: 'Dropped on the timeline as music.', needsAnswer: false, musicRole: 'main', roleKnown: true }]
+                            keepTiming.current = true
+                            setCards(next)
+                          }
+                          void runCheck(settings.format, next)
+                        }}
+                      />
+                    </details>
                   )}
                 </>
               )}

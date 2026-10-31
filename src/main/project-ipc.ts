@@ -24,6 +24,8 @@ export interface CheckRequest {
   channelName: string
   /** What the video shows: the animated cat (default), the dropped clip, or the dropped picture. */
   look?: 'drawn' | 'clip' | 'picture'
+  /** Music placed by hand in the timeline editor (paths are the owner's original file paths). */
+  manualMusic?: { cardPath: string; dstFromPunchSec: number; inSec: number; outSec: number | null }[]
 }
 
 interface Current {
@@ -39,7 +41,7 @@ const MEDIA_SCHEME = 'catty-media'
 
 /** Must run before app ready. */
 export function registerMediaScheme(): void {
-  protocol.registerSchemesAsPrivileged([{ scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } }])
+  protocol.registerSchemesAsPrivileged([{ scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled: true } }])
 }
 
 function allowedRoots(): string[] {
@@ -48,10 +50,14 @@ function allowedRoots(): string[] {
 
 /** Serves files from the projects folder only, so the window can play previews safely. */
 export function handleMediaScheme(): void {
-  protocol.handle(MEDIA_SCHEME, (req) => {
+  protocol.handle(MEDIA_SCHEME, async (req) => {
     const p = resolve(decodeURIComponent(new URL(req.url).pathname))
     if (!allowedRoots().some((r) => p.startsWith(r))) return new Response('Not allowed', { status: 403 })
-    return net.fetch(pathToFileURL(p).toString(), { headers: req.headers })
+    const res = await net.fetch(pathToFileURL(p).toString(), { headers: req.headers })
+    // Our own window (file://) may read these files (live preview in the timeline editor).
+    const headers = new Headers(res.headers)
+    headers.set('Access-Control-Allow-Origin', '*')
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers })
   })
 }
 
@@ -133,7 +139,10 @@ export function registerProjectIpc(getFfmpeg: () => string): void {
           pauseSec: req.pauseSec,
           punchIndex: req.punchIndex,
           hitIndex: req.hitIndex,
-          style: (req.look ?? 'drawn') === 'drawn' ? 'draw' : 'frame'
+          style: (req.look ?? 'drawn') === 'drawn' ? 'draw' : 'frame',
+          manualMusic: req.manualMusic?.length
+            ? await Promise.all(req.manualMusic.map(async (m) => ({ path: await copyIn(cur, m.cardPath), dstFromPunchSec: m.dstFromPunchSec, inSec: m.inSec, outSec: m.outSec })))
+            : undefined
         },
         (s) => send(e.sender, s)
       )
@@ -179,7 +188,19 @@ export function registerProjectIpc(getFfmpeg: () => string): void {
         plan: {
           ...plan,
           mixUrl: mediaUrl(plan.mixWav),
-          phrases: plan.phrases.map((p) => ({ ...p, url: mediaUrl(p.clip) }))
+          phrases: plan.phrases.map((p) => ({ ...p, url: mediaUrl(p.clip) })),
+          editor: (() => {
+            // Show the owner's own file paths, not the project copies.
+            const back = new Map<string, string>()
+            for (const [orig, copy] of cur.copies) back.set(copy, orig)
+            const name = (p: string) => basename(back.get(p) ?? p)
+            return {
+              ...plan.editor,
+              voiceUrl: mediaUrl(plan.voiceTrackWav),
+              files: plan.editor.files.map((f) => ({ ...f, cardPath: back.get(f.path) ?? f.path, name: name(f.path), url: mediaUrl(f.path) })),
+              clips: plan.editor.clips.map((c) => ({ ...c, cardPath: back.get(c.path) ?? c.path }))
+            }
+          })()
         },
         visual: visual.type,
         look: req.look ?? 'drawn',
