@@ -15,6 +15,16 @@ const api = {
   ensureFolder: () => ipcRenderer.invoke('folder:ensure'),
   openFolder: () => ipcRenderer.invoke('folder:open'),
   openLink: (url: string) => ipcRenderer.invoke('link:open', url),
+  checkTiming: (req: unknown) => ipcRenderer.invoke('project:check', req),
+  makeVideo: () => ipcRenderer.invoke('project:render'),
+  newProject: () => ipcRenderer.invoke('project:new'),
+  reveal: (p: string) => ipcRenderer.invoke('project:reveal', p),
+  onProgress: (cb: (p: { step: string; fraction: number | null }) => void) => {
+    const h = (_e: unknown, p: { step: string; fraction: number | null }) => cb(p)
+    ipcRenderer.on('job:progress', h)
+    return () => { ipcRenderer.removeListener('job:progress', h) }
+  },
+  copyText: (t: string) => navigator.clipboard.writeText(t),
   /** Dropped files: Electron no longer exposes File.path, so ask Electron for it. */
   pathForFile: (f: File) => webUtils.getPathForFile(f)
 }

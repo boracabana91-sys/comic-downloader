@@ -26,7 +26,7 @@ function prettySize(n: number): string {
   return `${Math.max(1, Math.round(n / 1e3))} KB`
 }
 
-export default function DropZone({ cards, setCards }: { cards: AssetCard[]; setCards: Dispatch<SetStateAction<AssetCard[]>> }) {
+export default function DropZone({ cards, setCards, compact = false }: { cards: AssetCard[]; setCards: Dispatch<SetStateAction<AssetCard[]>>; compact?: boolean }) {
   const [over, setOver] = useState(false)
 
   const addPaths = async (paths: string[]) => {
@@ -70,7 +70,7 @@ export default function DropZone({ cards, setCards }: { cards: AssetCard[]; setC
 
   return (
     <div
-      className={`dropzone ${over ? 'over' : ''} ${cards.length ? 'has' : ''}`}
+      className={`dropzone ${over ? 'over' : ''} ${cards.length ? 'has' : ''} ${compact ? 'compact' : ''}`}
       onDragOver={(e) => { e.preventDefault(); setOver(true) }}
       onDragLeave={() => setOver(false)}
       onDrop={onDrop}

@@ -37,3 +37,20 @@ clip, and an iPhone photo (.HEIC). Fixed what that testing found:
   picks the real photo. Covered by `tests/thumbnail.test.ts` using the real file's stream layout.
 - Note to the owner: the provided IMG_4664.HEIC is a screenshot of character notes, not a photo of the
   character — worth re-sending the actual reference art before Phase 5 (the draw-it engine).
+
+## Phase 2 first draft (v0.2): audio brain + draft video
+Works in the app by drag and drop: Check timing → confirm the punch line by ear → Make my video.
+Verified on the owner's real files (Sol_Street_69.m4a + money_mode_wil_intro.mp3 + money_mode_wil_chorus_1.mp3 + casanova_v11.mp4):
+- 3 phrases found; punch line (part 3) lands at 4.82 s; intro hit found at 9.230 s (the true attack, checked at 5 ms resolution).
+- Punch line vs music hit: 0 ms apart (independent re-measurement on the placed tracks).
+- Finished MP4 sound vs planned mix: 0 ms (AAC delay checked by cross-correlation).
+- Voice 8.0 dB over music; loudness −14.6 LUFS, true peak −1.9 dB (4× oversampled limiter; the plain limiter let inter-sample peaks reach −0.8 dB).
+- Frame-by-frame: flash on frame 145 = 4.83 s, then the punch zoom and shake.
+Engine: src/engine/{ffmpeg,loudness,video,project,heic}.ts, src/engine/audio/{analysis,timeline,mix}.ts. UI: TimingPanel, ResultPanel. 31 tests (tests/sync.test.ts = the brief's ±1-frame sync, loudness and both-shape render tests on generated sounds).
+
+NOT done yet (honest list):
+- No vocal separation model yet (UVR-MDX): a voice file with music baked in only gets a warning.
+- No Whisper transcript check yet: the owner confirms the punch line by listening (satisfies "never trust a guess").
+- Video is a draft: a clip is reframed and looped (no motion-peak alignment, no slideshow cuts, no lip-sync; that's Phase 3/5). Pictures get a slow push-in, then zoom + shake + flash on the punch line.
+- Whoosh SFX on cuts belongs to Phase 3 (no cuts yet). The sub thump on the punch line is in.
+- Not yet run by the owner on a real Mac.

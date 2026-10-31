@@ -26,3 +26,20 @@ describe('HEIC thumbnail stream picking', () => {
     expect(pickThumbnailStream([])).toBe(0)
   })
 })
+
+import { heicRotationFilter } from '@engine/heic'
+import { readFileSync, existsSync } from 'node:fs'
+
+describe('iPhone photo rotation', () => {
+  const box = (n: number) => Uint8Array.from([0, 0, 0, 9, 0x69, 0x72, 0x6f, 0x74, n])
+  it('reads the irot box', () => {
+    expect(heicRotationFilter(box(0))).toBe('')
+    expect(heicRotationFilter(box(1))).toBe('transpose=2')
+    expect(heicRotationFilter(box(2))).toBe('hflip,vflip')
+    expect(heicRotationFilter(box(3))).toBe('transpose=1')
+    expect(heicRotationFilter(Uint8Array.from([1, 2, 3]))).toBe('')
+  })
+  it.skipIf(!existsSync('/tmp/catty-test/IMG_4664.HEIC'))('finds the rotation in a real iPhone photo', () => {
+    expect(heicRotationFilter(readFileSync('/tmp/catty-test/IMG_4664.HEIC').subarray(0, 1 << 20))).toBe('transpose=1')
+  })
+})

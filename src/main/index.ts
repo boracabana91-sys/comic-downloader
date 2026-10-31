@@ -6,14 +6,17 @@ import { promisify } from 'node:util'
 import { createHash } from 'node:crypto'
 import { guessKind, allowedKinds, guessMusicRole } from '../engine/classify'
 import { parseVideoStreams, pickThumbnailStream } from '../engine/thumbnail'
+import { rotationFor } from '../engine/heic'
 import { migrateSettings, looksLikeAnthropicKey, type Settings } from '../engine/settings'
 import { appFolder, projectsFolder } from '../engine/paths'
 import { resolveToolPaths } from '../engine/tools'
 import { writeFileAtomic } from '../engine/atomic'
+import { registerMediaScheme, handleMediaScheme, registerProjectIpc } from './project-ipc'
 
 const run = promisify(execFile)
 
 app.setName('Cattyfied')
+registerMediaScheme()
 
 const settingsFile = () => join(app.getPath('userData'), 'settings.json')
 const keyFile = () => join(app.getPath('userData'), 'anthropic-key.bin')
@@ -151,7 +154,7 @@ function registerIpc(): void {
         const args =
           kind === 'video'
             ? ['-y', '-ss', '0.5', '-i', path, '-frames:v', '1', '-update', '1', '-vf', 'scale=360:-2', out]
-            : ['-y', '-i', path, ...mapArgs, '-frames:v', '1', '-update', '1', '-vf', 'scale=360:-2', out]
+            : ['-y', '-i', path, ...mapArgs, '-frames:v', '1', '-update', '1', '-vf', `${(await rotationFor(path)) || 'null'},scale=360:-2`, out]
         await run(t.ffmpeg, args)
       }
       const data = await fs.readFile(out)
@@ -211,7 +214,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  handleMediaScheme()
   registerIpc()
+  registerProjectIpc(() => tools().ffmpeg)
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
