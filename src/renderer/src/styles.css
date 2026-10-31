@@ -70,6 +70,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .card.ask { border-color: var(--ask); background: #fff8e6; }
 .card-head { display: flex; align-items: center; gap: 8px; }
 .card-icon { font-size: 1.6em; }
+.card-thumb { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; flex: none; background: var(--line); }
 .card-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .x { background: none; color: var(--muted); padding: 2px 6px; }
 .card-size { font-size: 0.8em; color: var(--muted); margin: 4px 0; }

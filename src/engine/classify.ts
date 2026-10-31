@@ -19,6 +19,25 @@ export interface Guess {
   reason: string
 }
 
+/**
+ * When a music file is part of an intro→chorus pair (see the brief, section 5.5): the intro plays
+ * first and ends on a hit, the chorus then starts at that hit. "main" = a single, standalone bed.
+ */
+export type MusicRole = 'intro' | 'chorus' | 'main'
+
+const INTRO_WORDS = ['intro', 'into', 'lead-in', 'leadin', 'open', 'opening', 'buildup', 'build-up']
+const CHORUS_WORDS = ['chorus', 'hook', 'drop', 'main', 'loop']
+
+/** Guess whether a music file is the intro or the chorus/main part, from its file name only. */
+export function guessMusicRole(fileName: string): { role: MusicRole; ambiguous: boolean } {
+  const ws = words(fileName)
+  const i = hits(ws, INTRO_WORDS)
+  const c = hits(ws, CHORUS_WORDS)
+  if (i > c) return { role: 'intro', ambiguous: false }
+  if (c > i) return { role: 'chorus', ambiguous: false }
+  return { role: 'main', ambiguous: true }
+}
+
 const AUDIO = ['wav', 'mp3', 'm4a', 'aac', 'aif', 'aiff', 'flac', 'ogg', 'opus', 'caf']
 const IMAGE = ['png', 'jpg', 'jpeg', 'webp', 'heic', 'gif', 'bmp', 'tif', 'tiff']
 const VIDEO = ['mp4', 'mov', 'm4v', 'webm', 'mkv', 'avi']

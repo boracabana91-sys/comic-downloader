@@ -3,7 +3,9 @@ import { join, basename } from 'node:path'
 import { promises as fs, existsSync } from 'node:fs'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { guessKind, allowedKinds } from '../engine/classify'
+import { createHash } from 'node:crypto'
+import { guessKind, allowedKinds, guessMusicRole } from '../engine/classify'
+import { parseVideoStreams, pickThumbnailStream } from '../engine/thumbnail'
 import { migrateSettings, looksLikeAnthropicKey, type Settings } from '../engine/settings'
 import { appFolder, projectsFolder } from '../engine/paths'
 import { resolveToolPaths } from '../engine/tools'
@@ -111,12 +113,52 @@ function registerIpc(): void {
         const st = await fs.stat(p)
         if (!st.isFile()) continue
         const name = basename(p)
-        out.push({ path: p, name, size: st.size, guess: guessKind(name), allowed: allowedKinds(name) })
+        const guess = guessKind(name)
+        const musicRole = guess.kind === 'music' || allowedKinds(name).includes('music') ? guessMusicRole(name) : null
+        out.push({ path: p, name, size: st.size, guess, allowed: allowedKinds(name), musicRole })
       } catch {
         /* skip unreadable files */
       }
     }
     return out
+  })
+
+  // Thumbnails for pictures and video clips (also converts formats like HEIC that browsers can't
+  // show directly). Cached on disk, keyed by the file's path + modified time, so we never redo work.
+  const thumbCacheDir = () => join(app.getPath('temp'), 'cattyfied-thumbs')
+  ipcMain.handle('files:thumbnail', async (_e, path: string, kind: 'image' | 'video') => {
+    try {
+      const st = await fs.stat(path)
+      const key = createHash('sha1').update(`${path}:${st.mtimeMs}`).digest('hex')
+      const dir = thumbCacheDir()
+      await fs.mkdir(dir, { recursive: true })
+      const out = join(dir, `${key}.jpg`)
+      if (!existsSync(out)) {
+        const t = tools()
+        let mapArgs: string[] = []
+        if (kind === 'image') {
+          // A photo (especially HEIC) can hide several images in one file; pick the real one, not
+          // whichever comes first (that was sometimes a flat grey depth map -> a solid black thumbnail).
+          let streamInfo = ''
+          try {
+            await run(t.ffmpeg, ['-i', path])
+          } catch (err) {
+            streamInfo = (err as { stderr?: string }).stderr ?? ''
+          }
+          const streams = parseVideoStreams(streamInfo)
+          if (streams.length > 1) mapArgs = ['-map', `0:v:${pickThumbnailStream(streams)}`]
+        }
+        const args =
+          kind === 'video'
+            ? ['-y', '-ss', '0.5', '-i', path, '-frames:v', '1', '-update', '1', '-vf', 'scale=360:-2', out]
+            : ['-y', '-i', path, ...mapArgs, '-frames:v', '1', '-update', '1', '-vf', 'scale=360:-2', out]
+        await run(t.ffmpeg, args)
+      }
+      const data = await fs.readFile(out)
+      return `data:image/jpeg;base64,${data.toString('base64')}`
+    } catch {
+      return null // The card just shows its icon instead. Never block on a missing thumbnail.
+    }
   })
 
   ipcMain.handle('folder:ensure', async () => {

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mkdtempSync, readFileSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { guessKind, allowedKinds } from '@engine/classify'
+import { guessKind, allowedKinds, guessMusicRole } from '@engine/classify'
 import { FORMATS, aspect, insideSafeZone } from '@engine/formats'
 import { defaultSettings, migrateSettings, looksLikeAnthropicKey } from '@engine/settings'
 import { safeName, appFolder } from '@engine/paths'
@@ -28,6 +28,16 @@ describe('file labelling', () => {
   it('only offers sensible relabels', () => {
     expect(allowedKinds('a.wav')).toEqual(['voice', 'music'])
     expect(allowedKinds('a.png')).toEqual(['character', 'background'])
+  })
+})
+
+describe('intro vs chorus music', () => {
+  it('spots the intro and chorus files from a real pair', () => {
+    expect(guessMusicRole('money_mode_wil_intro.mp3')).toEqual({ role: 'intro', ambiguous: false })
+    expect(guessMusicRole('money_mode_wil_chorus_1.mp3')).toEqual({ role: 'chorus', ambiguous: false })
+  })
+  it('asks when a music file name gives no clue', () => {
+    expect(guessMusicRole('track01.wav').ambiguous).toBe(true)
   })
 })
 

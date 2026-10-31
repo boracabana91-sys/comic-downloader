@@ -10,6 +10,7 @@ const api = {
   removeKey: () => ipcRenderer.invoke('key:remove'),
   checkTools: () => ipcRenderer.invoke('tools:check'),
   describeFiles: (paths: string[]) => ipcRenderer.invoke('files:describe', paths),
+  thumbnail: (path: string, kind: 'image' | 'video') => ipcRenderer.invoke('files:thumbnail', path, kind),
   pickFiles: () => ipcRenderer.invoke('files:pick'),
   ensureFolder: () => ipcRenderer.invoke('folder:ensure'),
   openFolder: () => ipcRenderer.invoke('folder:open'),

@@ -23,3 +23,17 @@ NOT done yet / not verified:
 - Model downloads with progress bar (vocal separation, speech check) belong to Phase 2.
 - Real audio analysis for labelling (speech vs music, music baked into voice) belongs to Phase 2. Today's labelling uses file names only.
 - Phase 0 spikes still to run on a Mac: separation speed, Tagalog Whisper accuracy.
+
+## Phase 1 polish (found by testing with the owner's real files)
+Tested with real files: a voiceover (.m4a), an intro + chorus music pair (.mp3), a sample video
+clip, and an iPhone photo (.HEIC). Fixed what that testing found:
+- Added an Intro / Chorus / Single track tag for music cards (needed for the brief's intro→hit→chorus
+  handoff). Guessed from the file name, asks when unsure, same as other labels.
+- Added real thumbnails on cards (video frame; pictures, converted from HEIC so they display at all —
+  Chromium can't show HEIC directly).
+- Fixed a real bug the HEIC test file exposed: iPhone photos can store several hidden images in one
+  file (a flat grey depth map, the real photo, a small preview). The first pass picked whichever came
+  first, which was sometimes the grey map — a solid black thumbnail. Now it skips grey streams and
+  picks the real photo. Covered by `tests/thumbnail.test.ts` using the real file's stream layout.
+- Note to the owner: the provided IMG_4664.HEIC is a screenshot of character notes, not a photo of the
+  character — worth re-sending the actual reference art before Phase 5 (the draw-it engine).
