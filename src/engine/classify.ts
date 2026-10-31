@@ -20,21 +20,22 @@ export interface Guess {
 }
 
 /**
- * When a music file is part of an intro→chorus pair (see the brief, section 5.5): the intro plays
- * first and ends on a hit, the chorus then starts at that hit. "main" = a single, standalone bed.
+ * When a music file is part of an intro→punch-line pair (see the brief, section 5.5): the intro
+ * plays first and ends on a hit; the punch-line track then starts right at that hit, timed to the
+ * character's line. "main" = a single, standalone bed with no separate intro.
  */
-export type MusicRole = 'intro' | 'chorus' | 'main'
+export type MusicRole = 'intro' | 'punchline' | 'main'
 
 const INTRO_WORDS = ['intro', 'into', 'lead-in', 'leadin', 'open', 'opening', 'buildup', 'build-up']
-const CHORUS_WORDS = ['chorus', 'hook', 'drop', 'main', 'loop']
+const PUNCHLINE_WORDS = ['chorus', 'hook', 'drop', 'main', 'loop', 'punch', 'punchline']
 
-/** Guess whether a music file is the intro or the chorus/main part, from its file name only. */
+/** Guess whether a music file is the intro or the punch-line part, from its file name only. */
 export function guessMusicRole(fileName: string): { role: MusicRole; ambiguous: boolean } {
   const ws = words(fileName)
   const i = hits(ws, INTRO_WORDS)
-  const c = hits(ws, CHORUS_WORDS)
-  if (i > c) return { role: 'intro', ambiguous: false }
-  if (c > i) return { role: 'chorus', ambiguous: false }
+  const p = hits(ws, PUNCHLINE_WORDS)
+  if (i > p) return { role: 'intro', ambiguous: false }
+  if (p > i) return { role: 'punchline', ambiguous: false }
   return { role: 'main', ambiguous: true }
 }
 

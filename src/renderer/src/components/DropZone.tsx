@@ -18,7 +18,7 @@ const ICON: Record<AssetKind, string> = {
   voice: '🎙️', music: '🎵', character: '🐱', background: '🏙️', video: '🎬', notes: '📝', unknown: '❓'
 }
 
-const ROLE_LABEL: Record<MusicRole, string> = { intro: 'Intro', chorus: 'Chorus', main: 'Single track' }
+const ROLE_LABEL: Record<MusicRole, string> = { intro: 'Intro', punchline: 'Punch line', main: 'Single track' }
 
 function prettySize(n: number): string {
   if (n > 1e9) return `${(n / 1e9).toFixed(1)} GB`
@@ -120,9 +120,9 @@ export default function DropZone({ cards, setCards }: { cards: AssetCard[]; setC
 
                   {c.kind === 'music' && (
                     <>
-                      {needsRole && <div className="card-reason">🤔 Does this play first (intro) or is it the main part (chorus)?</div>}
+                      {needsRole && <div className="card-reason">🤔 Does this play first (intro), or is it the part that plays on the punch line?</div>}
                       <div className="card-labels">
-                        {(['intro', 'chorus', 'main'] as MusicRole[]).map((r) => (
+                        {(['intro', 'punchline', 'main'] as MusicRole[]).map((r) => (
                           <button
                             key={r}
                             className={`chip ${c.musicRole === r && c.roleKnown ? 'on' : ''}`}

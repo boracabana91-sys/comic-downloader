@@ -31,10 +31,10 @@ describe('file labelling', () => {
   })
 })
 
-describe('intro vs chorus music', () => {
-  it('spots the intro and chorus files from a real pair', () => {
+describe('intro vs punch-line music', () => {
+  it('spots the intro and punch-line files from a real pair', () => {
     expect(guessMusicRole('money_mode_wil_intro.mp3')).toEqual({ role: 'intro', ambiguous: false })
-    expect(guessMusicRole('money_mode_wil_chorus_1.mp3')).toEqual({ role: 'chorus', ambiguous: false })
+    expect(guessMusicRole('money_mode_wil_chorus_1.mp3')).toEqual({ role: 'punchline', ambiguous: false })
   })
   it('asks when a music file name gives no clue', () => {
     expect(guessMusicRole('track01.wav').ambiguous).toBe(true)
