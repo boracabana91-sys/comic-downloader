@@ -14,7 +14,9 @@ Done and checked on Linux (tests + real app launched + screenshots in `docs/scre
 - Mac build robot (GitHub Actions): universal ffmpeg/ffprobe via lipo, ad-hoc signing, .dmg, then an install + launch test on Apple Silicon and on Intel.
 
 NOT done yet / not verified:
-- The .dmg has **never been built yet**: first CI run pending.
+- ✅ First .dmg built by CI (run 41219723928): app + ffmpeg + ffprobe are universal (x86_64 + arm64), ad-hoc signature valid, and it installed and stayed open on both an Apple Silicon and an Intel runner.
+- The Apple Silicon and Intel halves of the ffmpeg-static release are different builds (6.0 vs 6.1.1). Fine for now; pin one version in Phase 2 if audio results differ between Macs.
+- The .dmg is about 300 MB (universal Electron + 2× ffmpeg).
 - Not yet tested on a real Mac by the owner.
 - The "Double-click me first" file is itself blocked by macOS on first open (it came from the internet). The Start Here page covers "Open Anyway". There's no way around this without a paid Apple Developer account ($99/year).
 - Start Here uses drawn pictures, not real screenshots. Swap in real ones after the owner's first install.
