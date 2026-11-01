@@ -102,3 +102,12 @@ Fix: vocal isolation runs in a helper process (out/main/mdx-worker.js, ELECTRON_
 enableCpuMemArena=false, enableMemPattern=false, outputs copied then disposed. Helper output vs reference mdx.py: 56.8 dB.
 In-app run (voice_test + intro + chorus_1): check timing 13 s; video 190 s; all 11 preflight checks green.
 CI: CATTY_SELFTEST=full on Apple Silicon downloads the model (SHA-256) and runs isolation in the helper process.
+
+### Golden acceptance (owner's Sol_Street_71 + intro + chorus_2, punch units 2,3): ALL PASS
+units (1.35–2.93)(4.08–5.33)(6.37–6.87)(7.98–8.68); chorus downbeat 0 ms from 8.24; intro offset 1.187; punch start 8.240;
+pause 2.00; cuts 9.24…15.64 exact; VoM 13.9 dB (ref 13.9); −15.6 LUFS (ref −15.6); peak −1.8 (ref −1.8); 18.00 s;
+flashes 8/8 at the same frames as golden; loop 0%; mouth max 0.02 over 265 silent frames.
+Per-second loudness vs golden/casanova_cat_v1.mp4: within 0.3 dB every second. Reference audio_brain.py on the same
+inputs reproduces timeline_expected.json exactly. CI (v0.5, run 41256036488): Apple Silicon self-test downloaded +
+verified the model and ran isolation in the helper process (19.6 s for one chunk on the CI VM); Intel: no isolation.
+Downloads: Apple Silicon 166 MB, Intel 156 MB.
