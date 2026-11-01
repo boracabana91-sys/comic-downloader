@@ -8,6 +8,7 @@ import { FORMATS, type FormatId } from '../engine/formats'
 import { projectsFolder, safeName } from '../engine/paths'
 import type { MusicRole, AssetKind } from '../engine/classify'
 import type { Visual } from '../engine/video'
+import { ensureModel, loadOrt, workerIsolator } from './models'
 
 export interface CardIn {
   path: string
@@ -19,8 +20,8 @@ export interface CheckRequest {
   cards: CardIn[]
   format: FormatId
   pauseSec: number
-  punchIndex: number | null
-  hitIndex: number
+  /** Which units are the punch line (0-based); null = not chosen yet (Cattyfied suggests the last one). */
+  punchUnits: number[] | null
   channelName: string
   /** What the video shows: the animated cat (default), the dropped clip, or the dropped picture. */
   look?: 'drawn' | 'clip' | 'picture'
@@ -130,6 +131,18 @@ export function registerProjectIpc(getFfmpeg: () => string): void {
         .filter((c) => c.kind === 'music')
         .map((c) => ({ path: cur.copies.get(c.path)!, role: (c.musicRole ?? 'main') as MusicRole }))
 
+      // Vocal isolation model: download once (with progress), then reuse. Not available on Intel Macs.
+      const ort = loadOrt()
+      let mdx: ReturnType<typeof workerIsolator> | null = null
+      if (ort) {
+        try {
+          const modelPath = await ensureModel((f) => send(e.sender, 'Downloading the voice separator (67 MB, only the first time)…', f))
+          mdx = workerIsolator(getFfmpeg(), modelPath)
+        } catch (err) {
+          return { ok: false, message: `I couldn’t download the voice separator (67 MB, needed once): ${(err as Error).message}. Check your internet and press “Check timing” again.` }
+        }
+      }
+
       const plan = await buildAudio(
         {
           ffmpeg: getFfmpeg(),
@@ -137,14 +150,14 @@ export function registerProjectIpc(getFfmpeg: () => string): void {
           voice: cur.copies.get(voice[0].path)!,
           music,
           pauseSec: req.pauseSec,
-          punchIndex: req.punchIndex,
-          hitIndex: req.hitIndex,
+          punchUnits: req.punchUnits,
+          mdx,
           style: (req.look ?? 'drawn') === 'drawn' ? 'draw' : 'frame',
           manualMusic: req.manualMusic?.length
             ? await Promise.all(req.manualMusic.map(async (m) => ({ path: await copyIn(cur, m.cardPath), dstFromPunchSec: m.dstFromPunchSec, inSec: m.inSec, outSec: m.outSec })))
             : undefined
         },
-        (s) => send(e.sender, s)
+        (s, f) => send(e.sender, s, f ?? null)
       )
       cur.plan = plan
       cur.req = req
@@ -162,8 +175,7 @@ export function registerProjectIpc(getFfmpeg: () => string): void {
           const { decodeAudio } = await import('../engine/ffmpeg')
           const small = { ...fmt, width: Math.round(fmt.width / 3), height: Math.round(fmt.height / 3) }
           await renderDrawn({
-            ffmpeg: getFfmpeg(), fmt: small, durationSec: plan.durationSec, punchSec: plan.punchAtSec,
-            phrases: plan.timelinePhrases, voiceTrack: await decodeAudio(getFfmpeg(), plan.voiceTrackWav),
+            ffmpeg: getFfmpeg(), fmt: small, timeline: plan.timeline, voiceTrack: await decodeAudio(getFfmpeg(), plan.voiceTrackWav),
             audioWav: plan.mixWav, outPartial: '', onlyFrames: [Math.round((plan.punchAtSec + 0.25) * FPS)],
             onFrame: async (_i, canvas) => { await fs.writeFile(out, await canvas.encode('jpeg', 88)) }
           })
@@ -229,16 +241,16 @@ export function registerProjectIpc(getFfmpeg: () => string): void {
         plan,
         visual: pickVisual(req.cards, cur.copies, req.look),
         fmt,
-        onProgress: (f) => e.sender.send('job:progress', { step: 'Making your video…', fraction: f })
+        onProgress: (f) => e.sender.send('job:progress', f < 1 ? { step: 'Making your video…', fraction: f } : { step: 'Checking the finished video (preflight)…', fraction: null })
       })
-      e.sender.send('job:progress', { step: 'Checking the finished video…', fraction: 1 })
       await fs.writeFile(join(cur.dir, 'project.json'), JSON.stringify({ request: req, plan, output: out, qa: result.qa }, null, 2))
       return {
         ok: true,
         video: result.video,
         videoUrl: mediaUrl(result.video),
         frames: result.frames.map((f) => ({ ...f, url: mediaUrl(f.path) })),
-        qa: result.qa
+        qa: result.qa,
+        allOk: result.allOk
       }
     } catch (err) {
       return { ok: false, message: friendly(err), detail: String((err as Error)?.stack ?? err) }

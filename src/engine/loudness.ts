@@ -31,7 +31,7 @@ export async function normalizeLoudness(
     await runTool(ffmpeg, [
       '-y', '-v', 'error', '-i', input,
       // Limit once normally, then again at 4× resolution so in-between ("true") peaks are caught too.
-      '-af', `volume=${gainDb.toFixed(2)}dB,alimiter=limit=0.8:level=disabled,aresample=176400,alimiter=limit=0.8:level=disabled,aresample=44100`,
+      '-af', `volume=${gainDb.toFixed(2)}dB,alimiter=limit=0.8:level=disabled:latency=1,aresample=176400,alimiter=limit=0.8:level=disabled:latency=1,aresample=44100`,
       '-ar', '44100', '-ac', '2', '-c:a', 'pcm_s16le', output
     ])
     const after = await measureLoudness(ffmpeg, output)

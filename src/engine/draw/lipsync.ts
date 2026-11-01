@@ -1,73 +1,78 @@
-// Mouth movement from the voice-only track (brief: per-frame RMS, fast attack 0.7, slow release 0.35;
-// mouth width from the spectral centroid).
+// Lip-sync from the VOICE-ONLY track (vo.wav) — never from the mix. Port of cat_core.py:
+// per-frame RMS, normalised to the 95th percentile, clipped 0..1, anything under 0.12 = closed,
+// then fast attack (0.7) / slow release (0.35). Width from the spectral centroid (800–3300 Hz → 0..1),
+// smoothed over 5 frames.
 import { SAMPLE_RATE, type Stereo } from '../ffmpeg'
+import { _Bluestein as Bluestein } from '../audio/mdx'
+
+const dfts = new Map<number, Bluestein>()
 
 export interface MouthFrame {
-  open: number // 0..1
-  wide: number // 0..1
+  open: number // 0..1 ("talk")
+  wide: number // 0..1 (centroid)
 }
 
-function fftMag(re: Float32Array): Float32Array {
-  const n = re.length
-  const im = new Float32Array(n)
-  for (let i = 1, j = 0; i < n; i++) {
-    let bit = n >> 1
-    for (; j & bit; bit >>= 1) j ^= bit
-    j ^= bit
-    if (i < j) { const t = re[i]; re[i] = re[j]; re[j] = t }
+function centroid(seg: Float64Array): number {
+  const n = seg.length
+  if (n < 64) return 1500
+  // Exact-length DFT (n = 1470 at 30 fps) of the Hann-windowed segment, like np.fft.rfft(seg*np.hanning(n)).
+  let F = dfts.get(n)
+  if (!F) { F = new Bluestein(n); dfts.set(n, F) }
+  const re = new Float64Array(n)
+  const im = new Float64Array(n)
+  for (let i = 0; i < n; i++) re[i] = seg[i] * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1)))
+  F.forward(re, im)
+  const bins = Math.floor(n / 2) + 1
+  let num = 0
+  let den = 0
+  for (let k = 0; k < bins; k++) {
+    const mag = Math.hypot(re[k], im[k])
+    num += mag * ((k * SAMPLE_RATE) / n)
+    den += mag
   }
-  for (let len = 2; len <= n; len <<= 1) {
-    const ang = (-2 * Math.PI) / len
-    for (let i = 0; i < n; i += len) {
-      for (let k = 0; k < len / 2; k++) {
-        const wr = Math.cos(ang * k)
-        const wi = Math.sin(ang * k)
-        const ur = re[i + k], ui = im[i + k]
-        const vr = re[i + k + len / 2] * wr - im[i + k + len / 2] * wi
-        const vi = re[i + k + len / 2] * wi + im[i + k + len / 2] * wr
-        re[i + k] = ur + vr; im[i + k] = ui + vi
-        re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi
-      }
-    }
-  }
-  const mag = new Float32Array(n / 2)
-  for (let i = 0; i < n / 2; i++) mag[i] = Math.hypot(re[i], im[i])
-  return mag
+  return num / (den + 1e-9)
 }
 
 export function mouthTrack(voice: Stereo, fps: number, frames: number): MouthFrame[] {
-  const hop = SAMPLE_RATE / fps
-  const N = 1024
-  const rms: number[] = []
-  const cen: number[] = []
+  const hop = Math.floor(SAMPLE_RATE / fps)
+  const mono = (k: number) => (k < voice.l.length ? 0.5 * (voice.l[k] + voice.r[k]) : 0)
+  const env = new Float64Array(frames)
+  const cen = new Float64Array(frames)
+  const sorted: number[] = []
   for (let f = 0; f < frames; f++) {
-    const a = Math.floor(f * hop)
     let s = 0
-    const buf = new Float32Array(N)
-    for (let i = 0; i < N; i++) {
-      const k = a + i
-      const v = k < voice.l.length ? 0.5 * (voice.l[k] + voice.r[k]) : 0
-      if (i < hop) s += v * v
-      buf[i] = v * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (N - 1)))
-    }
-    rms.push(Math.sqrt(s / hop))
-    const mag = fftMag(buf)
-    let num = 0, den = 0
-    for (let i = 1; i < mag.length; i++) { num += i * mag[i]; den += mag[i] }
-    cen.push(den > 1e-9 ? (num / den) * (SAMPLE_RATE / N) : 0)
+    const seg = new Float64Array(hop)
+    for (let i = 0; i < hop; i++) { const v = mono(f * hop + i); seg[i] = v; s += v * v }
+    env[f] = f * hop < voice.l.length ? Math.sqrt(s / hop) : 0
+    sorted.push(env[f])
+    // centroid only where there is sound (silent frames are closed anyway)
+    cen[f] = env[f] > 1e-5 ? Math.min(1, Math.max(0, (centroid(seg) - 800) / 2500)) : 0
   }
-  const sorted = [...rms].sort((x, y) => x - y)
-  const ref = Math.max(1e-6, sorted[Math.floor(sorted.length * 0.95)] ?? 1e-6)
+  sorted.sort((a, b) => a - b)
+  const p95 = percentile(sorted, 95)
+  let v = 0
   const out: MouthFrame[] = []
-  let open = 0
-  let wide = 0.5
+  const cs = new Float64Array(frames)
   for (let f = 0; f < frames; f++) {
-    const target = Math.min(1, Math.max(0, (rms[f] / ref - 0.06) * 1.15))
-    open += (target - open) * (target > open ? 0.7 : 0.35)
-    // Brighter sounds (ee, s) = wider mouth; darker (oo, o) = rounder.
-    const w = Math.min(1, Math.max(0, (cen[f] - 600) / 2400))
-    if (open > 0.05) wide += (w - wide) * 0.5
-    out.push({ open: open < 0.04 ? 0 : open, wide })
+    let k = 0, c = 0
+    for (let j = f - 2; j <= f + 2; j++) if (j >= 0 && j < frames) { k += cen[j]; c++ }
+    cs[f] = k / 5 // np.convolve(.., ones(5)/5, "same")
+    void c
+  }
+  for (let f = 0; f < frames; f++) {
+    let e = Math.min(1, Math.max(0, env[f] / (p95 + 1e-9)))
+    if (e < 0.12) e = 0
+    v = v + (e - v) * (e > v ? 0.7 : 0.35)
+    out.push({ open: v, wide: cs[f] })
   }
   return out
+}
+
+/** numpy-style linear-interpolated percentile on a sorted array. */
+function percentile(sorted: number[], q: number): number {
+  if (!sorted.length) return 0
+  const pos = ((sorted.length - 1) * q) / 100
+  const lo = Math.floor(pos)
+  const hi = Math.min(sorted.length - 1, lo + 1)
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo)
 }

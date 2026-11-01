@@ -225,7 +225,36 @@ async function selfTest(): Promise<void> {
     drawLimo(ctx)
     drawCat(ctx, { ...REST_POSE })
     const png = await c.encode('png')
-    console.log(`SELFTEST OK ${process.arch} png=${png.length}`)
+    // The vocal-isolation runtime ships for Apple Silicon only; prove its native part loads there.
+    let ort = 'absent'
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const o = require('onnxruntime-node')
+      new o.Tensor('float32', new Float32Array(4), [1, 4])
+      ort = 'ok'
+    } catch (e) {
+      ort = `absent (${String((e as Error).message).slice(0, 80)})`
+    }
+    if (process.arch === 'arm64' && process.platform === 'darwin' && ort !== 'ok') throw new Error(`vocal isolation runtime failed to load: ${ort}`)
+    // CATTY_SELFTEST=full also downloads the voice separator (checksum-verified) and runs it once.
+    let model = 'skipped'
+    if (process.env.CATTY_SELFTEST === 'full' && ort === 'ok') {
+      const { ensureModel, workerIsolator } = await import('./models')
+      const { encodeWav, decodeAudio } = await import('../engine/ffmpeg')
+      const { mkdtempSync, writeFileSync } = await import('node:fs')
+      const { tmpdir } = await import('node:os')
+      const p = await ensureModel(() => {})
+      const n = 44100 * 2
+      const l = new Float32Array(n).map((_, i) => 0.3 * Math.sin((2 * Math.PI * 220 * i) / 44100))
+      const dir = mkdtempSync(join(tmpdir(), 'catty-selftest-'))
+      writeFileSync(join(dir, 'in.wav'), encodeWav({ l, r: l }))
+      const t = Date.now()
+      await workerIsolator(tools().ffmpeg, p)(join(dir, 'in.wav'), join(dir, 'out.wav'), () => {})
+      const out = await decodeAudio(tools().ffmpeg, join(dir, 'out.wav'))
+      if (Math.abs(out.l.length - n) > 1) throw new Error('vocal isolation returned the wrong length')
+      model = `ok (downloaded + verified, isolation in helper process ${Date.now() - t} ms for 2 s)`
+    }
+    console.log(`SELFTEST OK ${process.arch} png=${png.length} ort=${ort} model=${model}`)
     app.exit(0)
   } catch (err) {
     console.log(`SELFTEST FAILED ${process.arch}: ${String((err as Error)?.stack ?? err)}`)

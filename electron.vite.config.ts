@@ -10,7 +10,8 @@ export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     define,
-    resolve: { alias: { '@engine': resolve(__dirname, 'src/engine') } }
+    resolve: { alias: { '@engine': resolve(__dirname, 'src/engine') } },
+    build: { rollupOptions: { input: { index: resolve(__dirname, 'src/main/index.ts'), 'mdx-worker': resolve(__dirname, 'src/main/mdx-worker.ts') } } }
   },
   preload: {
     plugins: [externalizeDepsPlugin()],

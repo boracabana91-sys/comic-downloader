@@ -1,5 +1,25 @@
 # What's new in Cattyfied
 
+## v0.5 (the reference timing: "measure → timeline → render → verify")
+- New: **music removal from your voice** (the same AI model the reference uses). It downloads once, 67 MB, with a progress bar. If your voice file has music in it, the timing and mouth now follow your voice only. Apple Silicon Macs only for now.
+- New: your voice is split into **parts** (a pause of 0.9 s or more starts a new part). You tick which parts are the punch line, and it can be more than one.
+- New timing, exactly like your reference video:
+  - the punch line starts at 8.24 s, after a 2.0 s pause with music only;
+  - the punch-line music's first beat lands exactly on it, and the intro ends exactly where that music starts;
+  - the punch line is never the quietest part.
+- New animation, exactly like your reference:
+  - it opens close on the champagne, pulls back to reveal the cat, and he sips during the pause;
+  - a white flash on the punch line, then cuts at +1.0, 2.0, 3.0, 4.2, 5.2, 6.3, 7.4 s, each with flash, blur and shake;
+  - a different close-up each time (wink, grin, eyebrows, smug look, laugh), and it ends on a flirty smirk;
+  - hearts only at the very end, and no more repeating loop;
+  - the mouth moves only with your voice and is closed when you're silent.
+- New: **preflight check** on every finished video:
+  - flashes on every cut, no loop, mouth closed in the silences;
+  - the beat on the punch line, the pause, the loudness, the peak and the length;
+  - red means "not ready", and it's never hidden.
+- Kept: the hand timeline editor (waveforms, drag, trim, drop files) for files the automatic part gets wrong.
+- Fixed: the whole soundtrack was 10 ms late (limiter delay), and the cleaned voice was 6 dB too loud.
+
 ## v0.4.1 (much smaller, faster download)
 - One installer per Mac type instead of one big combined installer, so you download only what your Mac needs (about 2.5× smaller).
 - Removed a video tool the app didn't need, and the installer is packed tighter.

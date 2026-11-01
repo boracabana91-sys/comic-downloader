@@ -21,7 +21,7 @@ export default function App() {
   const [confirmed, setConfirmed] = useState(false)
   const [result, setResult] = useState<RenderOk | null>(null)
   const [error, setError] = useState<Failure | null>(null)
-  const params = useRef<{ punchIndex: number | null; hitIndex: number; pauseSec: number | null; look: 'drawn' | 'clip' | 'picture'; manual?: ManualClip[] }>({ punchIndex: null, hitIndex: 0, pauseSec: null, look: 'drawn' })
+  const params = useRef<{ punchUnits: number[] | null; pauseSec: number | null; look: 'drawn' | 'clip' | 'picture'; manual?: ManualClip[] }>({ punchUnits: null, pauseSec: null, look: 'drawn' })
   const keepTiming = useRef(false)
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function App() {
     setCheck(null)
     setConfirmed(false)
     setResult(null)
-    params.current = { punchIndex: null, hitIndex: 0, pauseSec: null, look: params.current.look }
+    params.current = { punchUnits: null, pauseSec: null, look: params.current.look }
   }, [cardKey])
 
   const update = async (patch: Partial<Settings>) => {
@@ -64,8 +64,7 @@ export default function App() {
       manualMusic: params.current.manual,
       format,
       pauseSec,
-      punchIndex: params.current.punchIndex,
-      hitIndex: params.current.hitIndex,
+      punchUnits: params.current.punchUnits,
       channelName: channel,
       look: params.current.look
     })
@@ -134,13 +133,10 @@ export default function App() {
                       confirmed={confirmed}
                       pauseSec={pauseSec}
                       onConfirm={() => setConfirmed(true)}
-                      onPickPunch={(i) => {
-                        params.current.punchIndex = i
-                        setConfirmed(false)
-                        void runCheck()
-                      }}
-                      onPickHit={(i) => {
-                        params.current.hitIndex = i
+                      onPickPunch={(units) => {
+                        params.current.punchUnits = units
+                        // Choosing the parts yourself IS the confirmation.
+                        setConfirmed(true)
                         void runCheck()
                       }}
                       onPause={(s) => {

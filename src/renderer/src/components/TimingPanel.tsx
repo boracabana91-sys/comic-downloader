@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export interface CheckResult {
   ok: true
@@ -8,10 +8,10 @@ export interface CheckResult {
   stillUrl: string | null
   plan: {
     phrases: { index: number; startSec: number; endSec: number; url: string }[]
-    punchIndex: number
+    punchUnits: number[]
     punchGuessed: boolean
-    hits: { atSec: number; strength: number }[]
-    hitIndex: number
+    unitsFromPhrases: boolean
+    isolated: boolean
     musicSummary: string
     punchAtSec: number
     durationSec: number
@@ -50,8 +50,7 @@ export default function TimingPanel(props: {
   confirmed: boolean
   pauseSec: number
   onConfirm: () => void
-  onPickPunch: (i: number) => void
-  onPickHit: (i: number) => void
+  onPickPunch: (units: number[]) => void
   onPause: (s: number) => void
   hasClip: boolean
   hasPicture: boolean
@@ -59,31 +58,48 @@ export default function TimingPanel(props: {
 }) {
   const { plan } = props.result
   const [pause, setPause] = useState(props.pauseSec)
+  const [picked, setPicked] = useState<number[]>(plan.punchUnits)
+  useEffect(() => setPicked(plan.punchUnits), [plan.punchUnits.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+  const changed = picked.join(',') !== plan.punchUnits.join(',')
+  const label = (u: number[]) => (u.length === 1 ? `part ${u[0] + 1}` : `parts ${u.map((x) => x + 1).join(' + ')}`)
   const sync = plan.syncErrorMs
   return (
     <div className="timing">
       <div className="timing-col">
         <h2>1. Which part is the punch line?</h2>
         <p className="small">
-          I found {plan.phrases.length} part{plan.phrases.length === 1 ? '' : 's'} in your voice. Press ▶ to listen.
-          {plan.punchGuessed && !props.confirmed && ' I guessed the last one — please check.'}
+          I found {plan.phrases.length} part{plan.phrases.length === 1 ? '' : 's'} in your voice{plan.isolated ? ' (after removing any music from it)' : ''}.
+          Press ▶ to listen, then tick the part{plan.phrases.length > 1 ? '(s)' : ''} that are the punch line. It can be more than one.
+          {plan.punchGuessed && !props.confirmed && ' I ticked the last one as a guess. Please check.'}
         </p>
         <div className="phrases">
-          {plan.phrases.map((p) => (
-            <div key={p.index} className={`phrase ${p.index === plan.punchIndex ? 'on' : ''}`}>
-              <PlayButton url={p.url} label={`Play part ${p.index + 1}`} />
-              <button className="phrase-pick" onClick={() => props.onPickPunch(p.index)}>
-                Part {p.index + 1} <small>{(p.endSec - p.startSec).toFixed(1)} s</small>
-                {p.index === plan.punchIndex && <span className="tag">🥁 Punch line</span>}
-              </button>
-            </div>
-          ))}
+          {plan.phrases.map((p) => {
+            const on = picked.includes(p.index)
+            return (
+              <div key={p.index} className={`phrase ${on ? 'on' : ''}`}>
+                <PlayButton url={p.url} label={`Play part ${p.index + 1}`} />
+                <button
+                  className="phrase-pick"
+                  onClick={() => setPicked(on ? picked.filter((x) => x !== p.index) : [...picked, p.index].sort((a, b) => a - b))}
+                  aria-pressed={on}
+                >
+                  <span className="tick">{on ? '☑' : '☐'}</span> Part {p.index + 1} <small>{(p.endSec - p.startSec).toFixed(1)} s</small>
+                  {on && <span className="tag">🥁 Punch line</span>}
+                </button>
+              </div>
+            )
+          })}
         </div>
-        {props.confirmed ? (
-          <div className="banner ok">✅ Part {plan.punchIndex + 1} is the punch line.</div>
+        {changed ? (
+          <button className="primary" disabled={!picked.length || picked[0] === 0} onClick={() => props.onPickPunch(picked)}>
+            {picked[0] === 0 ? 'Part 1 can’t be the punch line (something must come before it)' : 'Use these parts as the punch line'}
+          </button>
+        ) : props.confirmed ? (
+          <div className="banner ok">✅ {label(plan.punchUnits)} {plan.punchUnits.length > 1 ? 'are' : 'is'} the punch line.</div>
         ) : (
-          <button className="primary" onClick={props.onConfirm}>Yes, part {plan.punchIndex + 1} is the punch line</button>
+          <button className="primary" onClick={props.onConfirm}>Yes, {label(plan.punchUnits)} {plan.punchUnits.length > 1 ? 'are' : 'is'} the punch line</button>
         )}
+        <p className="small">The word-by-word check (Whisper) isn’t in the app yet, and it’s often wrong on Tagalog anyway. Please confirm by listening.</p>
 
         <h2>2. Pause before the punch line</h2>
         <div className="row">
@@ -97,20 +113,6 @@ export default function TimingPanel(props: {
           <b>{pause.toFixed(1)} s</b>
         </div>
         <p className="small">The music keeps playing during the pause.</p>
-
-        {plan.hits.length > 1 && (
-          <>
-            <h2>3. Music hit</h2>
-            <p className="small">{plan.musicSummary} Doesn’t sound right? Try another hit:</p>
-            <div className="card-labels">
-              {plan.hits.slice(0, 4).map((h, i) => (
-                <button key={i} className={`chip ${i === plan.hitIndex ? 'on' : ''}`} onClick={() => props.onPickHit(i)}>
-                  {i === 0 ? '⭐ ' : ''}{h.atSec.toFixed(2)} s
-                </button>
-              ))}
-            </div>
-          </>
-        )}
       </div>
 
       <div className="timing-col">
@@ -128,9 +130,9 @@ export default function TimingPanel(props: {
         <ul className="facts">
           <li>🥁 The punch line lands at <b>{plan.punchAtSec.toFixed(2)} s</b> of a {plan.durationSec.toFixed(1)} s video.</li>
           {sync !== null && (
-            <li className={Math.abs(sync) <= 33 ? 'good' : 'bad'}>
-              {Math.abs(sync) <= 33 ? '✅' : '⚠️'} Punch line and music hit are {Math.abs(sync)} ms apart
-              {Math.abs(sync) <= 33 ? ' (perfect: less than one frame).' : '.'}
+            <li className={Math.abs(sync) <= 20 ? 'good' : 'bad'}>
+              {Math.abs(sync) <= 20 ? '✅' : '⚠️'} The music’s beat is {Math.abs(sync)} ms from the punch line
+              {Math.abs(sync) <= 20 ? ' (on the beat).' : '. If it sounds wrong, fix it by hand below.'}
             </li>
           )}
           {plan.voiceOverMusicDb !== null && <li>🎙️ Your voice is {plan.voiceOverMusicDb.toFixed(1)} dB above the music.</li>}

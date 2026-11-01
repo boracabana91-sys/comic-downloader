@@ -76,3 +76,19 @@ export function encodeWav(s: Stereo): Buffer {
   }
   return buf
 }
+
+/**
+ * Decode to 44.1 kHz MONO (the reference cleans the voice with -ac 1 into a 16-bit file).
+ * Uses 16-bit output on purpose: ffmpeg scales the stereo→mono downmix differently for float output
+ * (it came out exactly 2× louder), and every level in the audio brain is tuned to the 16-bit path.
+ */
+export async function decodeMono(ffmpeg: string, file: string, filter?: string): Promise<Float32Array> {
+  const args = ['-v', 'error', '-i', file, '-vn']
+  if (filter) args.push('-af', filter)
+  args.push('-ac', '1', '-ar', String(SAMPLE_RATE), '-f', 's16le', 'pipe:1')
+  const { stdout } = await runTool(ffmpeg, args)
+  const n = Math.floor(stdout.length / 2)
+  const out = new Float32Array(n)
+  for (let i = 0; i < n; i++) out[i] = stdout.readInt16LE(i * 2) / 32768
+  return out
+}

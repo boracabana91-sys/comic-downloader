@@ -1,23 +1,18 @@
-// The "audio brain" + draft render, end to end. No Electron here: the app passes in paths and ffmpeg.
+// The whole "check timing" + render pipeline. No Electron here: the app passes in paths, ffmpeg and onnxruntime.
+// Design (FIX_PROMPT): measure → timeline.json → render → verify. Nothing about timing is hard-coded.
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
-import { decodeAudio, encodeWav, toMono, SAMPLE_RATE, type Stereo } from './ffmpeg'
-import { findPhrases, findHits, refineOnset, sec, samp, estimateTempo, type Phrase } from './audio/analysis'
-import { planTimeline, PAD, type Timeline } from './audio/timeline'
-import { concatStereo, DEFAULT_MIX, addWhoosh, mixPlaced } from './audio/mix'
-import { clipsFromTimeline, placeClips, peaks, type MusicClip } from './audio/clips'
-import { cutTimes } from './draw/director'
-import { normalizeLoudness, describeLoudness, type Loudness } from './loudness'
+import { decodeAudio, decodeMono, encodeWav, toMono, SAMPLE_RATE, type Stereo } from './ffmpeg'
+import { findHits, sec, samp } from './audio/analysis'
+import { runBrain, findPhrases as brainPhrases, groupUnits, CLEAN, type Timeline } from './audio/brain'
+import { isolateVocals, type OrtLike } from './audio/mdx'
+import { peaks, type MusicClip } from './audio/clips'
+import { describeLoudness, type Loudness } from './loudness'
 import { makeCanvas, renderVideo, grabFrame, FPS, type Visual } from './video'
 import type { FormatPreset } from './formats'
 import type { MusicRole } from './classify'
 import { writeFileAtomic } from './atomic'
 import { tempNameFor } from './paths'
-
-/** Voice clean-up chain from the brief (step 3). */
-export const VOICE_CLEAN =
-  'highpass=f=85,lowpass=f=10500,afftdn=nr=12:nf=-45,agate=threshold=0.008:ratio=3:attack=4:release=120,' +
-  'equalizer=f=220:t=q:w=1:g=1.5,equalizer=f=3000:t=q:w=1:g=2.5,acompressor=threshold=0.05:ratio=3:makeup=2,loudnorm=I=-13:TP=-1.5'
 
 export interface ProjectInput {
   ffmpeg: string
@@ -25,247 +20,210 @@ export interface ProjectInput {
   voice: string
   music: { path: string; role: MusicRole }[]
   pauseSec: number
-  /** null = Cattyfied's guess (the last phrase), which the owner must confirm. */
-  punchIndex: number | null
-  /** Which music hit to use (index into the candidates); default the strongest. */
-  hitIndex?: number
-  targetLufs?: number
-  /** 'draw' = animated cartoon (longer tail for close-up takes, whoosh on each cut). */
-  style?: 'draw' | 'frame'
+  /** Which units are the punch line (0-based). null = Cattyfied's guess (the last unit), which the owner must confirm. */
+  punchUnits: number[] | null
   /**
-   * Music placed by hand in the timeline editor. dstFromPunchSec is relative to the punch line, so the
-   * owner's placement stays locked to the punch line when the pause or punch phrase changes.
-   * outSec null = play to the end of the file.
+   * Vocal isolation (UVR-MDX): reads a 44.1 kHz stereo WAV, writes the vocal stem WAV.
+   * null = not available (e.g. Intel Macs): the voice is used as it is, with a warning.
    */
+  mdx: Isolator | null
+  punchTime?: number
+  duration?: number
+  targetLufs?: number
+  /** 'draw' = animated cartoon. (The reference timing is the same for every style.) */
+  style?: 'draw' | 'frame'
+  /** Music placed by hand in the timeline editor (relative to the punch line). */
   manualMusic?: { path: string; dstFromPunchSec: number; inSec: number; outSec: number | null }[]
 }
 
+export type Isolator = (inWav: string, outWav: string, onProgress: (f: number) => void) => Promise<void>
+
+/** In-process isolator (plain Node: tests, CLI). The app uses a helper process instead (see main/mdx-worker). */
+export function inProcessIsolator(ffmpeg: string, ort: OrtLike, modelPath: string): Isolator {
+  return async (inWav, outWav, onProgress) => {
+    const voc = await isolateVocals(ort, modelPath, await decodeAudio(ffmpeg, inWav), onProgress)
+    await writeFileAtomic(outWav, encodeWav(voc))
+  }
+}
+
 export interface EditorData {
-  /** Waveform buckets per second. */
   pps: number
   voicePeaks: number[]
   files: { path: string; durSec: number; peaks: number[]; hitsSec: number[] }[]
-  /** What is playing now (automatic or the owner's), in timeline seconds. */
   clips: MusicClip[]
   manual: boolean
 }
 
 export interface AudioPlan {
+  /** The units of the voice (what the owner picks the punch line from), with a clip each to listen to. */
   phrases: { index: number; startSec: number; endSec: number; clip: string }[]
-  punchIndex: number
+  punchUnits: number[]
   punchGuessed: boolean
-  hits: { atSec: number; strength: number }[]
-  hitIndex: number
+  /** True when the voice had no 0.9 s pause, so smaller phrases are offered instead of units. */
+  unitsFromPhrases: boolean
   musicSummary: string
-  tempoBpm: number | null
   punchAtSec: number
   durationSec: number
   mixWav: string
+  /** Voice only, placed on the timeline (vo.wav) — the mouth is driven by THIS, never by the mix. */
+  voiceTrackWav: string
+  timelineJson: string
+  timeline: Timeline
   loudness: Loudness
   loudnessText: string
   voiceOverMusicDb: number | null
-  /** Independent re-measurement on the placed tracks: voice onset vs music hit, in ms. */
+  /** Independent re-measurement: music hit near the punch line vs the punch-line voice start, in ms. */
   syncErrorMs: number | null
+  isolated: boolean
   notes: string[]
   warnings: string[]
-  /** Voice only, placed on the timeline (for lip-sync). */
-  voiceTrackWav: string
-  /** Phrases on the final timeline, in seconds. */
-  timelinePhrases: { start: number; end: number }[]
+  /** Units placed on the timeline (seconds), for the director. */
+  timelinePhrases: { start: number; end: number; unit: number; punch: boolean }[]
   cutsSec: number[]
   editor: EditorData
+  /** The pause the owner asked for (the preflight checks the timeline matches it). */
+  pauseWanted: number
 }
 
 function pickByRole(music: ProjectInput['music'], role: MusicRole) {
   return music.find((m) => m.role === role)?.path ?? null
 }
 
-async function buildBed(dec: (p: string) => Promise<Stereo>, music: ProjectInput['music']) {
-  const introP = pickByRole(music, 'intro')
-  const punchP = pickByRole(music, 'punchline')
-  const mainP = pickByRole(music, 'main')
-  const notes: string[] = []
-  if (introP && punchP) {
-    const intro = await dec(introP)
-    const punch = await dec(punchP)
-    const bed = concatStereo(intro, punch)
-    notes.push('Intro plays first; the punch-line music starts exactly where the intro ends.')
-    return { bed, files: [{ path: introP, length: intro.l.length }, { path: punchP, length: punch.l.length }], from: Math.max(0, intro.l.length - samp(4)), to: Math.min(bed.l.length, intro.l.length + samp(1.5)), notes, firstSoundFallback: false }
-  }
-  if (introP) {
-    const bed = await dec(introP)
-    return { bed, files: [{ path: introP, length: bed.l.length }], from: Math.max(0, bed.l.length - samp(4)), to: bed.l.length, notes, firstSoundFallback: false }
-  }
-  if (punchP) {
-    const bed = await dec(punchP)
-    notes.push('Only punch-line music was given, so it starts on the punch line.')
-    return { bed, files: [{ path: punchP, length: bed.l.length }], from: 0, to: Math.min(bed.l.length, samp(3)), notes, firstSoundFallback: true }
-  }
-  if (mainP) {
-    const bed = await dec(mainP)
-    return { bed, files: [{ path: mainP, length: bed.l.length }], from: samp(0.5), to: Math.max(samp(0.5), bed.l.length - samp(1)), notes, firstSoundFallback: false }
-  }
-  return null
-}
-
-function firstSound(x: Float32Array, upTo: number): number {
-  const lim = Math.min(x.length, upTo)
-  let peak = 0
-  for (let i = 0; i < lim; i++) peak = Math.max(peak, Math.abs(x[i]))
-  for (let i = 0; i < lim; i++) if (Math.abs(x[i]) > peak * 0.1) return refineOnset(x, Math.max(0, i - samp(0.05)), i + samp(0.1))
-  return 0
-}
-
-/** "Check timing": clean the voice, find phrases + the music hit, build the synced mix. */
-export async function buildAudio(inp: ProjectInput, onStep?: (s: string) => void): Promise<AudioPlan> {
+/** Check timing: isolate + clean the voice, find units, place them, align the music, mix, verify. */
+export async function buildAudio(inp: ProjectInput, onStep?: (s: string, f?: number | null) => void): Promise<AudioPlan> {
   const { ffmpeg } = inp
   const warnings: string[] = []
   await fs.mkdir(join(inp.workDir, 'phrases'), { recursive: true })
 
+  onStep?.('Reading your voice…')
+  const voice = await decodeAudio(ffmpeg, inp.voice)
+  const vocWav = join(inp.workDir, 'voc.wav')
+  let isolated = false
+  if (inp.mdx) {
+    const voice44 = join(inp.workDir, 'voice44.wav')
+    await writeFileAtomic(voice44, encodeWav(voice))
+    onStep?.('Separating your voice from any music in the file…', 0)
+    await inp.mdx(voice44, vocWav, (f) => onStep?.('Separating your voice from any music in the file…', f))
+    isolated = true
+  } else {
+    warnings.push('Music removal from the voice isn’t available on this Mac, so the voice file is used as it is. If it has music in it, the timing and mouth may be off.')
+    await writeFileAtomic(vocWav, encodeWav(voice))
+  }
+  const vocQ = await decodeAudio(ffmpeg, vocWav) // same 16-bit rounding as the reference
   onStep?.('Cleaning your voice…')
-  const voice = await decodeAudio(ffmpeg, inp.voice, VOICE_CLEAN)
-  const vMono = toMono(voice)
+  const vClean = await decodeMono(ffmpeg, vocWav, CLEAN)
 
-  onStep?.('Finding the phrases in your voice…')
-  let phrases: Phrase[] = findPhrases(vMono)
-  if (phrases.length === 0) throw new Error('I couldn’t hear any speech in the voice file. Is it the right file?')
-  const covered = phrases.reduce((a, p) => a + (p.end - p.start), 0) / vMono.length
-  if (phrases.length === 1 && covered > 0.85)
-    warnings.push('Your voice file has almost no pauses. If it has music mixed in, the timing may be off (music removal comes in a later update).')
-  phrases = phrases.slice(0, 40)
+  onStep?.('Finding the parts of your voice…')
+  const phrases = brainPhrases(vocQ)
+  if (!phrases.length) throw new Error('I couldn’t hear any speech in the voice file. Is it the right file?')
+  let units = groupUnits(phrases)
+  let unitsFromPhrases = false
+  if (units.length < 2 && phrases.length >= 2) {
+    units = phrases
+    unitsFromPhrases = true
+    warnings.push('Your voice has no clear pause (0.9 s or more) between lines, so I split it at the shorter pauses instead. Please check which part is the punch line.')
+  }
+  const covered = phrases.reduce((a, p) => a + (p[1] - p[0]), 0) / (vocQ.l.length / SAMPLE_RATE)
+  if (units.length < 2 && covered > 0.85) warnings.push('Your voice file has almost no pauses. If it still has music in it, the timing may be off.')
 
-  const punchGuessed = inp.punchIndex === null || inp.punchIndex >= phrases.length
-  const punchIndex = punchGuessed ? phrases.length - 1 : (inp.punchIndex as number)
+  const punchGuessed = !inp.punchUnits?.length
+  const punchUnits = punchGuessed ? [units.length - 1] : inp.punchUnits!.filter((i) => i >= 0 && i < units.length)
 
   const clips: AudioPlan['phrases'] = []
-  for (let i = 0; i < phrases.length; i++) {
-    const p = phrases[i]
-    const a = Math.max(0, p.start - PAD)
-    const b = Math.min(voice.l.length, p.end + PAD)
-    const clip = join(inp.workDir, 'phrases', `phrase-${i + 1}.wav`)
-    await writeFileAtomic(clip, encodeWav({ l: voice.l.subarray(a, b), r: voice.r.subarray(a, b) }))
-    clips.push({ index: i, startSec: sec(p.start), endSec: sec(p.end), clip })
+  for (let i = 0; i < units.length; i++) {
+    const [s0, s1] = units[i]
+    const a = Math.max(0, Math.round((s0 - 0.05) * SAMPLE_RATE))
+    const b = Math.min(vClean.length, Math.round((s1 + 0.05) * SAMPLE_RATE))
+    const clip = join(inp.workDir, 'phrases', `part-${i + 1}.wav`)
+    const seg = vClean.subarray(a, b)
+    await writeFileAtomic(clip, encodeWav({ l: seg, r: seg }))
+    clips.push({ index: i, startSec: s0, endSec: s1, clip })
   }
 
-  onStep?.('Listening to the music for the hit…')
+  onStep?.('Listening to the music…')
   const cache = new Map<string, Stereo>()
   const dec = async (p: string) => {
     let a = cache.get(p)
     if (!a) { a = await decodeAudio(ffmpeg, p); cache.set(p, a) }
     return a
   }
-  const bedInfo = await buildBed(dec, inp.music)
-  const notes: string[] = [...(bedInfo?.notes ?? [])]
-  let hits: { at: number; strength: number }[] = []
-  let hitAt: number | null = null
-  let tempo: number | null = null
-  let bed: Stereo | null = null
-  if (bedInfo) {
-    bed = bedInfo.bed
-    const mono = toMono(bed)
-    tempo = estimateTempo(mono)
-    hits = findHits(mono, { from: bedInfo.from, to: bedInfo.to })
-    if (hits.length === 0) hits = findHits(mono)
-    if (bedInfo.firstSoundFallback && (hits.length === 0 || hits[0].strength < 2)) {
-      hits.unshift({ at: firstSound(mono, samp(3)), strength: 0 })
-    }
-    const hi = Math.min(inp.hitIndex ?? 0, Math.max(0, hits.length - 1))
-    hitAt = hits.length ? hits[hi].at : null
-    if (!hits.length) warnings.push('I couldn’t find a clear hit in the music.')
-  } else {
-    warnings.push('No music was dropped, so the video has only your voice.')
+  const introPath = pickByRole(inp.music, 'intro') ?? pickByRole(inp.music, 'main')
+  const chorusPath = pickByRole(inp.music, 'punchline')
+  let singleHitSec: number | null = null
+  if (introPath && !chorusPath) {
+    const h = findHits(toMono(await dec(introPath)), { count: 1 })
+    singleHitSec = h.length ? sec(h[0].at) : null
   }
+  const manualMusic = inp.manualMusic?.length
+    ? await Promise.all(inp.manualMusic.map(async (m) => ({ ...m, audio: await dec(m.path) })))
+    : undefined
 
-  onStep?.('Lining up the punch line with the music hit…')
-  const tl: Timeline = planTimeline({
-    phrases,
-    punchIndex,
-    pauseSec: inp.pauseSec,
-    leadInSec: 0.4,
-    tailSec: inp.style === 'draw' ? 5 : 2.5,
-    maxGapSec: 0.6,
-    bedLength: bed ? bed.l.length : 0,
-    hitAt
+  onStep?.('Lining up the punch line with the music…')
+  const brain = await runBrain({
+    ffmpeg, workDir: inp.workDir, voc: vocQ, vClean,
+    intro: introPath ? await dec(introPath) : null, introPath,
+    chorus: chorusPath ? await dec(chorusPath) : null, chorusPath,
+    punchTime: inp.punchTime, pause: inp.pauseSec, duration: inp.duration, punchUnits,
+    targetLufs: inp.targetLufs, unitsOverride: units, singleHitSec, manualMusic
   })
-  notes.push(...tl.notes)
-  notes.push(`Put a ${inp.pauseSec.toFixed(1)} s pause before the punch line; the music keeps playing through it.`)
+  const tl = brain.timeline
+  if (!inp.music.length && !manualMusic) warnings.push('No music was dropped, so the video has only your voice.')
 
-  // Music as clips: the automatic placement, or the owner's own placement from the timeline editor.
-  const punchSecTl = sec(tl.punchAt)
-  let clipsNow: MusicClip[] = bedInfo ? clipsFromTimeline(tl, bedInfo.files) : []
-  const manual = !!inp.manualMusic && inp.manualMusic.length > 0
-  if (manual) {
-    clipsNow = []
-    for (const m of inp.manualMusic!) {
-      const a = await dec(m.path)
-      const dur = sec(a.l.length)
-      const inS = Math.max(0, Math.min(m.inSec, dur))
-      const outS = Math.max(inS, Math.min(m.outSec ?? dur, dur))
-      clipsNow.push({ path: m.path, dstSec: punchSecTl + m.dstFromPunchSec, inSec: inS, outSec: outS, fadeInSec: 0.015 })
-    }
-    notes.length = 0
-    notes.push('You placed the music by hand in the timeline.')
-  }
-
-  onStep?.('Mixing voice and music…')
-  const placed = clipsNow.length ? placeClips(cache, clipsNow, tl.length) : null
-  const mixed = mixPlaced(voice, placed, tl, DEFAULT_MIX)
-  const cuts = inp.style === 'draw' ? cutTimes(sec(tl.punchAt), sec(tl.length)) : []
-  for (const c of cuts.slice(1)) addWhoosh(mixed.mix, samp(c))
-  const timelinePhrases = tl.phrases.map((p, i) => ({ start: sec(p.soundAt), end: sec(p.soundAt + (phrases[i].end - phrases[i].start)) }))
-  const voiceTrackWav = join(inp.workDir, 'voice-track.wav')
-  await writeFileAtomic(voiceTrackWav, encodeWav(mixed.voiceTrack))
-
-  // Independent check on the placed tracks: re-detect the voice onset and the music hit near the punch line.
+  // Independent check, re-measured from the PLACED audio (not from the plan's numbers):
+  // with a punch-line track, its first downbeat must sit on the punch time (reference: ±0.02 s);
+  // otherwise (one song / hand placement) the strongest hit near the punch line is measured.
   let syncErrorMs: number | null = null
-  if (placed && (hitAt !== null || manual)) {
-    const win = samp(0.6)
-    const vOn = findPhrases(toMono(mixed.voiceTrack)).map((p) => p.start).reduce((best, s) => (Math.abs(s - tl.punchAt) < Math.abs(best - tl.punchAt) ? s : best), Number.MAX_SAFE_INTEGER)
-    const mHits = findHits(toMono(mixed.musicTrack), { from: Math.max(0, tl.punchAt - win), to: tl.punchAt + win, count: 1 })
-    if (mHits.length && vOn !== Number.MAX_SAFE_INTEGER) syncErrorMs = Math.round(((mHits[0].at - vOn) / SAMPLE_RATE) * 1000)
+  if (tl.music_clips.length) {
+    const { placeClips } = await import('./audio/clips')
+    const { firstDownbeat } = await import('./audio/brain')
+    const N = Math.round(tl.duration * SAMPLE_RATE)
+    const P = tl.punch_time
+    const chorusClip = !tl.manual_music && chorusPath ? tl.music_clips.find((c) => c.path === chorusPath) : undefined
+    if (chorusClip) {
+      const only = placeClips(new Map([[chorusPath!, await dec(chorusPath!)]]), [chorusClip], N)
+      const a = Math.max(0, Math.round(chorusClip.dstSec * SAMPLE_RATE))
+      const db = firstDownbeat({ l: only.l.subarray(a), r: only.r.subarray(a) })
+      syncErrorMs = Math.round((a / SAMPLE_RATE + db - P) * 1000)
+    } else {
+      const decoded = new Map<string, Stereo>()
+      for (const c of tl.music_clips) decoded.set(c.path, await dec(c.path))
+      const mus = toMono(placeClips(decoded, tl.music_clips, N))
+      const Ps = samp(P)
+      const h = findHits(mus, { from: Math.max(0, Ps - samp(0.6)), to: Ps + samp(0.6), count: 1 })
+      if (h.length) syncErrorMs = Math.round(((h[0].at - Ps) / SAMPLE_RATE) * 1000)
+    }
   }
 
-  onStep?.('Setting the loudness…')
-  const rawWav = join(inp.workDir, 'mix-raw.wav')
-  const finalWav = join(inp.workDir, 'mix.wav')
-  await writeFileAtomic(rawWav, encodeWav(mixed.mix))
-  const loud = await normalizeLoudness(ffmpeg, rawWav, tempNameFor(finalWav) + '.wav', inp.targetLufs ?? -14)
-  await fs.rename(tempNameFor(finalWav) + '.wav', finalWav)
+  const files: EditorData['files'] = []
+  for (const p of [...new Set([...inp.music.map((m) => m.path), ...tl.music_clips.map((c) => c.path)])]) {
+    const a = await dec(p)
+    files.push({ path: p, durSec: sec(a.l.length), peaks: peaks(a, 100), hitsSec: findHits(toMono(a), { count: 6 }).map((h) => sec(h.at)).sort((x, y) => x - y) })
+  }
 
   return {
     phrases: clips,
-    punchIndex,
+    punchUnits: tl.punch_units,
     punchGuessed,
-    hits: hits.map((h) => ({ atSec: sec(h.at), strength: h.strength })),
-    hitIndex: Math.min(inp.hitIndex ?? 0, Math.max(0, hits.length - 1)),
-    musicSummary: bed ? `Music hit at ${hitAt !== null ? sec(hitAt).toFixed(2) : '—'} s of the music${tempo ? `, about ${tempo} BPM` : ''}.` : 'No music.',
-    tempoBpm: tempo,
-    punchAtSec: sec(tl.punchAt),
-    durationSec: sec(tl.length),
-    mixWav: finalWav,
-    loudness: loud,
-    loudnessText: describeLoudness(loud),
-    voiceOverMusicDb: mixed.voiceOverMusicDb,
+    unitsFromPhrases,
+    musicSummary: tl.chorus_downbeat != null ? `The music’s beat lands exactly on the punch line at ${tl.punch_time.toFixed(2)} s.` : tl.music_clips.length ? 'Music placed.' : 'No music.',
+    punchAtSec: tl.punch_time,
+    durationSec: tl.duration,
+    mixWav: brain.mixWav,
+    voiceTrackWav: brain.voWav,
+    timelineJson: brain.timelineJson,
+    timeline: tl,
+    loudness: brain.loudness,
+    loudnessText: describeLoudness(brain.loudness),
+    voiceOverMusicDb: tl.music_clips.length ? tl.voice_over_music_db : null,
     syncErrorMs,
-    notes,
+    isolated,
+    notes: tl.notes.concat([`Put a ${tl.pause_before_punch.toFixed(2)} s pause before the punch line; the music keeps playing through it.`]),
     warnings,
-    voiceTrackWav,
-    timelinePhrases,
-    cutsSec: cuts,
-    editor: await editorData(mixed.voiceTrack, [...new Set([...inp.music.map((m) => m.path), ...clipsNow.map((c) => c.path)])], dec, clipsNow, manual)
+    timelinePhrases: tl.placed.map((p) => ({ start: p.dest[0], end: p.dest[1], unit: p.unit, punch: tl.punch_units.includes(p.unit) })),
+    cutsSec: [tl.punch_time, ...tl.cuts],
+    editor: { pps: 100, voicePeaks: brain.voicePeaks, files, clips: tl.music_clips, manual: tl.manual_music },
+    pauseWanted: inp.pauseSec
   }
-}
-
-async function editorData(voiceTrack: Stereo, paths: string[], dec: (p: string) => Promise<Stereo>, clips: MusicClip[], manual: boolean): Promise<EditorData> {
-  const pps = 100
-  const files: EditorData['files'] = []
-  for (const p of paths) {
-    const a = await dec(p)
-    const mono = toMono(a)
-    const hits = findHits(mono, { count: 6 }).map((h) => sec(h.at)).sort((x, y) => x - y)
-    files.push({ path: p, durSec: sec(a.l.length), peaks: peaks(a, pps), hitsSec: hits })
-  }
-  return { pps, voicePeaks: peaks(voiceTrack, pps), files, clips, manual }
 }
 
 export interface RenderResult {
@@ -274,6 +232,7 @@ export interface RenderResult {
   /** Offset between the finished MP4's sound and the planned mix (encoder delay check), in ms. */
   encoderOffsetMs: number | null
   qa: { ok: boolean; text: string }[]
+  allOk: boolean
 }
 
 /** Cross-correlate two mono signals near `center` to find a small time shift (±maxLag samples). */
@@ -307,12 +266,14 @@ export async function renderDraft(opts: {
 }): Promise<RenderResult> {
   const { ffmpeg, plan, fmt } = opts
   let canvas: string | undefined
+  const renderLog: import('./draw/render').FrameLog[] = []
   if (opts.visual.type === 'drawn') {
     const partial0 = tempNameFor(opts.outFile)
     try {
       const { renderDrawn } = await import('./draw/render')
       await renderDrawn({
-        ffmpeg, fmt, durationSec: plan.durationSec, punchSec: plan.punchAtSec, phrases: plan.timelinePhrases,
+        log: renderLog,
+        ffmpeg, fmt, timeline: plan.timeline,
         voiceTrack: await decodeAudio(ffmpeg, plan.voiceTrackWav), audioWav: plan.mixWav, outPartial: partial0, onProgress: opts.onProgress
       })
       await fs.rename(partial0, opts.outFile)
@@ -320,7 +281,7 @@ export async function renderDraft(opts: {
       await fs.rm(partial0, { force: true })
       throw e
     }
-    return finishQa(ffmpeg, opts.workDir, opts.outFile, plan, fmt)
+    return finishQa(ffmpeg, opts.workDir, opts.outFile, plan, fmt, renderLog)
   }
   if (opts.visual.type === 'picture') {
     canvas = join(opts.workDir, `canvas-${fmt.id}.png`)
@@ -340,33 +301,22 @@ export async function renderDraft(opts: {
   return finishQa(ffmpeg, opts.workDir, opts.outFile, plan, fmt)
 }
 
-async function finishQa(ffmpeg: string, workDir: string, outFile: string, plan: AudioPlan, fmt: FormatPreset): Promise<RenderResult> {
-  const opts = { workDir, outFile }
-  // QA: re-open the finished file and check it.
+async function finishQa(ffmpeg: string, workDir: string, outFile: string, plan: AudioPlan, fmt: FormatPreset, renderLog?: import('./draw/render').FrameLog[]): Promise<RenderResult> {
+  // Preflight: re-open the finished file and check it (FIX_PROMPT §3). Failed checks are never hidden.
   const frames: RenderResult['frames'] = []
   const P = plan.punchAtSec
   for (const [label, t] of [['Just before the punch line', P - 0.4], ['The punch line', P + 0.1], ['Right after', P + 0.6]] as const) {
-    const f = join(opts.workDir, `frame-${fmt.id}-${label.replace(/\W+/g, '-').toLowerCase()}.jpg`)
-    await grabFrame(ffmpeg, opts.outFile, Math.max(0, t), f)
+    const f = join(workDir, `frame-${fmt.id}-${label.replace(/\W+/g, '-').toLowerCase()}.jpg`)
+    await grabFrame(ffmpeg, outFile, Math.max(0, t), f)
     frames.push({ label, path: f })
   }
-
-  const planned = toMono(await decodeAudio(ffmpeg, plan.mixWav))
-  const got = toMono(await decodeAudio(ffmpeg, opts.outFile))
-  let encoderOffsetMs: number | null = null
-  try {
-    encoderOffsetMs = Math.round((measureShift(planned, got, samp(P), samp(0.05)) / SAMPLE_RATE) * 1000)
-  } catch {
-    encoderOffsetMs = null
-  }
-  const frameMs = 1000 / FPS
-  const qa: RenderResult['qa'] = []
-  if (plan.syncErrorMs !== null)
-    qa.push({ ok: Math.abs(plan.syncErrorMs) <= frameMs, text: `Punch line vs music hit: ${plan.syncErrorMs} ms apart (must be within one frame, ${frameMs.toFixed(0)} ms).` })
-  if (encoderOffsetMs !== null)
-    qa.push({ ok: Math.abs(encoderOffsetMs) <= frameMs / 2, text: `Sound in the finished video is ${encoderOffsetMs} ms from the planned mix.` })
-  qa.push({ ok: plan.loudness.truePeakDb < -1, text: plan.loudnessText })
-  if (plan.voiceOverMusicDb !== null)
-    qa.push({ ok: plan.voiceOverMusicDb >= 6 && plan.voiceOverMusicDb <= 10, text: `Your voice is ${plan.voiceOverMusicDb.toFixed(1)} dB above the music while you speak (goal: about 8).` })
-  return { video: opts.outFile, frames, encoderOffsetMs, qa }
+  const { preflight } = await import('./preflight')
+  const voiceTrack = toMono(await decodeAudio(ffmpeg, plan.voiceTrackWav))
+  const checks = await preflight({
+    ffmpeg, video: outFile, plannedMix: plan.mixWav, timeline: plan.timeline, pauseWanted: plan.pauseWanted,
+    syncErrorMs: plan.syncErrorMs, renderLog: renderLog?.length ? renderLog : undefined, voiceTrack
+  })
+  await writeFileAtomic(join(workDir, 'preflight.json'), JSON.stringify(checks, null, 1))
+  const qa = checks.map((c) => ({ ok: c.ok, text: `${c.text}: ${c.measured}` }))
+  return { video: outFile, frames, encoderOffsetMs: null, qa, allOk: checks.every((c) => c.ok) }
 }

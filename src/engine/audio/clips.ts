@@ -12,8 +12,10 @@ export interface MusicClip {
   /** Which part of the file plays: from inSec to outSec (seconds in the file). */
   inSec: number
   outSec: number
-  /** Fade-in length at the clip start (seconds). */
+  /** Fade-in length at the clip start (seconds). Default 15 ms; 0 = none. */
   fadeInSec?: number
+  /** Fade-out length at the clip end (seconds). Default 15 ms; 0 = none (butt-joined clips). */
+  fadeOutSec?: number
 }
 
 /**
@@ -48,7 +50,6 @@ export function clipsFromTimeline(tl: Timeline, files: { path: string; length: n
 export function placeClips(decoded: Map<string, Stereo>, clips: MusicClip[], length: number): Stereo {
   const l = new Float32Array(length)
   const r = new Float32Array(length)
-  const edge = samp(0.015)
   for (const c of clips) {
     const src = decoded.get(c.path)
     if (!src) continue
@@ -57,14 +58,15 @@ export function placeClips(decoded: Map<string, Stereo>, clips: MusicClip[], len
     const len = b - a
     if (len <= 0) continue
     const d0 = Math.round(c.dstSec * SAMPLE_RATE)
-    const fin = Math.max(edge, samp(c.fadeInSec ?? 0.015))
+    const fin = samp(c.fadeInSec ?? 0.015)
+    const fout = samp(c.fadeOutSec ?? 0.015)
     for (let i = 0; i < len; i++) {
       const d = d0 + i
       if (d < 0) continue
       if (d >= length) break
       let g = 1
-      if (i < fin) g = i / fin
-      if (i > len - edge) g = Math.min(g, (len - i) / edge)
+      if (fin > 0 && i < fin) g = i / fin
+      if (fout > 0 && i > len - fout) g = Math.min(g, (len - i) / fout)
       l[d] += src.l[a + i] * g
       r[d] += src.r[a + i] * g
     }

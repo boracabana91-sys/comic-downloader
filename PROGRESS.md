@@ -74,3 +74,31 @@ Not done: still one built-in character (the cat). Takes are fixed templates (cha
 - UI: TimelineEditor.tsx (drag/trim/snap/move-together/nudge/numeric/drop-to-place/Web Audio preview).
 - Found and fixed while testing: the live preview was blocked by the window's security policy (connect-src, then CORS on catty-media://). Now allowed for that private scheme only; preview errors show a message.
 - Tested in the real app (scripts/editor-flow.mjs): auto 0 ms → drag +445 ms → +1 frame 478 ms → applied mix measured 480–485 ms → 🎯 back to 0 ms → Back to automatic 0 ms; preview playhead advances. Engine tests: manual +250 ms measured 220–280 ms; dropped file placed by hand lands within one frame.
+
+## v0.5: reference kit adopted (FIX_PROMPT.md + punchline_reference_kit)
+Root causes of the owner's bad video (Cattyfied_Shorts-Reels_07.17.18.mp4): (1) no vocal isolation → a voice with
+music baked in became one long "phrase" → punch at ~0.4 s and a mouth driven by the music (always open);
+(2) post-punch takes cycled 4 fixed templates → a 4 s loop, with hearts in 3 of 4; (3) music anchored to the
+intro's last hit instead of the chorus's first downbeat at a fixed punch time with a reveal before it.
+Done, with proof:
+1. Audio brain: mdx.ts matches reference mdx.py at 59.4 dB SNR (max diff 4e-5, int16 rounding). brain.ts vs
+   audio_brain.py on the same inputs: identical units, placement, gains, cuts, chorus start, intro offset, onset,
+   pause, LUFS (−15.7) and voice-over-music (10.6 dB); final mix correlation 0.99 after removing the reference's
+   own 5 ms limiter delay (ours is 0 ms). Fixed along the way: 6 dB downmix level bug (f32 vs s16 path), 10 ms limiter delay.
+2. Punch-line confirmation: units with play buttons, multi-select, must confirm. (Whisper guess: NOT done yet.)
+3. Director from timeline (cat_run.py port, time-warped opening, takes on the timeline cuts, smirk finale,
+   re-use without cycles, hearts at the end, PCHIP).
+4. Renderer: lip-sync from vo.wav per reference (95th pct, <0.12 closed, 0.7/0.35), fade-in, vignette, flash/blur table.
+5. Preflight on the finished mp4: flashes at cuts (±1 frame), loop score, mouth-closed (from the render log vs vo.wav),
+   downbeat ±20 ms, punch start, pause, VoM ≥ 8, LUFS, true peak, length, A/V offset. Red = blocked until confirmed.
+Measured: flash frames in my render 8.23 9.23 10.23 11.23 12.43 13.43 14.53 15.63 = golden exactly; loop 0%.
+Golden acceptance test (tests/golden.test.ts) waits for Sol_Street_71.m4a + money_mode_wil_chorus_2.mp3.
+Not done: Whisper/sherpa-onnx transcript guess; in-app chat assistant (Phase 4) must get SKILL.md + timeline.json;
+the AI-clip (Higgsfield/Kling) retiming path still uses the old reframing; Intel Macs have no vocal isolation.
+
+Found while testing in the real app: onnxruntime crashed Electron (SIGTRAP), in the main process on the first run
+and in plain-Node mode on the 2nd chunk — its CPU memory arena re-uses buffers a previous result still points to.
+Fix: vocal isolation runs in a helper process (out/main/mdx-worker.js, ELECTRON_RUN_AS_NODE) with
+enableCpuMemArena=false, enableMemPattern=false, outputs copied then disposed. Helper output vs reference mdx.py: 56.8 dB.
+In-app run (voice_test + intro + chorus_1): check timing 13 s; video 190 s; all 11 preflight checks green.
+CI: CATTY_SELFTEST=full on Apple Silicon downloads the model (SHA-256) and runs isolation in the helper process.

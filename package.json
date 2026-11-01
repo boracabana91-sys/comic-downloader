@@ -1,7 +1,7 @@
 {
   "name": "cattyfied",
   "productName": "Cattyfied",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Cattyfied: punch-line synced short videos, made easy.",
   "author": "Cattyfied",
   "private": true,
@@ -31,7 +31,8 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^1.1.0"
+    "@napi-rs/canvas": "^1.1.0",
+    "onnxruntime-node": "^1.31.1"
   },
   "build": {
     "appId": "com.cattyfied.app",
@@ -44,7 +45,8 @@
     "files": [
       "out/**/*",
       "package.json",
-      "!**/*.map"
+      "!**/*.map",
+      "!node_modules/onnxruntime-node/bin/napi-v6/{linux,win32}/**"
     ],
     "extraResources": [
       {
@@ -106,6 +108,10 @@
         }
       ],
       "format": "ULFO"
-    }
+    },
+    "asarUnpack": [
+      "node_modules/onnxruntime-node/bin/**",
+      "node_modules/@napi-rs/**"
+    ]
   }
 }

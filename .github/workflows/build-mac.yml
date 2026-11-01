@@ -42,6 +42,8 @@ jobs:
           TARGET_ARCH=x64 npm run prepare:binaries
           npm install --no-save --force @napi-rs/canvas-darwin-x64@$V
           rm -rf node_modules/@napi-rs/canvas-darwin-arm64
+          # the vocal-isolation runtime exists for Apple Silicon only: keep it out of the Intel app
+          rm -rf node_modules/onnxruntime-node/bin/napi-v6/darwin/arm64
           npx electron-builder --mac --x64 --publish never
           mv dist/Cattyfied-*-x64.dmg "dist/Cattyfied-Intel.dmg"
       - name: Check both apps
@@ -116,7 +118,8 @@ jobs:
           hdiutil detach /Volumes/Cattyfied
           echo "Machine: $(uname -m)"
           /Applications/Cattyfied.app/Contents/Resources/bin/ffmpeg -version | head -1
-          CATTY_SELFTEST=1 /Applications/Cattyfied.app/Contents/MacOS/Cattyfied 2>&1 | tee selftest.log
+          if [ "$(uname -m)" = "arm64" ]; then MODE=full; else MODE=1; fi
+          CATTY_SELFTEST=$MODE /Applications/Cattyfied.app/Contents/MacOS/Cattyfied 2>&1 | tee selftest.log
           grep -q "SELFTEST OK" selftest.log
           /Applications/Cattyfied.app/Contents/MacOS/Cattyfied > app.log 2>&1 &
           PID=$!

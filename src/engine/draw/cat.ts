@@ -8,8 +8,11 @@ export interface CatPose {
   lid: number // 0 = eyes wide open, 1 = closed (resting look ≈ 0.42, the smug half-lid)
   winkL: number // screen-left eye closed in a happy "^" (0..1)
   winkR: number
-  brow: number // 0..1 eyebrow raised over the eyes
+  brow: number // 0..1 right eyebrow raised (reference "brow")
+  browL: number // 0..1 left eyebrow raised (reference "browl")
+  blink: number // 0..1 both eyes closing
   look: number // -1..1 pupils left/right
+  lookV: number // -1..1 pupils up/down
   smirk: number // 0..1 lifts ONLY the right mouth corner (the only allowed asymmetry)
   grin: number // 0..1 big open smile
   open: number // 0..1 mouth open from the voice
@@ -18,6 +21,8 @@ export interface CatPose {
   headRoll: number // degrees
   headBob: number // design px
   glass: number // 0..1 raise the champagne (toast)
+  sip: number // 0..1 bring the champagne to the mouth
+  bodyBob: number // design px (breathing)
   tail: number // -1..1 sway
   ear: number // 0..1 ear twitch
   hearts: { x: number; y: number; s: number; a: number }[]
@@ -25,8 +30,8 @@ export interface CatPose {
 }
 
 export const REST_POSE: CatPose = {
-  lid: 0.3, winkL: 0, winkR: 0, brow: 0, look: 0, smirk: 0.6, grin: 0, open: 0, wide: 0.5,
-  blush: 0.5, headRoll: 0, headBob: 0, glass: 0, tail: 0, ear: 0, hearts: [], t: 0
+  lid: 0.42, winkL: 0, winkR: 0, brow: 0.3, browL: 0, blink: 0, look: 0, lookV: 0, smirk: 0.7, grin: 0, open: 0, wide: 0.5,
+  blush: 0.35, headRoll: 0, headBob: 0, glass: 0, sip: 0, bodyBob: 0, tail: 0, ear: 0, hearts: [], t: 0
 }
 
 const C = {
@@ -356,11 +361,15 @@ function drawLeftArm(ctx: Ctx) {
 
 function drawRightArm(ctx: Ctx, p: CatPose) {
   const lift = p.glass * 75
-  const px = 528, py = 640 - lift
-  limb(ctx, [[468, 718], [565, 800 - lift * 0.4], [px + 8, py + 30]], 50, C.suit)
+  const px = 528 - 14 * p.sip, py = 640 - lift - 18 * p.sip
+  limb(ctx, [[468, 718], [565, 800 - lift * 0.4 - 10 * p.sip], [px + 8, py + 30]], 50, C.suit)
   ctx.fillStyle = C.gold; ctx.fillRect(px - 6, py + 14, 34, 12)
-  // champagne flute (behind the paw)
+  // champagne flute (behind the paw); a sip tilts it 58° so the rim reaches the mouth
   const gx = px - 2, top = py - 205, bottom = py - 15
+  ctx.save()
+  ctx.translate(px + 10, py)
+  ctx.rotate((-58 * p.sip * Math.PI) / 180)
+  ctx.translate(-(px + 10), -py)
   ctx.save()
   ctx.beginPath()
   ctx.moveTo(gx - 20, top); ctx.lineTo(gx + 20, top); ctx.lineTo(gx + 8, bottom); ctx.lineTo(gx - 8, bottom); ctx.closePath()
@@ -377,6 +386,7 @@ function drawRightArm(ctx: Ctx, p: CatPose) {
   ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 3
   ctx.beginPath(); ctx.moveTo(gx - 20, top); ctx.lineTo(gx - 8, bottom); ctx.lineTo(gx + 8, bottom); ctx.lineTo(gx + 20, top); ctx.closePath(); ctx.stroke()
   ctx.beginPath(); ctx.moveTo(gx, bottom); ctx.lineTo(gx, bottom + 30); ctx.stroke()
+  ctx.restore()
   paw(ctx, px + 10, py + 2, 26)
   ellipse(ctx, px + 32, py - 14, 11, 11); fillOut(ctx, C.fur, 4)
 }
@@ -389,16 +399,27 @@ function drawNeck(ctx: Ctx) {
   ellipse(ctx, 362, 650, 33, 9); ctx.fillStyle = 'rgba(214,110,40,0.9)'; ctx.fill()
 }
 
+function brows(ctx: Ctx, p: CatPose) {
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = C.furDark; ctx.lineWidth = 11
+  // right brow (reference "brow"): arches up when raised
+  const rx = 427, ry = 472, br = p.brow
+  ctx.beginPath(); ctx.moveTo(rx - 34, ry - 70 + 9.6 * (1 - br)); ctx.lineTo(rx + 5, ry - 86 - 12 * br); ctx.lineTo(rx + 36, ry - 70 - 7 * br); ctx.stroke()
+  // left brow (reference "browl"): a flatter slope that lifts when raised
+  const lx = 297, ly = 472, bl = p.browL
+  ctx.beginPath(); ctx.moveTo(lx - 36, ly - 53 - 10 * bl); ctx.lineTo(lx + 34, ly - 60 - 19 * bl); ctx.stroke()
+}
+
 function eye(ctx: Ctx, cx: number, cy: number, p: CatPose, wink: number, side: -1 | 1) {
   const w = 46, h = 30
-  if (wink > 0.6) {
-    // happy closed eye "^"
+  const cl = Math.max(p.blink, wink)
+  if (cl > 0.88) {
+    // closed eye: a happy "^" for a wink, a soft line for a blink
     ctx.beginPath()
-    ctx.moveTo(cx - w * 0.9, cy + 6); ctx.quadraticCurveTo(cx, cy - 22, cx + w * 0.9, cy + 6)
+    ctx.moveTo(cx - w * 0.9, cy + 6); ctx.quadraticCurveTo(cx, cy - (wink > p.blink ? 22 : 8) + 4 * (1 - cl), cx + w * 0.9, cy + 6)
     outline(ctx, 7)
     return
   }
-  const lid = Math.min(1, p.lid + wink * (1 - p.lid) / 0.6)
+  const lid = Math.min(1, p.lid + (1 - p.lid) * cl)
   const almond = () => {
     ctx.beginPath()
     ctx.moveTo(cx - w, cy)
@@ -408,11 +429,12 @@ function eye(ctx: Ctx, cx: number, cy: number, p: CatPose, wink: number, side: -
   }
   almond(); ctx.fillStyle = C.eyeWhite; ctx.fill()
   ctx.save(); almond(); ctx.clip()
-  const ix = cx + p.look * 15 + side * 2
-  ellipse(ctx, ix, cy + 3, 20, 21); ctx.fillStyle = C.iris; ctx.fill()
-  ellipse(ctx, ix, cy + 8, 20, 14); ctx.fillStyle = 'rgba(47,138,44,0.35)'; ctx.fill()
-  ellipse(ctx, ix, cy + 3, 5, 17); ctx.fillStyle = C.ink; ctx.fill()
-  ellipse(ctx, ix + 7, cy - 7, 4.5, 4.5); ctx.fillStyle = '#ffffff'; ctx.fill()
+  const ix = cx + 7 * (1 - Math.abs(p.look) * 0.3) * side * 0 + p.look * 13 + side * 2
+  const iy = cy + 3 + p.lookV * 5
+  ellipse(ctx, ix, iy, 20, 21); ctx.fillStyle = C.iris; ctx.fill()
+  ellipse(ctx, ix, iy + 5, 20, 14); ctx.fillStyle = 'rgba(47,138,44,0.35)'; ctx.fill()
+  ellipse(ctx, ix, iy, 5 + 2.4 * Math.max(0, p.lid - 0.4), 17); ctx.fillStyle = C.ink; ctx.fill()
+  ellipse(ctx, ix + 7, iy - 10, 4.5, 4.5); ctx.fillStyle = '#ffffff'; ctx.fill()
   // upper lid
   const top = cy - h * 1.05
   const lidY = top + lid * (h * 2.1)
@@ -427,21 +449,15 @@ function eye(ctx: Ctx, cx: number, cy: number, p: CatPose, wink: number, side: -
   ctx.beginPath()
   ctx.moveTo(cx - w, cy); ctx.quadraticCurveTo(cx + w * 0.2, cy + h * 1.25, cx + w, cy - 2)
   outline(ctx, 4)
-  if (p.brow > 0.02) {
-    const by = cy - 46 - p.brow * 16
-    ctx.beginPath()
-    ctx.moveTo(cx - w * 0.8, by + 10 * side * 0 + 8); ctx.quadraticCurveTo(cx, by - 10 * p.brow, cx + w * 0.8, by + 6)
-    ctx.lineWidth = 8; ctx.strokeStyle = C.furDark; ctx.lineCap = 'round'; ctx.stroke()
-  }
 }
 
 function mouth(ctx: Ctx, p: CatPose) {
   const cx = 362
   const baseY = 556
-  const openAmt = Math.max(p.open, p.grin * 0.75)
+  const talking = p.open > 0.08
   const lift = p.grin * 7
   const smirkLift = p.smirk * 16
-  if (openAmt < 0.06) {
+  if (!talking && p.grin <= 0.5) {
     // closed "w" smile with the smirk on the right corner only
     ctx.beginPath()
     ctx.moveTo(cx - 52, baseY - 4 - lift)
@@ -451,8 +467,9 @@ function mouth(ctx: Ctx, p: CatPose) {
     fang(ctx, cx + 32, baseY + 8)
     return
   }
-  const hw = 32 + 14 * p.wide + 20 * p.grin
-  const h = 8 + 38 * p.open + 30 * p.grin
+  const oo = Math.max(talking ? p.open : 0, p.grin * 0.35)
+  const hw = 40 * (1 + 0.16 * p.grin) * (1 + 0.1 * (talking ? p.wide : 0))
+  const h = 6 + 46 * oo + 12 * p.grin
   const lY = baseY - lift
   const rY = baseY - lift - smirkLift * 0.6
   const shape = () => {
@@ -525,6 +542,7 @@ function drawHead(ctx: Ctx, p: CatPose) {
   // eyes
   eye(ctx, 297, 472, p, p.winkL, -1)
   eye(ctx, 427, 472, p, p.winkR, 1)
+  brows(ctx, p)
   // nose
   ctx.beginPath(); ctx.moveTo(347, 521); ctx.lineTo(377, 521); ctx.lineTo(362, 538); ctx.closePath(); fillOut(ctx, C.nose, 3)
   // mouth
@@ -562,7 +580,7 @@ function heart(ctx: Ctx, x: number, y: number, s: number, a: number) {
 
 /** Draws the whole character (everything in front of the limo set). */
 export function drawCat(ctx: Ctx, p: CatPose): void {
-  const breathe = Math.sin(p.t * 2.2) * 2
+  const breathe = p.bodyBob * 1.2
   ctx.save()
   ctx.translate(0, breathe * 0.5)
   drawTail(ctx, p)
